@@ -1,0 +1,11 @@
+{
+  "name": "fermentlog",
+  "version": "1.0.0",
+  "description": "A phone-friendly PWA for logging home fermentation batches and learning what makes the best result.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "start": "python3 -m http.server 8080"
+  },
+  "license": "MIT"
+}

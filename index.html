@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#e8722c">
+  <meta name="description" content="Log your home fermentation batches and learn what makes the best result.">
+  <title>FermentLog</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="FermentLog">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main id="app"><!-- screens render here --></main>
+
+  <nav class="tabbar">
+    <a href="#/" aria-label="Batches"><span class="ico">🫙</span><span>Batches</span></a>
+    <a href="#/new" class="fab-tab" aria-label="New batch"><span class="ico">＋</span><span>New</span></a>
+    <a href="#/insights" aria-label="Insights"><span class="ico">📊</span><span>Insights</span></a>
+    <a href="#/settings" aria-label="Settings"><span class="ico">⚙️</span><span>Settings</span></a>
+  </nav>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
