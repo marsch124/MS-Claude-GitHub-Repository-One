@@ -22,6 +22,10 @@ No account, no server, no cost.
   remembered option next time.
 - **In-app changelog** — browse every improvement version-by-version from Settings →
   "What's new".
+- **Recipes** — a separate recipe book (its own tab) for full recipes including
+  **sourdough bread**: title, category, description, photos, ingredients, equipment,
+  hands-on & total time, **timed step-by-step method**, and storage notes. Comes with a
+  ready-made sourdough example, and you can duplicate / share / print any recipe.
 - **Taste-test reminders** — set a per-batch interval; the app flags batches that are
   due, and (with permission) shows a notification when you open it.
 - **Insights** — success rate, average rating, and scatter charts for rating vs.

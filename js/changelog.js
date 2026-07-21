@@ -2,9 +2,23 @@
 // APP_VERSION is the single source of truth shown in Settings and used to
 // decide when to surface the "What's new" banner. Newest entry first.
 
-export const APP_VERSION = '3.1';
+export const APP_VERSION = '4.0';
 
 export const CHANGELOG = [
+  {
+    version: '4.0',
+    date: '2026-07-21',
+    title: 'Recipes — including sourdough bread 🥖',
+    changes: [
+      'A whole new Recipes section (its own tab) for keeping full recipes, not just fermented vegetables — sourdough bread and anything else fermentation-ish is welcome.',
+      'Each recipe holds a title, category, short description, photos, an ingredients list, the equipment used, hands-on time and total time, and storage / keeping notes.',
+      'Method as timed steps: add as many steps as you like, each with its own title, details and time (e.g. "Bulk ferment — 4–6 h") — perfect for all the waiting between phases.',
+      'Reorder or remove steps and photos while editing, and duplicate, share or print any recipe.',
+      'Start instantly from a ready-made "Everyday Sourdough Loaf" example — a complete worked recipe you can bake or tweak.',
+      'The old "Saved recipes" (quick-fill settings for a new jar) are now called "Batch templates", so "Recipes" clearly means these richer, full recipes.',
+      'Backups (Export/Import) now include your recipes and batch templates too, not just batches.',
+    ],
+  },
   {
     version: '3.1',
     date: '2026-07-21',

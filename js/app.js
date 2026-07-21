@@ -5,6 +5,7 @@ import {
   overallRating, summarizeStats, recommendation, newBatch, ratingStars,
   nextCheckDue, dueBatches, toCSV, presetFromBatch, batchFromPreset, duplicateBatch,
   usedVegetables, mergeVegetables, usedSpices, mergeSpices, renamedList, withoutItem,
+  RECIPE_CATEGORIES, newRecipe, duplicateRecipe, sampleSourdoughRecipe,
 } from './model.js';
 import { APP_VERSION, CHANGELOG } from './changelog.js';
 import * as db from './db.js';
@@ -117,6 +118,10 @@ async function render() {
   else if (hash === '#/settings') await renderSettings();
   else if (hash === '#/manage-lists') await renderManageLists();
   else if (hash === '#/changelog') renderChangelog();
+  else if (hash === '#/recipes') await renderRecipes();
+  else if (hash === '#/recipe-new') renderRecipeForm(newRecipe());
+  else if (hash.startsWith('#/recipe-edit/')) await editRecipe(hash.slice(14));
+  else if (hash.startsWith('#/recipe/')) await renderRecipeDetail(hash.slice(9));
   else if (hash.startsWith('#/edit/')) await editExisting(hash.slice(7));
   else if (hash.startsWith('#/batch/')) await renderDetail(hash.slice(8));
   else await renderList();
@@ -126,8 +131,11 @@ async function render() {
 
 function syncNav(hash) {
   document.querySelectorAll('.tabbar a').forEach((a) => {
-    a.classList.toggle('active', a.getAttribute('href') === hash ||
-      (a.getAttribute('href') === '#/' && (hash === '' || hash === '#/')));
+    const href = a.getAttribute('href');
+    let active = href === hash;
+    if (href === '#/' && (hash === '' || hash === '#/' || hash.startsWith('#/batch') || hash.startsWith('#/edit'))) active = true;
+    if (href === '#/recipes' && hash.startsWith('#/recipe')) active = true;
+    a.classList.toggle('active', active);
   });
 }
 
@@ -226,7 +234,7 @@ function renderForm(batch, isEdit, presets, vegOptions, spiceOptions) {
   const form = h(`<section class="screen">
     <header class="topbar"><a class="back" href="${isEdit ? `#/batch/${batch.id}` : '#/'}">‹</a><h1>${isEdit ? 'Edit batch' : 'New batch'}</h1></header>
     <form id="batchForm" class="form">
-      ${!isEdit && presetOpts ? `<label class="preset-pick">Start from a saved recipe
+      ${!isEdit && presetOpts ? `<label class="preset-pick">Start from a batch template
         <select id="presetPick"><option value="">— none —</option>${presetOpts}</select></label>` : ''}
 
       <fieldset><legend>Basics</legend>
@@ -281,7 +289,7 @@ function renderForm(batch, isEdit, presets, vegOptions, spiceOptions) {
         <button type="submit" class="btn primary">${isEdit ? 'Save changes' : 'Start batch'}</button>
         ${isEdit ? '<button type="button" id="deleteBtn" class="btn danger">Delete</button>' : ''}
       </div>
-      <button type="button" id="savePresetBtn" class="btn ghost full">⭐ Save these settings as a recipe</button>
+      <button type="button" id="savePresetBtn" class="btn ghost full">⭐ Save these settings as a batch template</button>
     </form>
   </section>`);
   swap(form);
@@ -345,10 +353,10 @@ function renderForm(batch, isEdit, presets, vegOptions, spiceOptions) {
 
   $('#savePresetBtn', form).addEventListener('click', async () => {
     syncFormInto(editing, f);
-    const name = prompt('Name this recipe (e.g. "Classic 2.5% carrots"):', editing.name || editing.vegetable);
+    const name = prompt('Name this batch template (e.g. "Classic 2.5% carrots"):', editing.name || editing.vegetable);
     if (!name) return;
     await db.savePreset(presetFromBatch(editing, name.trim()));
-    alert('Recipe saved. You can pick it when starting a new batch.');
+    alert('Template saved. You can pick it when starting a new batch.');
   });
 
   f.addEventListener('submit', async (e) => {
@@ -694,7 +702,7 @@ async function renderSettings() {
   const seg = (val, label) => `<button class="seg ${theme === val ? 'on' : ''}" data-theme="${val}">${label}</button>`;
   const presetList = presets.length
     ? presets.map((p) => `<li><span>${esc(p.name)}</span><button class="link-del" data-id="${p.id}">Delete</button></li>`).join('')
-    : '<li class="muted">No saved recipes yet.</li>';
+    : '<li class="muted">No batch templates yet.</li>';
 
   const screen = h(`<section class="screen">
     <header class="topbar"><h1>Settings</h1></header>
@@ -712,7 +720,7 @@ async function renderSettings() {
       </div>
 
       <div class="setting-block">
-        <h3>Saved recipes</h3>
+        <h3>Batch templates</h3>
         <ul class="preset-list">${presetList}</ul>
       </div>
 
@@ -841,6 +849,277 @@ async function onManageAction(btn, batches) {
     await removeSpice(name);
   }
   renderManageLists();
+}
+
+// ---------- Recipes ----------
+let editingRecipe = null;
+const linesToList = (text) => String(text || '').split('\n').map((s) => s.trim()).filter(Boolean);
+const recipeEmoji = (r) => (r.category === 'Sourdough' ? '🥖' : r.category === 'Drink / kombucha' ? '🫖' : r.category === 'Dairy' ? '🧀' : '🫙');
+
+async function renderRecipes() {
+  const recipes = await db.getRecipes();
+  const wrap = h(`<section class="screen"><header class="topbar"><h1>Recipes</h1><a class="edit" href="#/recipe-new">＋ New</a></header></section>`);
+  if (!recipes.length) {
+    const empty = h(`<div class="empty">
+      <div class="empty-emoji">🥖</div>
+      <h2>No recipes yet</h2>
+      <p>Keep your fermentation and baking recipes here — ingredients, timed steps, and storage notes.</p>
+      <a class="btn primary" href="#/recipe-new">＋ New recipe</a>
+      <button class="btn ghost" id="sourdoughExample">🥖 Start from a sourdough example</button>
+    </div>`);
+    wrap.appendChild(empty);
+    swap(wrap);
+    $('#sourdoughExample', wrap).addEventListener('click', async () => {
+      const r = sampleSourdoughRecipe();
+      await db.saveRecipe(r);
+      location.assign(`#/recipe/${r.id}`);
+    });
+    return;
+  }
+  const list = h('<div class="cards"></div>');
+  for (const r of recipes) list.appendChild(recipeCard(r));
+  wrap.appendChild(list);
+  swap(wrap);
+}
+
+function recipeCard(r) {
+  const thumb = r.photos && r.photos[0]
+    ? `<img class="thumb" src="${r.photos[0]}" alt="">`
+    : `<div class="thumb placeholder">${recipeEmoji(r)}</div>`;
+  return h(`<a class="card" href="#/recipe/${r.id}">
+    ${thumb}
+    <div class="card-body">
+      <div class="card-title">${esc(r.title || 'Untitled recipe')}</div>
+      <div class="card-meta">
+        <span class="pill pill-recipe">${esc(r.category || '')}</span>
+        ${r.totalTime ? `<span>⏱ ${esc(r.totalTime)}</span>` : ''}
+        ${(r.steps || []).length ? `<span>${r.steps.length} step${r.steps.length > 1 ? 's' : ''}</span>` : ''}
+      </div>
+    </div>
+  </a>`);
+}
+
+async function renderRecipeDetail(id) {
+  const r = await db.getRecipe(id);
+  if (!r) return location.assign('#/recipes');
+  const photos = (r.photos || []).map((s) => `<img class="detail-photo" src="${s}" alt="">`).join('');
+  const listBlock = (items) => (items || []).length
+    ? `<ul class="recipe-ings">${items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : '<p class="muted">—</p>';
+  const steps = (r.steps || []).length
+    ? `<ol class="recipe-steps">${r.steps.map((s) => `<li>
+        <div class="step-head"><span class="step-title">${esc(s.title || '')}</span>${s.time ? `<span class="step-time">⏱ ${esc(s.time)}</span>` : ''}</div>
+        ${s.detail ? `<div class="step-detail">${esc(s.detail)}</div>` : ''}
+      </li>`).join('')}</ol>`
+    : '<p class="muted">No steps yet.</p>';
+
+  const el = h(`<section class="screen">
+    <header class="topbar no-print"><a class="back" href="#/recipes">‹</a><h1>${esc(r.title || 'Recipe')}</h1><a class="edit" href="#/recipe-edit/${r.id}">Edit</a></header>
+    <div class="detail">
+      <div class="pill pill-recipe big">${esc(r.category || '')}</div>
+      ${photos ? `<div class="detail-photos">${photos}</div>` : ''}
+      ${r.description ? `<p class="recipe-desc">${esc(r.description)}</p>` : ''}
+      ${(r.activeTime || r.totalTime) ? `<div class="time-grid">
+        ${r.activeTime ? `<div class="stat"><span>Hands-on time</span><strong>${esc(r.activeTime)}</strong></div>` : ''}
+        ${r.totalTime ? `<div class="stat"><span>Total time</span><strong>${esc(r.totalTime)}</strong></div>` : ''}
+      </div>` : ''}
+      <div class="detail-block"><h3>Ingredients</h3>${listBlock(r.ingredients)}</div>
+      <div class="detail-block"><h3>Equipment</h3>${listBlock(r.equipment)}</div>
+      <div class="detail-block"><h3>Method</h3>${steps}</div>
+      ${r.storage ? `<div class="detail-block"><h3>Storage &amp; keeping</h3><p>${esc(r.storage)}</p></div>` : ''}
+      <div class="detail-actions no-print">
+        <button id="dupRecipe" class="btn ghost">🧬 Duplicate</button>
+        <button id="shareRecipe" class="btn ghost">↗ Share</button>
+        <button id="printRecipe" class="btn ghost">🖨 Print</button>
+      </div>
+    </div>
+  </section>`);
+  swap(el);
+  $('#dupRecipe', el).addEventListener('click', async () => {
+    const d = duplicateRecipe(r); await db.saveRecipe(d); location.assign(`#/recipe/${d.id}`);
+  });
+  $('#shareRecipe', el).addEventListener('click', () => shareRecipe(r));
+  $('#printRecipe', el).addEventListener('click', () => window.print());
+}
+
+function recipeSummaryText(r) {
+  const L = [`${r.title} (${r.category})`];
+  if (r.description) L.push(r.description);
+  if (r.activeTime) L.push(`Hands-on: ${r.activeTime}`);
+  if (r.totalTime) L.push(`Total: ${r.totalTime}`);
+  if ((r.ingredients || []).length) L.push('\nIngredients:\n' + r.ingredients.map((i) => `- ${i}`).join('\n'));
+  if ((r.equipment || []).length) L.push('\nEquipment:\n' + r.equipment.map((i) => `- ${i}`).join('\n'));
+  if ((r.steps || []).length) L.push('\nMethod:\n' + r.steps.map((s, i) => `${i + 1}. ${s.title}${s.time ? ` (${s.time})` : ''}${s.detail ? ` — ${s.detail}` : ''}`).join('\n'));
+  if (r.storage) L.push('\nStorage: ' + r.storage);
+  return L.join('\n');
+}
+
+async function shareRecipe(r) {
+  const text = recipeSummaryText(r);
+  try {
+    if (navigator.share) { await navigator.share({ title: r.title || 'Recipe', text }); return; }
+    await navigator.clipboard.writeText(text);
+    alert('Recipe copied to clipboard.');
+  } catch { /* cancelled */ }
+}
+
+async function editRecipe(id) {
+  const r = await db.getRecipe(id);
+  if (!r) return location.assign('#/recipes');
+  renderRecipeForm(structuredClone(r), true);
+}
+
+function renderRecipeForm(recipe, isEdit = false) {
+  editingRecipe = recipe;
+  const cats = RECIPE_CATEGORIES.map((c) => `<option ${c === recipe.category ? 'selected' : ''}>${c}</option>`).join('');
+  const form = h(`<section class="screen">
+    <header class="topbar"><a class="back" href="${isEdit ? `#/recipe/${recipe.id}` : '#/recipes'}">‹</a><h1>${isEdit ? 'Edit recipe' : 'New recipe'}</h1></header>
+    <form id="recipeForm" class="form">
+      <fieldset><legend>About</legend>
+        <label>Title <input name="title" value="${esc(recipe.title)}" placeholder="e.g. Everyday sourdough"></label>
+        <label>Category <select name="category">${cats}</select></label>
+        <label>Short description <textarea name="description" rows="2" placeholder="A sentence or two…">${esc(recipe.description)}</textarea></label>
+        <div class="row">
+          <label>Hands-on time <input name="activeTime" value="${esc(recipe.activeTime)}" placeholder="e.g. 45 min"></label>
+          <label>Total time <input name="totalTime" value="${esc(recipe.totalTime)}" placeholder="e.g. 24 h"></label>
+        </div>
+      </fieldset>
+
+      <fieldset><legend>Ingredients</legend>
+        <div class="field-label">One per line</div>
+        <textarea name="ingredients" rows="6" placeholder="500 g bread flour&#10;350 g water&#10;100 g starter&#10;10 g salt">${esc((recipe.ingredients || []).join('\n'))}</textarea>
+      </fieldset>
+
+      <fieldset><legend>Equipment</legend>
+        <div class="field-label">One per line</div>
+        <textarea name="equipment" rows="4" placeholder="Banneton&#10;Dutch oven&#10;Kitchen scale">${esc((recipe.equipment || []).join('\n'))}</textarea>
+      </fieldset>
+
+      <fieldset><legend>Method — timed steps</legend>
+        <div id="steps"></div>
+        <button type="button" id="addStep" class="btn ghost small">＋ Add step</button>
+      </fieldset>
+
+      <fieldset><legend>Photos</legend>
+        <div class="photos" id="rphotos"></div>
+        <label class="btn ghost file">📷 Add photo<input type="file" accept="image/*" id="rphotoInput" hidden></label>
+      </fieldset>
+
+      <fieldset><legend>Storage &amp; keeping</legend>
+        <textarea name="storage" rows="3" placeholder="How to store it and how long it keeps…">${esc(recipe.storage)}</textarea>
+      </fieldset>
+
+      <div class="actions">
+        <button type="submit" class="btn primary">${isEdit ? 'Save recipe' : 'Create recipe'}</button>
+        ${isEdit ? '<button type="button" id="delRecipe" class="btn danger">Delete</button>' : ''}
+      </div>
+    </form>
+  </section>`);
+  swap(form);
+
+  renderStepRows(form);
+  $('#addStep', form).addEventListener('click', () => {
+    syncStepsFromDom(form);
+    editingRecipe.steps.push({ title: '', detail: '', time: '' });
+    renderStepRows(form);
+    form.querySelectorAll('.step-title-in')[editingRecipe.steps.length - 1]?.focus();
+  });
+
+  renderRecipePhotos(form);
+  $('#rphotoInput', form).addEventListener('change', (e) => addRecipePhoto(e, form));
+  if (isEdit) $('#delRecipe', form).addEventListener('click', async () => {
+    if (confirm('Delete this recipe permanently?')) { await db.deleteRecipe(recipe.id); location.assign('#/recipes'); }
+  });
+
+  $('#recipeForm', form).addEventListener('submit', async (e) => {
+    e.preventDefault();
+    syncStepsFromDom(form);
+    const fd = new FormData(e.target);
+    Object.assign(editingRecipe, {
+      title: fd.get('title').trim(),
+      category: fd.get('category'),
+      description: fd.get('description').trim(),
+      activeTime: fd.get('activeTime').trim(),
+      totalTime: fd.get('totalTime').trim(),
+      ingredients: linesToList(fd.get('ingredients')),
+      equipment: linesToList(fd.get('equipment')),
+      storage: fd.get('storage').trim(),
+      updatedAt: new Date().toISOString(),
+    });
+    if (!editingRecipe.title) { alert('Please give the recipe a title.'); return; }
+    await db.saveRecipe(editingRecipe);
+    location.assign(`#/recipe/${editingRecipe.id}`);
+  });
+}
+
+function renderStepRows(root) {
+  const box = $('#steps', root);
+  box.innerHTML = '';
+  editingRecipe.steps.forEach((s, i) => {
+    const row = h(`<div class="step-row" data-i="${i}">
+      <div class="step-row-head">
+        <span class="step-num">${i + 1}</span>
+        <input class="step-title-in" placeholder="Step title (e.g. Bulk ferment)" value="${esc(s.title)}">
+        <button type="button" class="step-del" data-act="del" aria-label="Remove step">✕</button>
+      </div>
+      <input class="step-time-in" placeholder="Time for this step (e.g. 4–6 h)" value="${esc(s.time)}">
+      <textarea class="step-detail-in" rows="2" placeholder="Details (optional)">${esc(s.detail)}</textarea>
+      <div class="step-move">
+        <button type="button" data-act="up" ${i === 0 ? 'disabled' : ''} aria-label="Move up">▲</button>
+        <button type="button" data-act="down" ${i === editingRecipe.steps.length - 1 ? 'disabled' : ''} aria-label="Move down">▼</button>
+      </div>
+    </div>`);
+    row.addEventListener('click', (e) => {
+      const act = e.target.dataset.act;
+      if (!act) return;
+      syncStepsFromDom(root);
+      if (act === 'del') editingRecipe.steps.splice(i, 1);
+      else if (act === 'up') { [editingRecipe.steps[i - 1], editingRecipe.steps[i]] = [editingRecipe.steps[i], editingRecipe.steps[i - 1]]; }
+      else if (act === 'down') { [editingRecipe.steps[i + 1], editingRecipe.steps[i]] = [editingRecipe.steps[i], editingRecipe.steps[i + 1]]; }
+      renderStepRows(root);
+    });
+    box.appendChild(row);
+  });
+}
+
+function syncStepsFromDom(root) {
+  editingRecipe.steps = [...root.querySelectorAll('.step-row')].map((r) => ({
+    title: r.querySelector('.step-title-in').value.trim(),
+    time: r.querySelector('.step-time-in').value.trim(),
+    detail: r.querySelector('.step-detail-in').value.trim(),
+  }));
+}
+
+function renderRecipePhotos(root) {
+  const box = $('#rphotos', root);
+  box.innerHTML = '';
+  const photos = editingRecipe.photos || [];
+  photos.forEach((src, i) => {
+    const item = h(`<div class="photo"><img src="${src}" alt="">
+      <div class="photo-tools">
+        <button type="button" data-act="left" ${i === 0 ? 'disabled' : ''} aria-label="Move left">◀</button>
+        <button type="button" data-act="del" class="del" aria-label="Remove">✕</button>
+        <button type="button" data-act="right" ${i === photos.length - 1 ? 'disabled' : ''} aria-label="Move right">▶</button>
+      </div></div>`);
+    item.addEventListener('click', (e) => {
+      const act = e.target.dataset.act;
+      if (act === 'del') photos.splice(i, 1);
+      else if (act === 'left') { [photos[i - 1], photos[i]] = [photos[i], photos[i - 1]]; }
+      else if (act === 'right') { [photos[i + 1], photos[i]] = [photos[i], photos[i + 1]]; }
+      else return;
+      renderRecipePhotos(root);
+    });
+    box.appendChild(item);
+  });
+}
+
+async function addRecipePhoto(e, root) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const dataUrl = await shrinkImage(file, 1000, 0.75);
+  editingRecipe.photos = editingRecipe.photos || [];
+  editingRecipe.photos.push(dataUrl);
+  renderRecipePhotos(root);
+  e.target.value = '';
 }
 
 // ---------- Changelog ----------

@@ -8,6 +8,7 @@ import {
   presetFromBatch, batchFromPreset, duplicateBatch, DEFAULT_REMIND_DAYS,
   VEGETABLES, usedVegetables, mergeVegetables,
   COMMON_SPICES, usedSpices, mergeSpices, renamedList, withoutItem,
+  newRecipe, duplicateRecipe, sampleSourdoughRecipe, RECIPE_CATEGORIES,
 } from '../js/model.js';
 import { APP_VERSION, CHANGELOG } from '../js/changelog.js';
 
@@ -242,6 +243,37 @@ test('renamedList: replaces, de-duplicates, drops blanks', () => {
 test('withoutItem: removes all occurrences', () => {
   assert.deepEqual(withoutItem(['Garlic', 'Dill', 'Garlic'], 'Garlic'), ['Dill']);
   assert.deepEqual(withoutItem(null, 'x'), []);
+});
+
+// ---------- recipes ----------
+test('newRecipe: sensible defaults, unique id', () => {
+  const r = newRecipe(new Date('2026-07-21T10:00:00Z'));
+  assert.equal(r.category, 'Sourdough');
+  assert.ok(RECIPE_CATEGORIES.includes(r.category));
+  assert.deepEqual(r.ingredients, []);
+  assert.deepEqual(r.steps, []);
+  assert.equal(r.createdAt, r.updatedAt);
+  assert.notEqual(newRecipe().id, newRecipe().id);
+});
+
+test('sampleSourdoughRecipe: fully populated worked example', () => {
+  const r = sampleSourdoughRecipe();
+  assert.match(r.title, /Sourdough/i);
+  assert.ok(r.ingredients.length >= 4);
+  assert.ok(r.equipment.length >= 3);
+  assert.ok(r.steps.length >= 5);
+  assert.ok(r.steps.every((s) => s.title && s.time)); // each step has a name and a time
+  assert.ok(r.totalTime && r.activeTime && r.storage);
+});
+
+test('duplicateRecipe: deep copy, new id, "(copy)" title', () => {
+  const src = sampleSourdoughRecipe();
+  const dup = duplicateRecipe(src, new Date('2026-08-01T10:00:00Z'));
+  assert.equal(dup.title, src.title + ' (copy)');
+  assert.notEqual(dup.id, src.id);
+  assert.notEqual(dup.steps, src.steps);      // arrays copied, not shared
+  dup.steps[0].title = 'changed';
+  assert.notEqual(src.steps[0].title, 'changed');
 });
 
 // ---------- changelog integrity ----------

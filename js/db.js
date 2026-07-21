@@ -3,9 +3,10 @@
 // batch is a single self-contained record (simple to export/import as JSON).
 
 const DB_NAME = 'fermentlog';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE = 'batches';
 const PRESETS = 'presets';
+const RECIPES = 'recipes';
 
 function open() {
   return new Promise((resolve, reject) => {
@@ -15,6 +16,7 @@ function open() {
       // Additive migrations — existing data is preserved.
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
       if (!db.objectStoreNames.contains(PRESETS)) db.createObjectStore(PRESETS, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(RECIPES)) db.createObjectStore(RECIPES, { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -105,11 +107,59 @@ export async function deletePreset(id) {
   });
 }
 
+// --- Recipes ---
+
+export async function getRecipes() {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const req = tx(db, 'readonly', RECIPES).getAll();
+    req.onsuccess = () => resolve((req.result || []).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')));
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function getRecipe(id) {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const req = tx(db, 'readonly', RECIPES).get(id);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function saveRecipe(recipe) {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const req = tx(db, 'readwrite', RECIPES).put(recipe);
+    req.onsuccess = () => resolve(recipe);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function deleteRecipe(id) {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const req = tx(db, 'readwrite', RECIPES).delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function putAll(store, items) {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const s = tx(db, 'readwrite', store);
+    for (const it of items) s.put(it);
+    s.transaction.oncomplete = () => resolve();
+    s.transaction.onerror = () => reject(s.transaction.error);
+  });
+}
+
 // --- Backup helpers (Export / Import) ---
 
 export async function exportJSON() {
-  const batches = await getAllBatches();
-  return JSON.stringify({ app: 'fermentlog', version: 1, exportedAt: new Date().toISOString(), batches }, null, 2);
+  const [batches, presets, recipes] = await Promise.all([getAllBatches(), getPresets(), getRecipes()]);
+  return JSON.stringify({ app: 'fermentlog', version: 2, exportedAt: new Date().toISOString(), batches, presets, recipes }, null, 2);
 }
 
 export async function importJSON(text, { merge = false } = {}) {
@@ -123,6 +173,11 @@ export async function importJSON(text, { merge = false } = {}) {
     await replaceAll([...byId.values()]);
   } else {
     await replaceAll(incoming);
+  }
+  // Restore templates & recipes too (newer backups only), merging by id.
+  if (!Array.isArray(data)) {
+    if (Array.isArray(data.presets)) await putAll(PRESETS, data.presets);
+    if (Array.isArray(data.recipes)) await putAll(RECIPES, data.recipes);
   }
   return incoming.length;
 }

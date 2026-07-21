@@ -397,3 +397,77 @@ export function ratingStars(n) {
   const full = Math.round(n);
   return '★★★★★'.slice(0, full) + '☆☆☆☆☆'.slice(0, 5 - full);
 }
+
+// ---------- Recipes ----------
+
+export const RECIPE_CATEGORIES = ['Sourdough', 'Vegetable ferment', 'Drink / kombucha', 'Dairy', 'Other'];
+
+/** An empty recipe with sensible defaults. */
+export function newRecipe(now = new Date()) {
+  return {
+    id: `r_${now.getTime()}_${Math.random().toString(36).slice(2, 8)}`,
+    title: '',
+    category: 'Sourdough',
+    description: '',
+    photos: [],
+    ingredients: [],   // array of strings, one line each
+    equipment: [],     // array of strings, one line each
+    activeTime: '',    // hands-on time
+    totalTime: '',     // start to finish (mostly waiting)
+    steps: [],         // array of { title, detail, time }
+    storage: '',       // keeping / storage notes
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+  };
+}
+
+/** Duplicate a recipe with a fresh id and a "(copy)" title. */
+export function duplicateRecipe(recipe, now = new Date()) {
+  const r = structuredCloneSafe(recipe);
+  r.id = `r_${now.getTime()}_${Math.random().toString(36).slice(2, 8)}`;
+  r.title = recipe.title ? `${recipe.title} (copy)` : '';
+  r.createdAt = now.toISOString();
+  r.updatedAt = now.toISOString();
+  return r;
+}
+
+function structuredCloneSafe(obj) {
+  return typeof structuredClone === 'function' ? structuredClone(obj) : JSON.parse(JSON.stringify(obj));
+}
+
+/** A ready-to-use worked example so bakers can start immediately. */
+export function sampleSourdoughRecipe(now = new Date()) {
+  const r = newRecipe(now);
+  return {
+    ...r,
+    title: 'Everyday Sourdough Loaf',
+    category: 'Sourdough',
+    description: 'A simple naturally-leavened loaf with an open crumb and a crisp, deep-brown crust. Mostly waiting — very little hands-on work.',
+    ingredients: [
+      '100 g active sourdough starter (bubbly, doubled)',
+      '350 g water, room temperature',
+      '500 g bread flour',
+      '10 g fine sea salt',
+      '25 g water (to dissolve the salt)',
+    ],
+    equipment: [
+      'Kitchen scale',
+      'Large mixing bowl',
+      'Banneton / proofing basket',
+      'Dutch oven (or a baking stone + lid)',
+      'Lame or a sharp knife for scoring',
+    ],
+    activeTime: '~45 minutes hands-on',
+    totalTime: '~24 hours (mostly hands-off)',
+    steps: [
+      { title: 'Feed the starter', detail: 'Feed your starter and let it grow until bubbly and roughly doubled.', time: '4–6 h (or overnight)' },
+      { title: 'Autolyse', detail: 'Mix the flour and 350 g water until no dry bits remain. Cover and rest to hydrate.', time: '1 h' },
+      { title: 'Mix', detail: 'Add the starter and the salt dissolved in 25 g water. Squeeze and fold until smooth.', time: '15 min' },
+      { title: 'Bulk fermentation', detail: 'Stretch and fold every 30 min for the first 2 h, then let it rise until puffy and ~50% larger.', time: '4–6 h at ~22°C' },
+      { title: 'Shape', detail: 'Pre-shape into a round, bench-rest, then shape tightly and place seam-up in a floured banneton.', time: '30 min' },
+      { title: 'Cold proof', detail: 'Cover and refrigerate overnight to develop flavour and firm up for scoring.', time: '12–16 h' },
+      { title: 'Bake', detail: 'Preheat the Dutch oven to 230°C. Turn out the loaf, score, bake covered, then uncovered to brown.', time: '20 min covered + 25 min uncovered' },
+    ],
+    storage: 'Cool completely (at least 1 h) before slicing — the crumb sets as it cools. Keep cut-side down on a board at room temperature for 2–3 days, or slice and freeze for up to 3 months. Refresh slices straight from the freezer in a toaster.',
+  };
+}
