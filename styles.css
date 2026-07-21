@@ -207,3 +207,61 @@ a { color: inherit; text-decoration: none; }
 .tabbar .ico { font-size: 1.3rem; }
 .tabbar .fab-tab .ico { background: var(--brand); color: #fff; width: 34px; height: 34px; border-radius: 999px;
   display: grid; place-items: center; margin-top: -2px; }
+
+/* --- Reminders --- */
+.due-banner { display: flex; gap: 12px; align-items: center; background: #fdeede; border: 1px solid #f3d9bd;
+  border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px; }
+@media (prefers-color-scheme: dark) { .due-banner { background: #3a2a1a; border-color: #4a3524; } }
+.due-ico { font-size: 1.5rem; }
+.due-names { font-size: .82rem; color: var(--muted); margin-top: 2px; }
+.due-dot { font-size: .85rem; }
+.due-inline { background: #fdeede; color: var(--brand-ink); border-radius: 10px; padding: 8px 12px; font-size: .9rem; margin-bottom: 14px; }
+@media (prefers-color-scheme: dark) { .due-inline { background: #3a2a1a; } }
+
+/* --- Preset picker & buttons --- */
+.preset-pick { display: block; margin-bottom: 16px; font-size: .85rem; font-weight: 600; color: var(--muted); }
+.preset-pick select { display: block; width: 100%; margin-top: 5px; padding: 11px 12px; font-size: 1rem;
+  border: 1.5px solid var(--brand); border-radius: 10px; background: var(--surface); color: var(--ink); font-family: inherit; }
+.btn.full { width: 100%; margin-top: 4px; }
+
+/* --- Detail actions & timeline delete --- */
+.detail-actions { display: flex; gap: 8px; margin-top: 8px; }
+.detail-actions .btn { flex: 1; padding: 11px 8px; }
+.checkins li { display: flex; align-items: center; gap: 8px; }
+.ci-note { flex: 1; }
+.ci-del { background: none; border: none; color: var(--muted); font-size: .9rem; cursor: pointer; padding: 4px; }
+.ci-del:hover { color: var(--red); }
+
+/* --- Photo tools --- */
+.photo-tools { display: flex; justify-content: center; gap: 2px; margin-top: 4px; }
+.photo-tools button { background: var(--surface-2); border: none; border-radius: 6px; width: 26px; height: 24px;
+  font-size: .75rem; cursor: pointer; color: var(--ink); }
+.photo-tools button:disabled { opacity: .3; }
+.photo-tools .del { color: var(--red); }
+
+/* --- Insights extras --- */
+.veg-filter { display: block; font-size: .85rem; font-weight: 600; color: var(--muted); margin-bottom: 14px; }
+.veg-filter select { margin-left: 6px; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 10px;
+  background: var(--surface); color: var(--ink); font-family: inherit; font-size: .95rem; }
+.rec-card { background: linear-gradient(135deg, #e6f3ec, #d5ecdd); border-color: #bdddc9; }
+@media (prefers-color-scheme: dark) { .rec-card { background: linear-gradient(135deg, #1c3226, #16281d); border-color: #24402f; } }
+
+/* --- Segmented control --- */
+.segmented { display: inline-flex; background: var(--surface-2); border-radius: 12px; padding: 4px; gap: 2px; }
+.seg { border: none; background: none; padding: 8px 16px; border-radius: 9px; font-size: .9rem; font-weight: 600;
+  color: var(--muted); cursor: pointer; font-family: inherit; }
+.seg.on { background: var(--surface); color: var(--brand-ink); box-shadow: var(--shadow); }
+
+/* --- Preset list --- */
+.preset-list { list-style: none; padding: 0; margin: 0; }
+.preset-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.link-del { background: none; border: none; color: var(--red); font-weight: 600; cursor: pointer; font-size: .9rem; }
+
+/* --- Print: show just the batch, cleanly --- */
+@media print {
+  .tabbar, .no-print, .detail-actions { display: none !important; }
+  body { background: #fff; color: #000; }
+  #app { padding: 0; max-width: 100%; }
+  .detail-photo { height: 120px; }
+  .chart-card, .stat { break-inside: avoid; }
+}

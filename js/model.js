@@ -14,6 +14,11 @@ export const COMMON_ADDITIONS = ['Garlic', 'Dill', 'Mustard seed', 'Black pepper
 // Recommended brine window for vegetable ferments.
 export const BRINE_MIN = 2.0;
 export const BRINE_MAX = 3.0;
+// Default number of days between taste-test reminders.
+export const DEFAULT_REMIND_DAYS = 3;
+
+const round1 = (n) => Math.round(n * 10) / 10;
+const isoDay = (d) => d.toISOString().slice(0, 10);
 
 /**
  * Salt concentration of a brine, as a percentage by weight.
@@ -47,6 +52,13 @@ export function daysBetween(startDate, endDate) {
   return Math.max(0, Math.round(ms / 86_400_000));
 }
 
+/** Days a batch spent fermenting: start → moved-to-fridge / outcome / now. */
+export function fermentDays(batch) {
+  if (!batch) return null;
+  const end = batch.movedToFridgeDate || (batch.outcome && batch.outcome.recordedAt) || null;
+  return daysBetween(batch.startDate, end);
+}
+
 /**
  * Lifecycle status derived from a batch's dates/outcome.
  *   'done'       — an outcome has been recorded
@@ -74,23 +86,98 @@ export function overallRating(batch) {
   return parts.reduce((a, b) => a + b, 0) / parts.length;
 }
 
-const round1 = (n) => Math.round(n * 10) / 10;
+// ---------- Taste-test reminders ----------
 
 /**
- * Aggregate a list of batches into the numbers the Insights screen shows.
+ * The date the next taste-test is due (ISO YYYY-MM-DD), or null.
+ * Only fermenting batches remind; interval comes from remindEveryDays
+ * (defaults to DEFAULT_REMIND_DAYS; 0/negative means reminders off).
+ * Counts from the last check-in, or the start date if none yet.
+ */
+export function nextCheckDue(batch) {
+  if (!batch || batchStatus(batch) !== 'fermenting') return null;
+  const every = batch.remindEveryDays == null ? DEFAULT_REMIND_DAYS : Number(batch.remindEveryDays);
+  if (!Number.isFinite(every) || every <= 0) return null;
+  const lastCheck = (batch.checkIns || []).map((c) => c.date).filter(Boolean).sort().pop();
+  const base = lastCheck || batch.startDate;
+  if (!base) return null;
+  const d = new Date(base);
+  if (isNaN(d)) return null;
+  d.setDate(d.getDate() + every);
+  return isoDay(d);
+}
+
+/** Is this batch due (or overdue) for a taste test as of `today`? */
+export function isCheckDue(batch, today = new Date()) {
+  const due = nextCheckDue(batch);
+  if (!due) return false;
+  const t = today instanceof Date ? today : new Date(today);
+  return isoDay(t) >= due;
+}
+
+/** Subset of batches currently due for a taste test. */
+export function dueBatches(batches, today = new Date()) {
+  return (Array.isArray(batches) ? batches : []).filter((b) => isCheckDue(b, today));
+}
+
+// ---------- Statistics ----------
+
+function median(nums) {
+  const s = [...nums].sort((a, b) => a - b);
+  if (!s.length) return null;
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+function mode(items) {
+  const counts = new Map();
+  for (const it of items) counts.set(it, (counts.get(it) || 0) + 1);
+  let best = null;
+  let bestN = 0;
+  for (const [k, n] of counts) if (n > bestN) { best = k; bestN = n; }
+  return best;
+}
+
+/**
+ * A recommended "recipe" derived from your best batches (overall rating ≥ threshold).
+ * Returns null until there are at least two good batches to learn from.
+ */
+export function recommendation(batches, threshold = 4) {
+  const good = (Array.isArray(batches) ? batches : [])
+    .filter((b) => batchStatus(b) === 'done' && (overallRating(b) ?? 0) >= threshold);
+  if (good.length < 2) return null;
+  const brines = good.map((b) => computeBrinePercent(b.saltGrams, b.waterMl)).filter((v) => v != null);
+  const temps = good.map((b) => Number(b.roomTempC)).filter(Number.isFinite);
+  const days = good.map(fermentDays).filter((v) => v != null);
+  return {
+    count: good.length,
+    brine: brines.length ? round1(median(brines)) : null,
+    tempC: temps.length ? round1(median(temps)) : null,
+    days: days.length ? Math.round(median(days)) : null,
+    lid: mode(good.map((b) => b.lidType).filter(Boolean)),
+    vegetable: mode(good.map((b) => b.vegetable).filter(Boolean)),
+  };
+}
+
+/**
+ * Aggregate batches into the numbers the Insights screen shows.
+ * Pass { vegetable } to focus the charts on a single vegetable.
  * Everything degrades gracefully when there is little or no data.
  */
-export function summarizeStats(batches) {
-  const list = Array.isArray(batches) ? batches : [];
+export function summarizeStats(batches, { vegetable = null } = {}) {
+  const all = Array.isArray(batches) ? batches : [];
+  const vegetables = [...new Set(all.map((b) => b.vegetable).filter(Boolean))].sort();
+  const list = vegetable ? all.filter((b) => b.vegetable === vegetable) : all;
   const finished = list.filter((b) => batchStatus(b) === 'done');
 
   const successful = finished.filter((b) => b.outcome && b.outcome.success).length;
   const successRate = finished.length ? successful / finished.length : null;
 
-  // Rating vs. condition scatter data (only finished batches with a rating).
+  // Finished batches that carry a rating, oldest first (for the trend line).
   const rated = finished
     .map((b) => ({ batch: b, rating: overallRating(b) }))
-    .filter((r) => r.rating != null);
+    .filter((r) => r.rating != null)
+    .sort((a, b) => (a.batch.startDate || '').localeCompare(b.batch.startDate || ''));
 
   const ratingVsBrine = rated
     .map((r) => ({ x: computeBrinePercent(r.batch.saltGrams, r.batch.waterMl), y: r.rating, name: r.batch.name }))
@@ -99,6 +186,13 @@ export function summarizeStats(batches) {
   const ratingVsTemp = rated
     .map((r) => ({ x: Number(r.batch.roomTempC), y: r.rating, name: r.batch.name }))
     .filter((p) => Number.isFinite(p.x));
+
+  const ratingVsDays = rated
+    .map((r) => ({ x: fermentDays(r.batch), y: r.rating, name: r.batch.name }))
+    .filter((p) => p.x != null);
+
+  // Trend: rating by attempt order (1 = oldest).
+  const ratingOverTime = rated.map((r, i) => ({ x: i + 1, y: r.rating, name: r.batch.name }));
 
   // Average rating grouped by an arbitrary key selector.
   const avgBy = (keyFn) => {
@@ -139,6 +233,7 @@ export function summarizeStats(batches) {
   const avgRating = ratings.length ? round1(ratings.reduce((a, b) => a + b, 0) / ratings.length) : null;
 
   return {
+    vegetables,
     total: list.length,
     active: list.filter((b) => batchStatus(b) !== 'done').length,
     finished: finished.length,
@@ -146,6 +241,8 @@ export function summarizeStats(batches) {
     avgRating,
     ratingVsBrine,
     ratingVsTemp,
+    ratingVsDays,
+    ratingOverTime,
     byVegetable,
     byLid,
     problems,
@@ -154,14 +251,51 @@ export function summarizeStats(batches) {
   };
 }
 
+// ---------- CSV export ----------
+
+const csvCell = (v) => {
+  const s = v == null ? '' : String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+/** Flatten batches to a CSV string (one row per batch) for spreadsheets. */
+export function toCSV(batches) {
+  const cols = [
+    ['Name', (b) => b.name],
+    ['Vegetable', (b) => b.vegetable],
+    ['Start date', (b) => b.startDate],
+    ['Days fermented', (b) => fermentDays(b) ?? ''],
+    ['Brine %', (b) => { const v = computeBrinePercent(b.saltGrams, b.waterMl); return v == null ? '' : v.toFixed(1); }],
+    ['Salt (g)', (b) => b.saltGrams],
+    ['Water (ml)', (b) => b.waterMl],
+    ['Room temp (C)', (b) => b.roomTempC],
+    ['Vessel', (b) => b.vesselType],
+    ['Weight', (b) => b.weightType],
+    ['Lid', (b) => b.lidType],
+    ['Additions', (b) => (b.additions || []).join('; ')],
+    ['Status', (b) => statusLabel(batchStatus(b))],
+    ['Success', (b) => (b.outcome && b.outcome.recorded ? (b.outcome.success ? 'yes' : 'no') : '')],
+    ['Taste', (b) => (b.outcome && b.outcome.taste) ?? ''],
+    ['Sourness', (b) => (b.outcome && b.outcome.sourness) ?? ''],
+    ['Crunch', (b) => (b.outcome && b.outcome.crunch) ?? ''],
+    ['Overall', (b) => (b.outcome && b.outcome.overall) ?? ''],
+    ['Problems', (b) => ((b.outcome && b.outcome.problems) || []).join('; ')],
+    ['Notes', (b) => b.notes],
+  ];
+  const header = cols.map((c) => c[0]).join(',');
+  const rows = (Array.isArray(batches) ? batches : []).map((b) => cols.map((c) => csvCell(c[1](b))).join(','));
+  return [header, ...rows].join('\n');
+}
+
+// ---------- Creation / presets / duplication ----------
+
 /** Minimal empty batch with sensible Swedish-kitchen defaults. */
 export function newBatch(now = new Date()) {
-  const iso = now.toISOString().slice(0, 10);
   return {
     id: `b_${now.getTime()}_${Math.random().toString(36).slice(2, 8)}`,
     name: '',
     vegetable: 'Carrot sticks',
-    startDate: iso,
+    startDate: isoDay(now),
     saltGrams: 25,
     waterMl: 1000,
     roomTempC: 20,
@@ -170,6 +304,7 @@ export function newBatch(now = new Date()) {
     vesselType: 'Glass jar',
     weightType: 'Glass weight',
     lidType: 'Burping / self-venting lid',
+    remindEveryDays: DEFAULT_REMIND_DAYS,
     checkIns: [],
     movedToFridgeDate: '',
     outcome: null,
@@ -177,6 +312,31 @@ export function newBatch(now = new Date()) {
     notes: '',
     createdAt: now.toISOString(),
   };
+}
+
+const RECIPE_FIELDS = ['vegetable', 'saltGrams', 'waterMl', 'roomTempC', 'jarSizeMl',
+  'vesselType', 'weightType', 'lidType', 'remindEveryDays'];
+
+/** Save a batch's conditions/equipment as a reusable named preset. */
+export function presetFromBatch(batch, name = '') {
+  const p = { id: `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, name, additions: [...(batch.additions || [])] };
+  for (const f of RECIPE_FIELDS) p[f] = batch[f];
+  return p;
+}
+
+/** Start a fresh batch pre-filled from a saved preset. */
+export function batchFromPreset(preset, now = new Date()) {
+  const b = newBatch(now);
+  for (const f of RECIPE_FIELDS) if (preset[f] !== undefined) b[f] = preset[f];
+  b.additions = [...(preset.additions || [])];
+  return b;
+}
+
+/** Duplicate a batch: copy the recipe, reset dates/outcome/timeline/photos. */
+export function duplicateBatch(batch, now = new Date()) {
+  const nb = batchFromPreset(presetFromBatch(batch), now);
+  nb.name = batch.name ? `${batch.name} (copy)` : '';
+  return nb;
 }
 
 export function ratingStars(n) {
