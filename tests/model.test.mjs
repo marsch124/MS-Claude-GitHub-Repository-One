@@ -11,6 +11,7 @@ import {
   newRecipe, duplicateRecipe, sampleSourdoughRecipe, RECIPE_CATEGORIES,
 } from '../js/model.js';
 import { APP_VERSION, CHANGELOG } from '../js/changelog.js';
+import { normalizeRecipe, extractJSON } from '../js/ai.js';
 
 test('computeBrinePercent: standard 2.5% brine', () => {
   assert.equal(computeBrinePercent(25, 975), 2.5);
@@ -274,6 +275,35 @@ test('duplicateRecipe: deep copy, new id, "(copy)" title', () => {
   assert.notEqual(dup.steps, src.steps);      // arrays copied, not shared
   dup.steps[0].title = 'changed';
   assert.notEqual(src.steps[0].title, 'changed');
+});
+
+// ---------- AI recipe builder (pure helpers) ----------
+test('normalizeRecipe: coerces output, drops junk, clamps category', () => {
+  const r = normalizeRecipe({
+    title: '  Kraut  ', category: 'Nonsense', description: 'tasty',
+    ingredients: ['1 cabbage', '', 3], equipment: 'not an array',
+    activeTime: '20 min', totalTime: '', storage: 'fridge',
+    steps: [{ title: 'Pack', detail: '', time: '15 min' }, { title: '', detail: '', time: '' }],
+  });
+  assert.equal(r.title, 'Kraut');
+  assert.equal(r.category, 'Other');            // unknown category clamped
+  assert.deepEqual(r.ingredients, ['1 cabbage']); // blanks & non-strings dropped
+  assert.deepEqual(r.equipment, []);              // non-array → empty
+  assert.equal(r.steps.length, 1);               // empty step removed
+  assert.equal(r.steps[0].title, 'Pack');
+  assert.ok(r.id.startsWith('r_'));              // real recipe skeleton
+});
+
+test('normalizeRecipe: keeps a valid category and full steps', () => {
+  const r = normalizeRecipe({ title: 'Loaf', category: 'Sourdough', steps: [{ title: 'Bake', detail: 'hot', time: '45 min' }] });
+  assert.equal(r.category, 'Sourdough');
+  assert.deepEqual(r.steps[0], { title: 'Bake', detail: 'hot', time: '45 min' });
+});
+
+test('extractJSON: parses clean JSON and JSON embedded in prose', () => {
+  assert.deepEqual(extractJSON('{"a":1}'), { a: 1 });
+  assert.deepEqual(extractJSON('Sure! ```json\n{"a":2}\n``` done'), { a: 2 });
+  assert.throws(() => extractJSON('no json here'));
 });
 
 // ---------- changelog integrity ----------

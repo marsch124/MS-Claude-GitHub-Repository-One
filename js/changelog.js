@@ -2,9 +2,20 @@
 // APP_VERSION is the single source of truth shown in Settings and used to
 // decide when to surface the "What's new" banner. Newest entry first.
 
-export const APP_VERSION = '4.0';
+export const APP_VERSION = '4.1';
 
 export const CHANGELOG = [
+  {
+    version: '4.1',
+    date: '2026-07-21',
+    title: 'Build a recipe by talking to it 🎤',
+    changes: [
+      'New "Build with AI" panel on the recipe form: describe a recipe in your own words — or tap the microphone on your keyboard and dictate it — and AI fills in the title, ingredients, equipment, timed steps and storage for you to review.',
+      'Optional and private: it uses your own Anthropic API key, stored only on this device, and only the text you describe is ever sent. Add the key under Settings → AI recipe assistant.',
+      'Everything else in the app still works fully offline; only this one button needs the internet.',
+      'You always review and can edit the result before saving — nothing is stored until you say so.',
+    ],
+  },
   {
     version: '4.0',
     date: '2026-07-21',

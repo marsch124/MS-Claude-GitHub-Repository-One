@@ -8,6 +8,7 @@ import {
   RECIPE_CATEGORIES, newRecipe, duplicateRecipe, sampleSourdoughRecipe,
 } from './model.js';
 import { APP_VERSION, CHANGELOG } from './changelog.js';
+import { hasApiKey, getApiKey, setApiKey, buildRecipeFromText } from './ai.js';
 import * as db from './db.js';
 import { barChart, scatterChart } from './charts.js';
 
@@ -731,6 +732,15 @@ async function renderSettings() {
       </div>
 
       <div class="setting-block">
+        <h3>AI recipe assistant</h3>
+        <p class="muted">Optional. Lets you build a recipe by describing or dictating it. Uses your own Anthropic API key, stored only on this device; only the text you describe is sent to Anthropic. <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Get a key ↗</a></p>
+        <label>API key <input type="password" id="aiKey" placeholder="sk-ant-…" autocomplete="off" value="${esc(getApiKey())}"></label>
+        <button class="btn ghost" id="saveKey">Save key</button>
+        <button class="btn ghost" id="clearKey">Clear</button>
+        <span id="keyState" class="muted">${hasApiKey() ? '✓ key saved' : ''}</span>
+      </div>
+
+      <div class="setting-block">
         <h3>Backup & export</h3>
         <p class="muted">Your data lives only on this device. Keep a backup, or export a spreadsheet.</p>
         <button class="btn primary" id="exportBtn">⬇ Export backup (JSON)</button>
@@ -771,6 +781,17 @@ async function renderSettings() {
     await db.deletePreset(btn.dataset.id);
     renderSettings();
   }));
+
+  const keyState = $('#keyState', screen);
+  $('#saveKey', screen).addEventListener('click', () => {
+    setApiKey($('#aiKey', screen).value);
+    keyState.textContent = hasApiKey() ? '✓ key saved' : '';
+  });
+  $('#clearKey', screen).addEventListener('click', () => {
+    setApiKey('');
+    $('#aiKey', screen).value = '';
+    keyState.textContent = 'cleared';
+  });
 
   $('#exportBtn', screen).addEventListener('click', async () => {
     downloadFile(await db.exportJSON(), `fermentlog-backup-${todayISO()}.json`, 'application/json');
@@ -974,6 +995,13 @@ function renderRecipeForm(recipe, isEdit = false) {
   const form = h(`<section class="screen">
     <header class="topbar"><a class="back" href="${isEdit ? `#/recipe/${recipe.id}` : '#/recipes'}">‹</a><h1>${isEdit ? 'Edit recipe' : 'New recipe'}</h1></header>
     <form id="recipeForm" class="form">
+      <fieldset class="ai-panel"><legend>✨ Build with AI</legend>
+        <div class="field-label">Describe or dictate your recipe — tap the 🎤 on your keyboard and just talk. AI fills in the fields below for you to review.</div>
+        <textarea id="aiText" rows="4" placeholder="e.g. Everyday sourdough — 500 g flour, 350 g water, 100 g starter, 10 g salt. Autolyse an hour, bulk 4–6 h with folds, shape, cold proof overnight, bake covered 20 min then 25 uncovered. Keeps 3 days or freeze."></textarea>
+        <button type="button" id="aiBuild" class="btn ghost full">✨ Build recipe with AI</button>
+        <div id="aiStatus" class="hint"></div>
+      </fieldset>
+
       <fieldset><legend>About</legend>
         <label>Title <input name="title" value="${esc(recipe.title)}" placeholder="e.g. Everyday sourdough"></label>
         <label>Category <select name="category">${cats}</select></label>
@@ -1026,6 +1054,33 @@ function renderRecipeForm(recipe, isEdit = false) {
 
   renderRecipePhotos(form);
   $('#rphotoInput', form).addEventListener('change', (e) => addRecipePhoto(e, form));
+
+  const aiBtn = $('#aiBuild', form);
+  aiBtn.addEventListener('click', async () => {
+    const text = $('#aiText', form).value.trim();
+    const status = $('#aiStatus', form);
+    if (!text) { status.className = 'hint caution'; status.textContent = 'Type or dictate a description first.'; return; }
+    if (!hasApiKey()) {
+      status.className = 'hint caution';
+      status.innerHTML = 'Add your Anthropic API key in <a href="#/settings">Settings → AI recipe assistant</a> first.';
+      return;
+    }
+    aiBtn.disabled = true;
+    status.className = 'hint';
+    status.textContent = '✨ Building your recipe…';
+    try {
+      const built = await buildRecipeFromText(text);
+      built.id = editingRecipe.id;                 // keep the same draft
+      built.photos = editingRecipe.photos || [];   // keep any photos already added
+      built.createdAt = editingRecipe.createdAt;
+      editingRecipe = built;
+      renderRecipeForm(editingRecipe, isEdit);      // re-render with fields filled in
+    } catch (e) {
+      aiBtn.disabled = false;
+      status.className = 'hint caution';
+      status.textContent = '⚠ ' + e.message;
+    }
+  });
   if (isEdit) $('#delRecipe', form).addEventListener('click', async () => {
     if (confirm('Delete this recipe permanently?')) { await db.deleteRecipe(recipe.id); location.assign('#/recipes'); }
   });

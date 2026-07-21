@@ -313,6 +313,12 @@ a { color: inherit; text-decoration: none; }
 .step-move button:disabled { opacity: .3; }
 @media print { .recipe-steps li, .detail-block { break-inside: avoid; } }
 
+/* --- AI recipe panel --- */
+.ai-panel { border-color: var(--brand); background: linear-gradient(var(--surface), var(--surface-2)); }
+.ai-panel legend { color: var(--brand-ink); }
+#aiStatus { margin-top: 8px; }
+#aiStatus a { color: var(--brand-ink); font-weight: 600; }
+
 /* --- Manage vegetables & spices --- */
 .manage-list { list-style: none; padding: 0; margin: 0; }
 .manage-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); }
