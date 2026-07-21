@@ -3,8 +3,29 @@
 
 export const VEGETABLES = [
   'Carrot sticks', 'Cabbage', 'Cucumber', 'Beetroot', 'Cauliflower',
-  'Green beans', 'Radish', 'Garlic', 'Onion', 'Pepper', 'Other',
+  'Green beans', 'Radish', 'Garlic', 'Onion', 'Pepper',
 ];
+
+/** Vegetables seen in past batches that aren't built-in — sorted, de-duplicated. */
+export function usedVegetables(batches) {
+  const builtin = new Set(VEGETABLES);
+  const extras = new Set();
+  for (const b of (Array.isArray(batches) ? batches : [])) {
+    const v = b && b.vegetable;
+    if (v && !builtin.has(v)) extras.add(v);
+  }
+  return [...extras].sort((a, b) => a.localeCompare(b));
+}
+
+/** Built-in vegetables first (original order), then any unique extras as given. */
+export function mergeVegetables(extra = []) {
+  const seen = new Set();
+  const out = [];
+  for (const v of [...VEGETABLES, ...extra]) {
+    if (v && !seen.has(v)) { seen.add(v); out.push(v); }
+  }
+  return out;
+}
 
 export const LID_TYPES = ['Airlock', 'Burping / self-venting lid', 'Plain lid', 'Cloth / open'];
 export const WEIGHT_TYPES = ['Glass weight', 'Ceramic weight', 'Cabbage leaf', 'Smaller jar', 'None'];

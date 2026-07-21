@@ -6,6 +6,7 @@ import {
   overallRating, summarizeStats, newBatch, ratingStars,
   nextCheckDue, isCheckDue, dueBatches, recommendation, toCSV,
   presetFromBatch, batchFromPreset, duplicateBatch, DEFAULT_REMIND_DAYS,
+  VEGETABLES, usedVegetables, mergeVegetables,
 } from '../js/model.js';
 
 test('computeBrinePercent: standard 2.5% brine', () => {
@@ -181,6 +182,31 @@ test('presetFromBatch / batchFromPreset: round-trips the recipe', () => {
   assert.deepEqual(b.additions, ['Garlic', 'Dill']);
   assert.equal(b.startDate, '2026-08-01'); // fresh start date
   assert.notEqual(b.additions, src.additions); // copied, not shared
+});
+
+// ---------- custom vegetables ----------
+test('VEGETABLES no longer contains "Other"', () => {
+  assert.equal(VEGETABLES.includes('Other'), false);
+});
+
+test('usedVegetables: distinct, non-built-in, sorted', () => {
+  const batches = [
+    { vegetable: 'Carrot sticks' }, // built-in, excluded
+    { vegetable: 'Kohlrabi' },
+    { vegetable: 'Ramson' },
+    { vegetable: 'Kohlrabi' },      // duplicate
+    { vegetable: '' },              // ignored
+  ];
+  assert.deepEqual(usedVegetables(batches), ['Kohlrabi', 'Ramson']);
+  assert.deepEqual(usedVegetables([]), []);
+});
+
+test('mergeVegetables: built-ins first, then unique extras', () => {
+  const merged = mergeVegetables(['Kohlrabi', 'Carrot sticks', 'Kohlrabi']);
+  assert.equal(merged[0], 'Carrot sticks');          // built-in order preserved
+  assert.equal(merged.filter((v) => v === 'Kohlrabi').length, 1); // de-duped
+  assert.equal(merged.filter((v) => v === 'Carrot sticks').length, 1);
+  assert.ok(merged.includes('Kohlrabi'));
 });
 
 test('duplicateBatch: copies recipe, resets progress and names it (copy)', () => {

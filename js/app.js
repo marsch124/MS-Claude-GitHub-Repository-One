@@ -4,6 +4,7 @@ import {
   computeBrinePercent, isBrineInRange, daysBetween, fermentDays, batchStatus, statusLabel,
   overallRating, summarizeStats, recommendation, newBatch, ratingStars,
   nextCheckDue, dueBatches, toCSV, presetFromBatch, batchFromPreset, duplicateBatch,
+  usedVegetables, mergeVegetables,
 } from './model.js';
 import * as db from './db.js';
 import { barChart, scatterChart } from './charts.js';
@@ -26,6 +27,24 @@ function applyTheme(mode) {
 }
 function currentTheme() { try { return localStorage.getItem(THEME_KEY) || 'system'; } catch { return 'system'; } }
 applyTheme(currentTheme());
+
+// ---------- Custom vegetables (remembered on this device) ----------
+const VEG_KEY = 'fermentlog-vegetables';
+const ADD_VEG = '__add__'; // sentinel dropdown value that reveals the text field
+function getCustomVegetables() { try { return JSON.parse(localStorage.getItem(VEG_KEY)) || []; } catch { return []; } }
+function rememberVegetable(name) {
+  const v = (name || '').trim();
+  if (!v || VEGETABLES.includes(v)) return;
+  const list = getCustomVegetables();
+  if (!list.includes(v)) { list.push(v); try { localStorage.setItem(VEG_KEY, JSON.stringify(list)); } catch {} }
+}
+// Full option list: built-ins + vegetables from past batches + remembered + this batch's own.
+async function vegetableOptionsFor(currentVeg) {
+  const batches = await db.getAllBatches();
+  const extras = [...new Set([...usedVegetables(batches), ...getCustomVegetables(), currentVeg]
+    .filter((v) => v && !VEGETABLES.includes(v)))].sort((a, b) => a.localeCompare(b));
+  return mergeVegetables(extras);
+}
 
 // ---------- Router ----------
 async function render() {
@@ -105,19 +124,24 @@ function batchCard(b) {
 
 // ---------- New batch (with preset picker) ----------
 async function renderNew() {
-  const presets = await db.getPresets();
-  renderForm(newBatch(), false, presets);
+  const batch = newBatch();
+  const [presets, vegOptions] = await Promise.all([db.getPresets(), vegetableOptionsFor(batch.vegetable)]);
+  renderForm(batch, false, presets, vegOptions);
 }
 
 async function editExisting(id) {
   const b = await db.getBatch(id);
   if (!b) return location.assign('#/');
-  renderForm(structuredClone(b), true, []);
+  const vegOptions = await vegetableOptionsFor(b.vegetable);
+  renderForm(structuredClone(b), true, [], vegOptions);
 }
 
-function renderForm(batch, isEdit, presets) {
+function renderForm(batch, isEdit, presets, vegOptions) {
   editing = batch;
-  const veg = VEGETABLES.map((v) => `<option ${v === batch.vegetable ? 'selected' : ''}>${v}</option>`).join('');
+  // Make sure this batch's own vegetable is always selectable.
+  const options = batch.vegetable && !vegOptions.includes(batch.vegetable) ? [...vegOptions, batch.vegetable] : vegOptions;
+  const veg = options.map((v) => `<option ${v === batch.vegetable ? 'selected' : ''}>${esc(v)}</option>`).join('')
+    + `<option value="${ADD_VEG}">＋ Add another vegetable…</option>`;
   const lids = LID_TYPES.map((v) => `<option ${v === batch.lidType ? 'selected' : ''}>${v}</option>`).join('');
   const weights = WEIGHT_TYPES.map((v) => `<option ${v === batch.weightType ? 'selected' : ''}>${v}</option>`).join('');
   const addChips = COMMON_ADDITIONS.map((a) =>
@@ -133,6 +157,9 @@ function renderForm(batch, isEdit, presets) {
       <fieldset><legend>Basics</legend>
         <label>Name <input name="name" value="${esc(batch.name)}" placeholder="e.g. Spicy carrot #1"></label>
         <label>Vegetable <select name="vegetable">${veg}</select></label>
+        <label id="customVegWrap" class="custom-veg" hidden>New vegetable
+          <input name="customVeg" placeholder="e.g. Kohlrabi" autocomplete="off">
+        </label>
         <label>Start date <input type="date" name="startDate" value="${batch.startDate}"></label>
       </fieldset>
 
@@ -193,13 +220,25 @@ function renderForm(batch, isEdit, presets) {
   $('[name=waterMl]', f).addEventListener('input', updateBrine);
   updateBrine();
 
+  // Reveal the free-text field when "Add another vegetable…" is chosen.
+  const vegSel = $('[name=vegetable]', f);
+  const customWrap = $('#customVegWrap', form);
+  const toggleCustom = () => {
+    const on = vegSel.value === ADD_VEG;
+    customWrap.hidden = !on;
+    if (on) customWrap.querySelector('input').focus();
+  };
+  vegSel.addEventListener('change', toggleCustom);
+  toggleCustom();
+
   const picker = $('#presetPick', form);
   if (picker) picker.addEventListener('change', () => {
     const p = presets.find((x) => x.id === picker.value);
     if (!p) return;
     const filled = batchFromPreset(p);
     editing = filled;
-    renderForm(filled, false, presets); // re-render prefilled (keeps preset list)
+    const opts = options.includes(filled.vegetable) ? options : [...options, filled.vegetable];
+    renderForm(filled, false, presets, opts); // re-render prefilled (keeps preset list + options)
   });
 
   renderPhotos(form);
@@ -217,6 +256,7 @@ function renderForm(batch, isEdit, presets) {
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
     syncFormInto(editing, f);
+    if (!editing.vegetable) { alert('Please type the vegetable name.'); customWrap.querySelector('input').focus(); return; }
     await db.saveBatch(editing);
     location.assign(`#/batch/${editing.id}`);
   });
@@ -224,9 +264,12 @@ function renderForm(batch, isEdit, presets) {
 
 function syncFormInto(target, f) {
   const fd = new FormData(f);
+  let vegetable = fd.get('vegetable');
+  if (vegetable === ADD_VEG) vegetable = (fd.get('customVeg') || '').trim();
+  rememberVegetable(vegetable);
   Object.assign(target, {
     name: fd.get('name').trim(),
-    vegetable: fd.get('vegetable'),
+    vegetable,
     startDate: fd.get('startDate'),
     saltGrams: numOrEmpty(fd.get('saltGrams')),
     waterMl: numOrEmpty(fd.get('waterMl')),
