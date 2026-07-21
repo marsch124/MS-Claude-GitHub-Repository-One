@@ -252,8 +252,22 @@ a { color: inherit; text-decoration: none; }
 .form label[hidden] { display: none; } /* beat .form label { display:block } so [hidden] works */
 
 /* --- Detail actions & timeline delete --- */
-.detail-actions { display: flex; gap: 8px; margin-top: 8px; }
-.detail-actions .btn { flex: 1; padding: 11px 8px; }
+.detail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.detail-actions .btn { flex: 1 1 44%; padding: 11px 8px; }
+
+/* --- Inline AI (dictate a check-in) --- */
+.ai-inline { margin-top: 10px; }
+.ai-inline textarea { width: 100%; padding: 10px 12px; font-size: 1rem; border: 1.5px solid var(--brand);
+  border-radius: 10px; background: var(--surface-2); color: var(--ink); font-family: inherit; }
+.ai-inline .btn { margin-top: 8px; }
+
+/* --- AI tips preview --- */
+.tips-box { background: linear-gradient(135deg, #e6f3ec, #d5ecdd); border: 1px solid #bdddc9;
+  border-radius: 12px; padding: 14px; margin: 12px 0; }
+@media (prefers-color-scheme: dark) { .tips-box { background: linear-gradient(135deg, #1c3226, #16281d); border-color: #24402f; } }
+.tips-head { font-weight: 700; color: var(--brand-ink); margin-bottom: 6px; }
+.tips-text { white-space: pre-line; margin: 0 0 10px; line-height: 1.5; }
+.tips-actions { display: flex; gap: 8px; }
 .checkins li { display: flex; align-items: center; gap: 8px; }
 .ci-note { flex: 1; }
 .ci-del { background: none; border: none; color: var(--muted); font-size: .9rem; cursor: pointer; padding: 4px; }

@@ -2,9 +2,20 @@
 // APP_VERSION is the single source of truth shown in Settings and used to
 // decide when to surface the "What's new" banner. Newest entry first.
 
-export const APP_VERSION = '4.2';
+export const APP_VERSION = '4.3';
 
 export const CHANGELOG = [
+  {
+    version: '4.3',
+    date: '2026-07-21',
+    title: 'Dictate check-ins, and let AI polish things up ✨',
+    changes: [
+      'Dictate a taste-test check-in: on a batch, tap "Add by voice" and say something like "day 4, tangy and still crunchy" — AI works out the date (even from "day 4" or "yesterday") and adds it to the timeline.',
+      'New "✨ Improve" button on a recipe: AI tidies the wording, fills in missing step times, adds a short description or storage note, and opens it for you to review and save.',
+      'New "✨ AI tips" button on a batch: get 2–4 practical tips based on your brine, temperature, vegetable and equipment, and add them to the batch notes with one tap.',
+      'As always: optional, uses your own on-device API key, and you review everything before it is saved.',
+    ],
+  },
   {
     version: '4.2',
     date: '2026-07-21',

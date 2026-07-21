@@ -8,7 +8,10 @@ import {
   RECIPE_CATEGORIES, newRecipe, duplicateRecipe, sampleSourdoughRecipe,
 } from './model.js';
 import { APP_VERSION, CHANGELOG } from './changelog.js';
-import { hasApiKey, getApiKey, setApiKey, buildRecipeFromText, buildBatchFromText } from './ai.js';
+import {
+  hasApiKey, getApiKey, setApiKey, buildRecipeFromText, buildBatchFromText,
+  buildCheckInFromText, improveRecipe, buildBatchTips,
+} from './ai.js';
 import * as db from './db.js';
 import { barChart, scatterChart } from './charts.js';
 
@@ -527,6 +530,11 @@ async function renderDetail(id) {
           <input name="tasteNote" placeholder="Taste test note…" required>
           <button class="btn ghost small">Add</button>
         </form>
+        <div class="ai-inline no-print">
+          <textarea id="ciAiText" rows="2" placeholder="✨ …or dictate: “day 4, tangy and still crunchy” — tap the 🎤 and talk"></textarea>
+          <button type="button" id="ciAiBtn" class="btn ghost small">✨ Add by voice</button>
+          <div id="ciAiStatus" class="hint"></div>
+        </div>
         ${status !== 'done' && !b.movedToFridgeDate ? '<button id="fridgeBtn" class="btn ghost no-print">🧊 Move to fridge</button>' : ''}
       </div>
 
@@ -535,7 +543,9 @@ async function renderDetail(id) {
         <div id="outcomeArea"></div>
       </div>
 
+      <div id="tipsArea" class="no-print"></div>
       <div class="detail-actions no-print">
+        <button id="tipsBtn" class="btn ghost">✨ AI tips</button>
         <button id="dupBtn" class="btn ghost">🧬 Duplicate</button>
         <button id="shareBtn" class="btn ghost">↗ Share</button>
         <button id="printBtn" class="btn ghost">🖨 Print</button>
@@ -543,6 +553,25 @@ async function renderDetail(id) {
     </div>
   </section>`);
   swap(el);
+
+  const ciAiBtn = $('#ciAiBtn', el);
+  ciAiBtn.addEventListener('click', async () => {
+    const text = $('#ciAiText', el).value.trim();
+    const status = $('#ciAiStatus', el);
+    if (!text) { status.className = 'hint caution'; status.textContent = 'Say something first.'; return; }
+    if (!hasApiKey()) { status.className = 'hint caution'; status.innerHTML = 'Add your API key in <a href="#/settings">Settings → AI assistant</a> first.'; return; }
+    ciAiBtn.disabled = true; status.className = 'hint'; status.textContent = '✨ Adding…';
+    try {
+      const ci = await buildCheckInFromText(text, { startDate: b.startDate });
+      b.checkIns = b.checkIns || [];
+      b.checkIns.push(ci);
+      b.checkIns.sort((x, y) => x.date.localeCompare(y.date));
+      await db.saveBatch(b);
+      renderDetail(id);
+    } catch (e) { ciAiBtn.disabled = false; status.className = 'hint caution'; status.textContent = '⚠ ' + e.message; }
+  });
+
+  $('#tipsBtn', el).addEventListener('click', () => suggestBatchTips(b, id, $('#tipsArea', el)));
 
   $('#ciForm', el).addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -572,6 +601,35 @@ async function renderDetail(id) {
   $('#shareBtn', el).addEventListener('click', () => shareBatch(b));
   $('#printBtn', el).addEventListener('click', () => window.print());
   renderOutcome($('#outcomeArea', el), b, id);
+}
+
+async function suggestBatchTips(b, id, area) {
+  if (!hasApiKey()) {
+    area.innerHTML = '<div class="tips-box">Add your API key in <a href="#/settings">Settings → AI assistant</a> to get tips.</div>';
+    return;
+  }
+  area.innerHTML = '<div class="tips-box">✨ Thinking about your batch…</div>';
+  try {
+    const tips = await buildBatchTips(b);
+    if (!tips) { area.innerHTML = '<div class="tips-box">No tips this time — try again.</div>'; return; }
+    const box = h(`<div class="tips-box">
+      <div class="tips-head">✨ Suggested tips</div>
+      <p class="tips-text">${esc(tips)}</p>
+      <div class="tips-actions">
+        <button class="btn ghost small" id="tipsAdd">Add to notes</button>
+        <button class="btn ghost small" id="tipsDismiss">Dismiss</button>
+      </div>
+    </div>`);
+    area.replaceChildren(box);
+    $('#tipsAdd', box).addEventListener('click', async () => {
+      b.notes = b.notes ? `${b.notes}\n\n${tips}` : tips;
+      await db.saveBatch(b);
+      renderDetail(id);
+    });
+    $('#tipsDismiss', box).addEventListener('click', () => { area.innerHTML = ''; });
+  } catch (e) {
+    area.innerHTML = `<div class="tips-box">⚠ ${esc(e.message)}</div>`;
+  }
 }
 
 function batchSummaryText(b) {
@@ -940,6 +998,7 @@ async function onManageAction(btn, batches) {
 
 // ---------- Recipes ----------
 let editingRecipe = null;
+let pendingRecipeDraft = null; // an AI-improved draft handed to the edit route
 const linesToList = (text) => String(text || '').split('\n').map((s) => s.trim()).filter(Boolean);
 const recipeEmoji = (r) => (r.category === 'Sourdough' ? '🥖' : r.category === 'Drink / kombucha' ? '🫖' : r.category === 'Dairy' ? '🧀' : '🫙');
 
@@ -1014,13 +1073,29 @@ async function renderRecipeDetail(id) {
       <div class="detail-block"><h3>Method</h3>${steps}</div>
       ${r.storage ? `<div class="detail-block"><h3>Storage &amp; keeping</h3><p>${esc(r.storage)}</p></div>` : ''}
       <div class="detail-actions no-print">
+        <button id="improveRecipe" class="btn ghost">✨ Improve</button>
         <button id="dupRecipe" class="btn ghost">🧬 Duplicate</button>
         <button id="shareRecipe" class="btn ghost">↗ Share</button>
         <button id="printRecipe" class="btn ghost">🖨 Print</button>
       </div>
+      <div id="improveStatus" class="hint no-print"></div>
     </div>
   </section>`);
   swap(el);
+  const improveBtn = $('#improveRecipe', el);
+  improveBtn.addEventListener('click', async () => {
+    const status = $('#improveStatus', el);
+    if (!hasApiKey()) { status.className = 'hint caution'; status.innerHTML = 'Add your API key in <a href="#/settings">Settings → AI assistant</a> first.'; return; }
+    improveBtn.disabled = true; status.className = 'hint'; status.textContent = '✨ Improving your recipe…';
+    try {
+      const improved = await improveRecipe(r);
+      improved.id = r.id;                 // same recipe
+      improved.photos = r.photos || [];
+      improved.createdAt = r.createdAt;
+      pendingRecipeDraft = improved;
+      location.assign(`#/recipe-edit/${r.id}`); // edit route (different hash) picks up the draft to review/save
+    } catch (e) { improveBtn.disabled = false; status.className = 'hint caution'; status.textContent = '⚠ ' + e.message; }
+  });
   $('#dupRecipe', el).addEventListener('click', async () => {
     const d = duplicateRecipe(r); await db.saveRecipe(d); location.assign(`#/recipe/${d.id}`);
   });
@@ -1050,7 +1125,10 @@ async function shareRecipe(r) {
 }
 
 async function editRecipe(id) {
-  const r = await db.getRecipe(id);
+  // Prefer an in-memory AI-improved draft for this recipe if one is waiting.
+  let r;
+  if (pendingRecipeDraft && pendingRecipeDraft.id === id) { r = pendingRecipeDraft; pendingRecipeDraft = null; }
+  else r = await db.getRecipe(id);
   if (!r) return location.assign('#/recipes');
   renderRecipeForm(structuredClone(r), true);
 }

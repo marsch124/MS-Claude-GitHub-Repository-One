@@ -26,10 +26,12 @@ No account, no server, no cost.
   **sourdough bread**: title, category, description, photos, ingredients, equipment,
   hands-on & total time, **timed step-by-step method**, and storage notes. Comes with a
   ready-made sourdough example, and you can duplicate / share / print any recipe.
-- **AI entry (optional)** — describe or **dictate** a **recipe** *or* a **batch** in plain
-  words and have it structured into the fields automatically (it even works out salt grams
-  from a brine %). Uses your own Anthropic API key (stored only on-device; only the
-  described text is sent). Set up and fully explained under Settings → AI assistant.
+- **AI assistant (optional)** — describe or **dictate** a **recipe** *or* a **batch** in
+  plain words and have it structured into the fields automatically (it even works out salt
+  grams from a brine %). Also: **dictate a taste-test check-in** ("day 4, tangy and
+  crunchy") into a batch's timeline, an **"Improve"** button to refine a recipe, and
+  **"AI tips"** for a batch. Uses your own Anthropic API key (stored only on-device; only
+  the described text is sent). Set up and fully explained under Settings → AI assistant.
   Everything else works fully offline.
 - **Taste-test reminders** — set a per-batch interval; the app flags batches that are
   due, and (with permission) shows a notification when you open it.

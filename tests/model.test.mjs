@@ -11,7 +11,7 @@ import {
   newRecipe, duplicateRecipe, sampleSourdoughRecipe, RECIPE_CATEGORIES,
 } from '../js/model.js';
 import { APP_VERSION, CHANGELOG } from '../js/changelog.js';
-import { normalizeRecipe, extractJSON, normalizeBatch } from '../js/ai.js';
+import { normalizeRecipe, extractJSON, normalizeBatch, normalizeCheckIn } from '../js/ai.js';
 
 test('computeBrinePercent: standard 2.5% brine', () => {
   assert.equal(computeBrinePercent(25, 975), 2.5);
@@ -325,6 +325,19 @@ test('normalizeBatch: empty input falls back to carrot defaults', () => {
   assert.equal(b.vegetable, 'Carrot sticks');
   assert.equal(b.saltGrams, 25);
   assert.equal(b.waterMl, 1000);
+});
+
+test('normalizeCheckIn: keeps a valid date, trims note', () => {
+  const c = normalizeCheckIn({ date: '2026-07-05', tasteNote: '  Tangy and crunchy  ' });
+  assert.equal(c.date, '2026-07-05');
+  assert.equal(c.tasteNote, 'Tangy and crunchy');
+});
+
+test('normalizeCheckIn: bad/absent date falls back to today', () => {
+  const now = new Date('2026-07-21T09:00:00Z');
+  assert.equal(normalizeCheckIn({ date: 'day 4', tasteNote: 'x' }, now).date, '2026-07-21');
+  assert.equal(normalizeCheckIn({ tasteNote: 'x' }, now).date, '2026-07-21');
+  assert.equal(normalizeCheckIn({ date: '2026-13-40', tasteNote: 'x' }, now).date, '2026-07-21');
 });
 
 test('extractJSON: parses clean JSON and JSON embedded in prose', () => {

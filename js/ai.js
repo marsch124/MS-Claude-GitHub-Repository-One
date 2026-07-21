@@ -194,3 +194,71 @@ export function normalizeBatch(ai, now = new Date()) {
   b.remindEveryDays = numOr(obj.remindEveryDays, b.remindEveryDays);
   return b;
 }
+
+// ---------- Dictated timeline check-ins ----------
+
+const CHECKIN_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: { date: { type: 'string' }, tasteNote: { type: 'string' } },
+  required: ['date', 'tasteNote'],
+};
+
+/** Turn a spoken note ("day 4, tangy and crunchy") into a dated timeline entry. */
+export async function buildCheckInFromText(text, ctx = {}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const start = ctx.startDate || '';
+  const system = `You convert a home fermenter's spoken taste-test note into a dated timeline entry.
+Context: the batch started on ${start || 'an unknown date'}; today is ${today}.
+Rules:
+- date must be in YYYY-MM-DD form. "day 1" is the start date; "day N" is (N-1) days after the start date. "today" = ${today}; "yesterday" = the day before today. If an explicit date is stated, use it. If unclear, use today (${today}).
+- tasteNote: the tasting observation as a short, tidy phrase (e.g. "Tangy and still crunchy").
+Never ask questions.`;
+  return normalizeCheckIn(await callStructured(system, CHECKIN_SCHEMA, `Convert this taste-test note:\n\n${text}`));
+}
+
+/** Validate the model's check-in; fall back to today for a bad/absent date (pure, testable). */
+export function normalizeCheckIn(ai, now = new Date()) {
+  const obj = ai && typeof ai === 'object' ? ai : {};
+  const today = now.toISOString().slice(0, 10);
+  const validDate = typeof obj.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(obj.date) && !Number.isNaN(new Date(obj.date).getTime());
+  return {
+    date: validDate ? obj.date : today,
+    tasteNote: typeof obj.tasteNote === 'string' ? obj.tasteNote.trim() : '',
+  };
+}
+
+// ---------- Improve / expand ----------
+
+/** Refine and flesh out an existing recipe, keeping its identity and quantities. */
+export async function improveRecipe(recipe) {
+  const system = `${RECIPE_SYSTEM}
+You are improving an EXISTING recipe the user already has. Keep their intent, quantities and identity. Fill obvious gaps (missing per-step times, a short description, storage notes), tidy the wording and step order, and make the instructions clear. Do not invent unusual ingredients or change what the dish is. Return the full improved recipe.`;
+  const current = JSON.stringify({
+    title: recipe.title, category: recipe.category, description: recipe.description,
+    ingredients: recipe.ingredients, equipment: recipe.equipment,
+    activeTime: recipe.activeTime, totalTime: recipe.totalTime, steps: recipe.steps, storage: recipe.storage,
+  });
+  return normalizeRecipe(await callStructured(system, RECIPE_SCHEMA, `Improve and expand this recipe. Return the full recipe as structured data:\n\n${current}`));
+}
+
+const TIPS_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: { notes: { type: 'string' } },
+  required: ['notes'],
+};
+
+/** Suggest a few practical tips for a batch's setup, as a plain-text notes string. */
+export async function buildBatchTips(batch) {
+  const system = `You are a friendly fermentation assistant. Given a vegetable-ferment batch's setup as JSON, write 2 to 4 short, practical tips as ONE plain-text notes string (no markdown, no headings; separate tips with line breaks). Base them on the brine strength, temperature, vegetable and equipment. Be specific and encouraging. Do not make safety or medical guarantees. Never ask questions.`;
+  const s = Number(batch.saltGrams);
+  const w = Number(batch.waterMl);
+  const brinePercent = (s > 0 && w > 0) ? Number((s / (s + w) * 100).toFixed(1)) : null;
+  const info = JSON.stringify({
+    vegetable: batch.vegetable, brinePercent, roomTempC: batch.roomTempC,
+    jarSizeMl: batch.jarSizeMl, additions: batch.additions, lidType: batch.lidType, weightType: batch.weightType,
+  });
+  const out = await callStructured(system, TIPS_SCHEMA, `Give tips for this batch:\n\n${info}`);
+  return out && typeof out.notes === 'string' ? out.notes.trim() : '';
+}
