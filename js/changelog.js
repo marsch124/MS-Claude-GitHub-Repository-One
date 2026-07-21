@@ -1,13 +1,25 @@
 // changelog.js — the app's version and its human-readable history.
 // APP_VERSION is the single source of truth shown in Settings and used to
 // decide when to surface the "What's new" banner. Newest entry first.
+// Dates/times are the release moment in the user's local zone (Europe/Stockholm —
+// CEST in summer, CET in winter).
 
-export const APP_VERSION = '4.3';
+export const APP_VERSION = '4.4';
 
 export const CHANGELOG = [
   {
+    version: '4.4',
+    date: '2026-07-21 · 18:31 CEST',
+    title: 'Carrot-toned icons, release times & a How-it-works guide',
+    changes: [
+      'Harmonised the bottom tab-bar icons: Insights, Settings and the others now share one clean, carrot-orange icon set that matches the New button — no more mismatched emoji.',
+      'Every release in this changelog now shows the date and time it shipped, in your local Central European time.',
+      'Added a thorough "How it works" guide covering every feature — open it from Settings → How FermentLog works. An illustrated version with screenshots lives in the project docs.',
+    ],
+  },
+  {
     version: '4.3',
-    date: '2026-07-21',
+    date: '2026-07-21 · 18:24 CEST',
     title: 'Dictate check-ins, and let AI polish things up ✨',
     changes: [
       'Dictate a taste-test check-in: on a batch, tap "Add by voice" and say something like "day 4, tangy and still crunchy" — AI works out the date (even from "day 4" or "yesterday") and adds it to the timeline.',
@@ -18,7 +30,7 @@ export const CHANGELOG = [
   },
   {
     version: '4.2',
-    date: '2026-07-21',
+    date: '2026-07-21 · 18:12 CEST',
     title: 'Start a batch by talking to it too 🎤🫙',
     changes: [
       'The "Build with AI" box now works for batches as well as recipes: on a new batch, describe or dictate the jar — e.g. "carrots, 2.5% brine, 20°C, airlock, garlic and dill, taste every 3 days" — and it fills in vegetable, salt/water (it even works out the grams from a brine %), temperature, spices, equipment and the reminder for you to review.',
@@ -28,7 +40,7 @@ export const CHANGELOG = [
   },
   {
     version: '4.1',
-    date: '2026-07-21',
+    date: '2026-07-21 · 18:03 CEST',
     title: 'Build a recipe by talking to it 🎤',
     changes: [
       'New "Build with AI" panel on the recipe form: describe a recipe in your own words — or tap the microphone on your keyboard and dictate it — and AI fills in the title, ingredients, equipment, timed steps and storage for you to review.',
@@ -39,7 +51,7 @@ export const CHANGELOG = [
   },
   {
     version: '4.0',
-    date: '2026-07-21',
+    date: '2026-07-21 · 17:48 CEST',
     title: 'Recipes — including sourdough bread 🥖',
     changes: [
       'A whole new Recipes section (its own tab) for keeping full recipes, not just fermented vegetables — sourdough bread and anything else fermentation-ish is welcome.',
@@ -53,7 +65,7 @@ export const CHANGELOG = [
   },
   {
     version: '3.1',
-    date: '2026-07-21',
+    date: '2026-07-21 · 17:17 CEST',
     title: 'Manage your vegetables & spices',
     changes: [
       'New "Vegetables & spices" area in Settings — rename or remove any vegetable or spice you\'ve added.',
@@ -65,7 +77,7 @@ export const CHANGELOG = [
   },
   {
     version: '3.0',
-    date: '2026-07-21',
+    date: '2026-07-21 · 17:09 CEST',
     title: 'Custom vegetables & spices, and this changelog',
     changes: [
       'Vegetables: the vague "Other" option is gone. Pick "＋ Add another vegetable…" to type the exact vegetable (e.g. Kohlrabi). It is remembered on this device and appears as a normal option next time — no retyping.',
@@ -79,7 +91,7 @@ export const CHANGELOG = [
   },
   {
     version: '2.0',
-    date: '2026-07-21',
+    date: '2026-07-21 · 16:45 CEST',
     title: 'Reminders, deeper insights, faster logging, export & theming',
     changes: [
       'Taste-test reminders: set how often you want to be nudged (per batch). The Batches list shows a "due for a taste test" banner and a ⏰ badge, and — with your permission — a notification appears when you open the app.',
@@ -95,7 +107,7 @@ export const CHANGELOG = [
   },
   {
     version: '1.0',
-    date: '2026-07-21',
+    date: '2026-07-21 · 10:36 CEST',
     title: 'First release — your fermentation logbook',
     changes: [
       'Log each batch with its conditions: vegetable, salt and water (with automatic brine %), room temperature, jar size and spices.',

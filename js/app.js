@@ -122,6 +122,7 @@ async function render() {
   else if (hash === '#/settings') await renderSettings();
   else if (hash === '#/manage-lists') await renderManageLists();
   else if (hash === '#/changelog') renderChangelog();
+  else if (hash === '#/how') renderHowItWorks();
   else if (hash === '#/recipes') await renderRecipes();
   else if (hash === '#/recipe-new') renderRecipeForm(newRecipe());
   else if (hash.startsWith('#/recipe-edit/')) await editRecipe(hash.slice(14));
@@ -872,6 +873,12 @@ async function renderSettings() {
         <button class="btn ghost" id="csvBtn">📊 Export CSV</button>
       </div>
 
+      <div class="setting-block">
+        <h3>Help</h3>
+        <p class="muted">New here, or want a refresher? Take the full tour.</p>
+        <a class="btn ghost" href="#/how">📖 How FermentLog works →</a>
+      </div>
+
       <div class="setting-block danger-block">
         <h3>Danger zone</h3>
         <button class="btn danger" id="wipeBtn">Delete all data</button>
@@ -1319,6 +1326,94 @@ async function addRecipePhoto(e, root) {
   editingRecipe.photos.push(dataUrl);
   renderRecipePhotos(root);
   e.target.value = '';
+}
+
+// ---------- How it works ----------
+function renderHowItWorks() {
+  const sec = (title, body) => `<div class="guide-sec"><h3>${title}</h3>${body}</div>`;
+  const screen = h(`<section class="screen">
+    <header class="topbar"><a class="back" href="#/settings">‹</a><h1>How it works</h1></header>
+    <p class="cl-intro">A full tour of FermentLog. Everything here works offline and stays on your device. 🥕</p>
+    <div class="guide">
+      ${sec('The basics', `
+        <p>FermentLog is your private logbook for home fermenting — and now baking too. It lives entirely on your phone, works offline, and can be installed to your home screen like a normal app. There are five tabs along the bottom:</p>
+        <ul>
+          <li><strong>Batches</strong> 🫙 — every jar you're fermenting.</li>
+          <li><strong>Recipes</strong> 🥖 — reusable recipes, including sourdough.</li>
+          <li><strong>New</strong> ＋ — start a new batch.</li>
+          <li><strong>Insights</strong> 📊 — charts that reveal what makes your best ferments.</li>
+          <li><strong>Settings</strong> ⚙️ — backups, appearance, the AI assistant and this guide.</li>
+        </ul>`)}
+
+      ${sec('Logging a batch', `
+        <p>Tap <strong>New</strong> to start a jar. You record:</p>
+        <ul>
+          <li><strong>Conditions</strong> — vegetable, salt &amp; water (the <strong>brine %</strong> is worked out for you, with a hint for the ideal 2–3% range), room temperature and jar size.</li>
+          <li><strong>Spices</strong> — pick from common ones or add your own; they're remembered for next time.</li>
+          <li><strong>Equipment</strong> — vessel, weight and lid type.</li>
+          <li><strong>Reminder</strong> — how often you want to be nudged to taste-test (0 turns it off).</li>
+          <li><strong>Photos &amp; notes</strong> — snap the jar and jot anything down.</li>
+        </ul>
+        <p>Tip: on a <strong>new</strong> batch you can start from a saved <em>batch template</em>, or just describe/dictate it with <strong>✨ Build with AI</strong>.</p>`)}
+
+      ${sec('Following a batch over time', `
+        <p>Open any batch to see its detail. From here you can:</p>
+        <ul>
+          <li>Add <strong>timeline check-ins</strong> as it ferments — type a taste-test note, or tap <strong>✨ Add by voice</strong> and say “day 4, tangy and crunchy”.</li>
+          <li>Tap <strong>🧊 Move to fridge</strong> when it's done fermenting.</li>
+          <li><strong>Record the outcome</strong> — rate taste, sourness, crunch and overall, mark success, and note any problems (mould, kahm yeast, mushy…).</li>
+          <li><strong>Duplicate</strong>, <strong>Share</strong> or <strong>Print</strong> the batch, or get <strong>✨ AI tips</strong> for its setup.</li>
+        </ul>`)}
+
+      ${sec('Insights', `
+        <p>Once you've logged a few finished batches, the Insights tab shows what's working:</p>
+        <ul>
+          <li>Headline numbers: total batches, active now, success rate, average rating.</li>
+          <li>Scatter charts of rating vs. <strong>brine %</strong>, <strong>temperature</strong> and <strong>days fermented</strong> — so you can see your sweet spots.</li>
+          <li>A rating <strong>trend</strong>, averages by vegetable and lid, and how often problems occur.</li>
+          <li>A <strong>“best batch so far”</strong> card and a <strong>recommended recipe</strong> learned from your top results.</li>
+          <li>Filter every chart to a single vegetable.</li>
+        </ul>`)}
+
+      ${sec('Recipes (including sourdough)', `
+        <p>The Recipes tab is a proper recipe book for anything fermentation-ish — vegetable ferments <em>and</em> sourdough bread. Each recipe holds a title, category, description, photos, ingredients, equipment, hands-on &amp; total time, a <strong>timed step-by-step method</strong>, and storage notes.</p>
+        <ul>
+          <li>Tap <strong>＋ New</strong>, or start from the built-in <strong>“Everyday Sourdough Loaf”</strong> example.</li>
+          <li>Describe or dictate a recipe with <strong>✨ Build with AI</strong>.</li>
+          <li>On a saved recipe, <strong>✨ Improve</strong> tidies it up, and you can Duplicate / Share / Print it.</li>
+        </ul>`)}
+
+      ${sec('The AI assistant', `
+        <p>Optional, and fully explained under <a href="#/settings">Settings → AI assistant</a>. In short: describe or dictate a recipe or batch and it fills in the fields; you always review before saving. It uses <strong>your own Anthropic API key</strong>, stored only on this device — only the text you describe is ever sent, and everything else stays offline. It costs a fraction of a cent per use on your own account.</p>`)}
+
+      ${sec('Managing your lists', `
+        <p>In Settings you can:</p>
+        <ul>
+          <li><strong>Manage vegetables &amp; spices</strong> — rename or remove the ones you've added; renaming updates every batch and recipe automatically.</li>
+          <li>Keep <strong>batch templates</strong> — saved condition sets to start new jars quickly.</li>
+        </ul>`)}
+
+      ${sec('Your data, backups & privacy', `
+        <ul>
+          <li>Everything is stored <strong>on your device</strong> (in the browser's local database) and works <strong>fully offline</strong>.</li>
+          <li><strong>Export a backup</strong> (JSON) any time and <strong>Import</strong> it on a new phone — it includes batches, recipes and templates.</li>
+          <li><strong>Export CSV</strong> to open your batches in a spreadsheet.</li>
+          <li>Nothing is uploaded anywhere — the only time data leaves your phone is the optional AI feature, and then only the text you describe.</li>
+        </ul>`)}
+
+      ${sec('Appearance & install', `
+        <ul>
+          <li>Switch between <strong>System / Light / Dark</strong> themes in Settings.</li>
+          <li>Open the site in your phone's browser and choose <strong>Add to Home Screen</strong> to install it as an app.</li>
+          <li>After an update, fully close and reopen the app once or twice to pick up the new version.</li>
+        </ul>`)}
+
+      ${sec('Staying up to date', `
+        <p>Every improvement is listed under <a href="#/changelog">Settings → What's new</a>, newest first, with the date and time it shipped. A one-time banner points you there after each update.</p>
+        <p class="muted">Prefer pictures? There's an illustrated, screenshot-by-screenshot version of this guide in the project's <code>docs/HOW-IT-WORKS.md</code>.</p>`)}
+    </div>
+  </section>`);
+  swap(screen);
 }
 
 // ---------- Changelog ----------

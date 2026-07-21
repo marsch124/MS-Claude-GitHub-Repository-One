@@ -203,10 +203,14 @@ a { color: inherit; text-decoration: none; }
 }
 .tabbar a { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 4px 7px;
   font-size: .68rem; color: var(--muted); flex: 1; }
-.tabbar a.active { color: var(--brand); }
-.tabbar .ico { font-size: 1.3rem; }
-.tabbar .fab-tab .ico { background: var(--brand); color: #fff; width: 34px; height: 34px; border-radius: 999px;
-  display: grid; place-items: center; margin-top: -2px; }
+.tabbar a.active { color: var(--brand-ink); }
+.tabbar .ico { display: flex; align-items: center; justify-content: center; color: var(--brand); }
+.tabbar .ico svg { width: 25px; height: 25px; display: block; }
+/* Icons are always carrot-orange; inactive tabs fade slightly to show the active one. */
+.tabbar a:not(.active):not(.fab-tab) .ico { opacity: .5; }
+.tabbar .fab-tab .ico { background: var(--brand); color: #fff; width: 36px; height: 36px; border-radius: 999px;
+  display: grid; place-items: center; margin-top: -2px; box-shadow: 0 2px 8px rgba(232, 114, 44, 0.4); }
+.tabbar .fab-tab .ico svg { width: 20px; height: 20px; }
 
 /* --- Reminders --- */
 .due-banner { display: flex; gap: 12px; align-items: center; background: #fdeede; border: 1px solid #f3d9bd;
@@ -242,6 +246,16 @@ a { color: inherit; text-decoration: none; }
 .cl-date { color: var(--muted); font-size: .8rem; margin: 4px 0 10px; }
 .cl-list { margin: 0; padding-left: 20px; }
 .cl-list li { margin-bottom: 8px; line-height: 1.5; }
+
+/* --- How it works guide --- */
+.guide-sec { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.guide-sec h3 { color: var(--brand-ink); margin: 0 0 8px; }
+.guide-sec p { margin: 0 0 8px; line-height: 1.55; }
+.guide-sec ul { margin: 0 0 4px; padding-left: 20px; }
+.guide-sec li { margin-bottom: 7px; line-height: 1.5; }
+.guide-sec a { color: var(--brand-ink); font-weight: 600; }
+.guide-sec code { background: var(--surface-2); padding: 1px 5px; border-radius: 5px; font-size: .85em; }
 
 /* --- Preset picker & buttons --- */
 .preset-pick { display: block; margin-bottom: 16px; font-size: .85rem; font-weight: 600; color: var(--muted); }

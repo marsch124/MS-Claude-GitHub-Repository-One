@@ -43,6 +43,11 @@ No account, no server, no cost.
   (export / import) and **CSV export** for spreadsheets.
 - **Light / dark / system theme** toggle.
 
+## Guide
+
+New here? Read the illustrated **[How FermentLog works](docs/HOW-IT-WORKS.md)** walkthrough,
+or open it in the app at **Settings → How FermentLog works**.
+
 ## Run it locally
 
 ```bash
