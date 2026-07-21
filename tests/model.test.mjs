@@ -7,7 +7,7 @@ import {
   nextCheckDue, isCheckDue, dueBatches, recommendation, toCSV,
   presetFromBatch, batchFromPreset, duplicateBatch, DEFAULT_REMIND_DAYS,
   VEGETABLES, usedVegetables, mergeVegetables,
-  COMMON_SPICES, usedSpices, mergeSpices,
+  COMMON_SPICES, usedSpices, mergeSpices, renamedList, withoutItem,
 } from '../js/model.js';
 import { APP_VERSION, CHANGELOG } from '../js/changelog.js';
 
@@ -229,6 +229,19 @@ test('mergeSpices: built-ins first, then unique extras', () => {
   assert.equal(merged.filter((s) => s === 'Turmeric').length, 1);
   assert.equal(merged.filter((s) => s === 'Garlic').length, 1);
   assert.ok(merged.includes('Turmeric'));
+});
+
+test('renamedList: replaces, de-duplicates, drops blanks', () => {
+  assert.deepEqual(renamedList(['Garlic', 'Dill'], 'Garlic', 'Roasted garlic'), ['Roasted garlic', 'Dill']);
+  // renaming onto an existing value merges (no duplicate)
+  assert.deepEqual(renamedList(['Garlic', 'Dill'], 'Dill', 'Garlic'), ['Garlic']);
+  assert.deepEqual(renamedList(['A', ''], 'A', ''), []); // blanks dropped
+  assert.deepEqual(renamedList(null, 'x', 'y'), []);
+});
+
+test('withoutItem: removes all occurrences', () => {
+  assert.deepEqual(withoutItem(['Garlic', 'Dill', 'Garlic'], 'Garlic'), ['Dill']);
+  assert.deepEqual(withoutItem(null, 'x'), []);
 });
 
 // ---------- changelog integrity ----------

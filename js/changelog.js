@@ -2,9 +2,21 @@
 // APP_VERSION is the single source of truth shown in Settings and used to
 // decide when to surface the "What's new" banner. Newest entry first.
 
-export const APP_VERSION = '3.0';
+export const APP_VERSION = '3.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.1',
+    date: '2026-07-21',
+    title: 'Manage your vegetables & spices',
+    changes: [
+      'New "Vegetables & spices" area in Settings — rename or remove any vegetable or spice you\'ve added.',
+      'Renaming updates the name everywhere it\'s used — across all your batches and saved recipes — so nothing ever gets out of sync.',
+      'Each item shows how many batches use it, so you always know what a change will affect.',
+      'Removing a spice also takes it off every batch and recipe that used it.',
+      'A vegetable that\'s still used by batches is protected from deletion (rename it, or change those batches first) so no batch is ever left without a vegetable.',
+    ],
+  },
   {
     version: '3.0',
     date: '2026-07-21',

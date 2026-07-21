@@ -4,7 +4,7 @@ import {
   computeBrinePercent, isBrineInRange, daysBetween, fermentDays, batchStatus, statusLabel,
   overallRating, summarizeStats, recommendation, newBatch, ratingStars,
   nextCheckDue, dueBatches, toCSV, presetFromBatch, batchFromPreset, duplicateBatch,
-  usedVegetables, mergeVegetables, usedSpices, mergeSpices,
+  usedVegetables, mergeVegetables, usedSpices, mergeSpices, renamedList, withoutItem,
 } from './model.js';
 import { APP_VERSION, CHANGELOG } from './changelog.js';
 import * as db from './db.js';
@@ -63,6 +63,45 @@ async function spiceOptionsFor(currentSpices = []) {
   return mergeSpices(extras);
 }
 
+// ---------- Managing custom vegetables & spices ----------
+function setList(key, list) { try { localStorage.setItem(key, JSON.stringify([...new Set(list.filter(Boolean))])); } catch {} }
+
+// Rename a vegetable everywhere it appears: remembered list, all batches, all presets.
+async function renameVegetable(oldName, newName) {
+  setList(VEG_KEY, renamedList(getCustomVegetables(), oldName, newName));
+  rememberVegetable(newName);
+  for (const b of await db.getAllBatches()) {
+    if (b.vegetable === oldName) { b.vegetable = newName; await db.saveBatch(b); }
+  }
+  for (const p of await db.getPresets()) {
+    if (p.vegetable === oldName) { p.vegetable = newName; await db.savePreset(p); }
+  }
+}
+// Only drops from the remembered list; callers guarantee it's unused by batches.
+function forgetVegetable(name) { setList(VEG_KEY, withoutItem(getCustomVegetables(), name)); }
+
+// Rename a spice everywhere: remembered list, all batches' additions, all presets' additions.
+async function renameSpice(oldName, newName) {
+  setList(SPICE_KEY, renamedList(getCustomSpices(), oldName, newName));
+  rememberSpice(newName);
+  for (const b of await db.getAllBatches()) {
+    if ((b.additions || []).includes(oldName)) { b.additions = renamedList(b.additions, oldName, newName); await db.saveBatch(b); }
+  }
+  for (const p of await db.getPresets()) {
+    if ((p.additions || []).includes(oldName)) { p.additions = renamedList(p.additions, oldName, newName); await db.savePreset(p); }
+  }
+}
+// Remove a spice from the remembered list and strip it from every batch and preset.
+async function removeSpice(name) {
+  setList(SPICE_KEY, withoutItem(getCustomSpices(), name));
+  for (const b of await db.getAllBatches()) {
+    if ((b.additions || []).includes(name)) { b.additions = withoutItem(b.additions, name); await db.saveBatch(b); }
+  }
+  for (const p of await db.getPresets()) {
+    if ((p.additions || []).includes(name)) { p.additions = withoutItem(p.additions, name); await db.savePreset(p); }
+  }
+}
+
 // ---------- "What's new" ----------
 const SEEN_KEY = 'fermentlog-seen-version';
 function isVersionUnseen() { try { return localStorage.getItem(SEEN_KEY) !== APP_VERSION; } catch { return false; } }
@@ -76,6 +115,7 @@ async function render() {
   else if (hash === '#/new') await renderNew();
   else if (hash === '#/insights') await renderInsights();
   else if (hash === '#/settings') await renderSettings();
+  else if (hash === '#/manage-lists') await renderManageLists();
   else if (hash === '#/changelog') renderChangelog();
   else if (hash.startsWith('#/edit/')) await editExisting(hash.slice(7));
   else if (hash.startsWith('#/batch/')) await renderDetail(hash.slice(8));
@@ -677,6 +717,12 @@ async function renderSettings() {
       </div>
 
       <div class="setting-block">
+        <h3>Vegetables & spices</h3>
+        <p class="muted">Rename or remove the vegetables and spices you've added.</p>
+        <a class="btn ghost" href="#/manage-lists">Manage vegetables &amp; spices →</a>
+      </div>
+
+      <div class="setting-block">
         <h3>Backup & export</h3>
         <p class="muted">Your data lives only on this device. Keep a backup, or export a spreadsheet.</p>
         <button class="btn primary" id="exportBtn">⬇ Export backup (JSON)</button>
@@ -739,6 +785,62 @@ async function renderSettings() {
       location.assign('#/');
     }
   });
+}
+
+// ---------- Manage vegetables & spices ----------
+async function renderManageLists() {
+  const batches = await db.getAllBatches();
+  const vegItems = [...new Set([...getCustomVegetables(), ...usedVegetables(batches)])].sort((a, b) => a.localeCompare(b));
+  const spiceItems = [...new Set([...getCustomSpices(), ...usedSpices(batches)])].sort((a, b) => a.localeCompare(b));
+  const vegCount = (name) => batches.filter((b) => b.vegetable === name).length;
+  const spiceCount = (name) => batches.filter((b) => (b.additions || []).includes(name)).length;
+
+  const row = (name, count, kind) => `<li>
+    <div class="ml-name">${esc(name)}<span class="ml-count">${count ? `used by ${count} batch${count > 1 ? 'es' : ''}` : 'unused'}</span></div>
+    <div class="ml-actions">
+      <button class="ml-btn" data-act="rename" data-kind="${kind}" data-name="${esc(name)}">Rename</button>
+      <button class="ml-btn danger" data-act="remove" data-kind="${kind}" data-name="${esc(name)}">Remove</button>
+    </div></li>`;
+
+  const vegList = vegItems.length ? vegItems.map((n) => row(n, vegCount(n), 'veg')).join('') : '<li class="muted">No custom vegetables yet.</li>';
+  const spiceList = spiceItems.length ? spiceItems.map((n) => row(n, spiceCount(n), 'spice')).join('') : '<li class="muted">No custom spices yet.</li>';
+
+  const screen = h(`<section class="screen">
+    <header class="topbar"><a class="back" href="#/settings">‹</a><h1>Vegetables & spices</h1></header>
+    <p class="cl-intro">Rename or remove the vegetables and spices you've added. Built-in ones aren't listed. Renaming updates every batch and recipe that uses the name.</p>
+    <div class="setting-block"><h3>Vegetables</h3><ul class="manage-list">${vegList}</ul></div>
+    <div class="setting-block"><h3>Spices</h3><ul class="manage-list">${spiceList}</ul></div>
+  </section>`);
+  swap(screen);
+  screen.querySelectorAll('.ml-btn').forEach((btn) => btn.addEventListener('click', () => onManageAction(btn, batches)));
+}
+
+async function onManageAction(btn, batches) {
+  const { act, kind, name } = btn.dataset;
+  if (act === 'rename') {
+    const next = prompt(`Rename "${name}" to:`, name);
+    if (next == null) return;
+    const nn = next.trim();
+    if (!nn || nn === name) return;
+    if (kind === 'veg') await renameVegetable(name, nn); else await renameSpice(name, nn);
+    renderManageLists();
+    return;
+  }
+  // remove
+  if (kind === 'veg') {
+    const count = batches.filter((b) => b.vegetable === name).length;
+    if (count > 0) {
+      alert(`"${name}" is used by ${count} batch${count > 1 ? 'es' : ''}. Rename it, or change those batches first — a batch can't be left without a vegetable.`);
+      return;
+    }
+    if (!confirm(`Remove "${name}" from your vegetables?`)) return;
+    forgetVegetable(name);
+  } else {
+    const count = batches.filter((b) => (b.additions || []).includes(name)).length;
+    if (!confirm(count ? `Remove "${name}"? It will also be removed from ${count} batch${count > 1 ? 'es' : ''}.` : `Remove "${name}"?`)) return;
+    await removeSpice(name);
+  }
+  renderManageLists();
 }
 
 // ---------- Changelog ----------

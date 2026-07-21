@@ -44,6 +44,16 @@ export function usedSpices(batches) {
   return [...extras].sort((a, b) => a.localeCompare(b));
 }
 
+/** Replace every occurrence of oldName with newName; de-duplicate; drop blanks. */
+export function renamedList(list, oldName, newName) {
+  return [...new Set((Array.isArray(list) ? list : []).map((x) => (x === oldName ? newName : x)).filter(Boolean))];
+}
+
+/** Remove every occurrence of name from a list. */
+export function withoutItem(list, name) {
+  return (Array.isArray(list) ? list : []).filter((x) => x !== name);
+}
+
 /** Built-in spices first (original order), then any unique extras as given. */
 export function mergeSpices(extra = []) {
   const seen = new Set();
