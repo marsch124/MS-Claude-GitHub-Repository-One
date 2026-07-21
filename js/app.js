@@ -1,11 +1,12 @@
 // app.js — screens, navigation and wiring for FermentLog.
 import {
-  VEGETABLES, LID_TYPES, WEIGHT_TYPES, PROBLEMS, COMMON_ADDITIONS, DEFAULT_REMIND_DAYS,
+  VEGETABLES, LID_TYPES, WEIGHT_TYPES, PROBLEMS, COMMON_SPICES, DEFAULT_REMIND_DAYS,
   computeBrinePercent, isBrineInRange, daysBetween, fermentDays, batchStatus, statusLabel,
   overallRating, summarizeStats, recommendation, newBatch, ratingStars,
   nextCheckDue, dueBatches, toCSV, presetFromBatch, batchFromPreset, duplicateBatch,
-  usedVegetables, mergeVegetables,
+  usedVegetables, mergeVegetables, usedSpices, mergeSpices,
 } from './model.js';
+import { APP_VERSION, CHANGELOG } from './changelog.js';
 import * as db from './db.js';
 import { barChart, scatterChart } from './charts.js';
 
@@ -46,6 +47,27 @@ async function vegetableOptionsFor(currentVeg) {
   return mergeVegetables(extras);
 }
 
+// ---------- Custom spices (remembered on this device) ----------
+const SPICE_KEY = 'fermentlog-spices';
+function getCustomSpices() { try { return JSON.parse(localStorage.getItem(SPICE_KEY)) || []; } catch { return []; } }
+function rememberSpice(name) {
+  const s = (name || '').trim();
+  if (!s || COMMON_SPICES.includes(s)) return;
+  const list = getCustomSpices();
+  if (!list.includes(s)) { list.push(s); try { localStorage.setItem(SPICE_KEY, JSON.stringify(list)); } catch {} }
+}
+async function spiceOptionsFor(currentSpices = []) {
+  const batches = await db.getAllBatches();
+  const extras = [...new Set([...usedSpices(batches), ...getCustomSpices(), ...currentSpices]
+    .filter((s) => s && !COMMON_SPICES.includes(s)))].sort((a, b) => a.localeCompare(b));
+  return mergeSpices(extras);
+}
+
+// ---------- "What's new" ----------
+const SEEN_KEY = 'fermentlog-seen-version';
+function isVersionUnseen() { try { return localStorage.getItem(SEEN_KEY) !== APP_VERSION; } catch { return false; } }
+function markVersionSeen() { try { localStorage.setItem(SEEN_KEY, APP_VERSION); } catch {} }
+
 // ---------- Router ----------
 async function render() {
   const hash = location.hash || '#/';
@@ -54,6 +76,7 @@ async function render() {
   else if (hash === '#/new') await renderNew();
   else if (hash === '#/insights') await renderInsights();
   else if (hash === '#/settings') await renderSettings();
+  else if (hash === '#/changelog') renderChangelog();
   else if (hash.startsWith('#/edit/')) await editExisting(hash.slice(7));
   else if (hash.startsWith('#/batch/')) await renderDetail(hash.slice(8));
   else await renderList();
@@ -81,6 +104,15 @@ async function renderList() {
       <a class="btn primary" href="#/new">＋ New batch</a>
     </div>`));
     return swap(wrap);
+  }
+
+  if (isVersionUnseen()) {
+    const wn = h(`<a class="whatsnew-banner" href="#/changelog">
+      <span class="wn-ico">✨</span>
+      <div><strong>FermentLog v${APP_VERSION} — what's new</strong>
+      <div class="wn-sub">Tap to see everything that's been added.</div></div>
+    </a>`);
+    wrap.appendChild(wn);
   }
 
   const due = dueBatches(batches);
@@ -125,18 +157,19 @@ function batchCard(b) {
 // ---------- New batch (with preset picker) ----------
 async function renderNew() {
   const batch = newBatch();
-  const [presets, vegOptions] = await Promise.all([db.getPresets(), vegetableOptionsFor(batch.vegetable)]);
-  renderForm(batch, false, presets, vegOptions);
+  const [presets, vegOptions, spiceOptions] = await Promise.all([
+    db.getPresets(), vegetableOptionsFor(batch.vegetable), spiceOptionsFor(batch.additions)]);
+  renderForm(batch, false, presets, vegOptions, spiceOptions);
 }
 
 async function editExisting(id) {
   const b = await db.getBatch(id);
   if (!b) return location.assign('#/');
-  const vegOptions = await vegetableOptionsFor(b.vegetable);
-  renderForm(structuredClone(b), true, [], vegOptions);
+  const [vegOptions, spiceOptions] = await Promise.all([vegetableOptionsFor(b.vegetable), spiceOptionsFor(b.additions)]);
+  renderForm(structuredClone(b), true, [], vegOptions, spiceOptions);
 }
 
-function renderForm(batch, isEdit, presets, vegOptions) {
+function renderForm(batch, isEdit, presets, vegOptions, spiceOptions) {
   editing = batch;
   // Make sure this batch's own vegetable is always selectable.
   const options = batch.vegetable && !vegOptions.includes(batch.vegetable) ? [...vegOptions, batch.vegetable] : vegOptions;
@@ -144,8 +177,10 @@ function renderForm(batch, isEdit, presets, vegOptions) {
     + `<option value="${ADD_VEG}">＋ Add another vegetable…</option>`;
   const lids = LID_TYPES.map((v) => `<option ${v === batch.lidType ? 'selected' : ''}>${v}</option>`).join('');
   const weights = WEIGHT_TYPES.map((v) => `<option ${v === batch.weightType ? 'selected' : ''}>${v}</option>`).join('');
-  const addChips = COMMON_ADDITIONS.map((a) =>
-    `<label class="chip"><input type="checkbox" value="${a}" ${batch.additions?.includes(a) ? 'checked' : ''}>${a}</label>`).join('');
+  // Spice chips: built-ins + remembered + any this batch already has.
+  const spiceList = [...new Set([...spiceOptions, ...(batch.additions || [])])];
+  const spiceChips = spiceList.map((a) =>
+    `<label class="chip"><input type="checkbox" value="${esc(a)}" ${batch.additions?.includes(a) ? 'checked' : ''}>${esc(a)}</label>`).join('');
   const presetOpts = (presets || []).map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
 
   const form = h(`<section class="screen">
@@ -173,8 +208,12 @@ function renderForm(batch, isEdit, presets, vegOptions) {
           <label>Room temp (°C) <input type="number" step="0.5" name="roomTempC" value="${batch.roomTempC}"></label>
           <label>Jar size (ml) <input type="number" step="1" min="0" name="jarSizeMl" value="${batch.jarSizeMl}"></label>
         </div>
-        <div class="field-label">Additions</div>
-        <div class="chips">${addChips}</div>
+        <div class="field-label">Spices</div>
+        <div class="chips" id="spiceChips">${spiceChips}</div>
+        <div class="add-spice">
+          <input id="newSpice" placeholder="Add a spice…" autocomplete="off">
+          <button type="button" id="addSpiceBtn" class="btn ghost small">＋ Add</button>
+        </div>
       </fieldset>
 
       <fieldset><legend>Equipment</legend>
@@ -231,6 +270,25 @@ function renderForm(batch, isEdit, presets, vegOptions) {
   vegSel.addEventListener('change', toggleCustom);
   toggleCustom();
 
+  // Add a custom spice as a new checked chip (and remember it for next time).
+  const spiceChipsBox = $('#spiceChips', form);
+  const newSpiceInput = $('#newSpice', form);
+  const addSpice = () => {
+    const name = newSpiceInput.value.trim();
+    if (!name) return;
+    const existing = [...spiceChipsBox.querySelectorAll('input')].find((c) => c.value.toLowerCase() === name.toLowerCase());
+    if (existing) { existing.checked = true; }
+    else {
+      const chip = h(`<label class="chip"><input type="checkbox" value="${esc(name)}" checked>${esc(name)}</label>`);
+      spiceChipsBox.appendChild(chip);
+    }
+    rememberSpice(name);
+    newSpiceInput.value = '';
+    newSpiceInput.focus();
+  };
+  $('#addSpiceBtn', form).addEventListener('click', addSpice);
+  newSpiceInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addSpice(); } });
+
   const picker = $('#presetPick', form);
   if (picker) picker.addEventListener('change', () => {
     const p = presets.find((x) => x.id === picker.value);
@@ -238,7 +296,7 @@ function renderForm(batch, isEdit, presets, vegOptions) {
     const filled = batchFromPreset(p);
     editing = filled;
     const opts = options.includes(filled.vegetable) ? options : [...options, filled.vegetable];
-    renderForm(filled, false, presets, opts); // re-render prefilled (keeps preset list + options)
+    renderForm(filled, false, presets, opts, spiceOptions); // re-render prefilled (keeps lists)
   });
 
   renderPhotos(form);
@@ -376,7 +434,7 @@ async function renderDetail(id) {
         <div class="stat"><span>Weight</span><strong>${esc(b.weightType || '—')}</strong></div>
       </div>
 
-      <div class="detail-block"><h3>Additions</h3><div class="tags">${additions}</div></div>
+      <div class="detail-block"><h3>Spices</h3><div class="tags">${additions}</div></div>
       ${b.notes ? `<div class="detail-block"><h3>Notes</h3><p>${esc(b.notes)}</p></div>` : ''}
 
       <div class="detail-block">
@@ -630,7 +688,7 @@ async function renderSettings() {
         <h3>Danger zone</h3>
         <button class="btn danger" id="wipeBtn">Delete all data</button>
       </div>
-      <p class="version">FermentLog · works offline · v2</p>
+      <p class="version">FermentLog v${APP_VERSION} · works offline · <a href="#/changelog">What's new${isVersionUnseen() ? ' <span class="new-badge">●</span>' : ''}</a></p>
     </div>
   </section>`);
   swap(screen);
@@ -681,6 +739,26 @@ async function renderSettings() {
       location.assign('#/');
     }
   });
+}
+
+// ---------- Changelog ----------
+function renderChangelog() {
+  markVersionSeen();
+  const screen = h(`<section class="screen">
+    <header class="topbar"><a class="back" href="#/settings">‹</a><h1>What's new</h1></header>
+    <p class="cl-intro">Every improvement to FermentLog, newest first. 🥕</p>
+  </section>`);
+  const list = h('<div class="changelog"></div>');
+  for (const entry of CHANGELOG) {
+    const items = entry.changes.map((c) => `<li>${esc(c)}</li>`).join('');
+    list.appendChild(h(`<div class="cl-entry">
+      <div class="cl-head"><span class="cl-ver">v${esc(entry.version)}</span><span class="cl-title">${esc(entry.title)}</span></div>
+      <div class="cl-date">${esc(entry.date)}</div>
+      <ul class="cl-list">${items}</ul>
+    </div>`));
+  }
+  screen.appendChild(list);
+  swap(screen);
 }
 
 // ---------- helpers ----------

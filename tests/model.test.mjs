@@ -7,7 +7,9 @@ import {
   nextCheckDue, isCheckDue, dueBatches, recommendation, toCSV,
   presetFromBatch, batchFromPreset, duplicateBatch, DEFAULT_REMIND_DAYS,
   VEGETABLES, usedVegetables, mergeVegetables,
+  COMMON_SPICES, usedSpices, mergeSpices,
 } from '../js/model.js';
+import { APP_VERSION, CHANGELOG } from '../js/changelog.js';
 
 test('computeBrinePercent: standard 2.5% brine', () => {
   assert.equal(computeBrinePercent(25, 975), 2.5);
@@ -207,6 +209,39 @@ test('mergeVegetables: built-ins first, then unique extras', () => {
   assert.equal(merged.filter((v) => v === 'Kohlrabi').length, 1); // de-duped
   assert.equal(merged.filter((v) => v === 'Carrot sticks').length, 1);
   assert.ok(merged.includes('Kohlrabi'));
+});
+
+// ---------- custom spices ----------
+test('usedSpices: distinct non-built-in spices from batch additions, sorted', () => {
+  const batches = [
+    { additions: ['Garlic', 'Turmeric'] }, // Garlic built-in, Turmeric custom
+    { additions: ['Fennel seed', 'Turmeric'] },
+    { additions: [] },
+    {},
+  ];
+  assert.deepEqual(usedSpices(batches), ['Fennel seed', 'Turmeric']);
+  assert.deepEqual(usedSpices([]), []);
+});
+
+test('mergeSpices: built-ins first, then unique extras', () => {
+  const merged = mergeSpices(['Turmeric', 'Garlic', 'Turmeric']);
+  assert.equal(merged[0], COMMON_SPICES[0]);
+  assert.equal(merged.filter((s) => s === 'Turmeric').length, 1);
+  assert.equal(merged.filter((s) => s === 'Garlic').length, 1);
+  assert.ok(merged.includes('Turmeric'));
+});
+
+// ---------- changelog integrity ----------
+test('changelog: APP_VERSION matches the newest entry, entries well-formed', () => {
+  assert.equal(CHANGELOG[0].version, APP_VERSION);
+  for (const entry of CHANGELOG) {
+    assert.ok(entry.version && entry.title && entry.date);
+    assert.ok(Array.isArray(entry.changes) && entry.changes.length > 0);
+    assert.ok(entry.changes.every((c) => typeof c === 'string' && c.length));
+  }
+  // versions are unique
+  const versions = CHANGELOG.map((e) => e.version);
+  assert.equal(new Set(versions).size, versions.length);
 });
 
 test('duplicateBatch: copies recipe, resets progress and names it (copy)', () => {

@@ -14,10 +14,14 @@ No account, no server, no cost.
 - **Log a batch fast** — carrot sticks pre-filled, salt + water auto-calculates the
   brine %, with a hint for the recommended 2–3% range. Start from a **saved recipe**
   or **duplicate** a previous batch in one tap.
-- **Track everything:** conditions, equipment (vessel / weight / lid), timeline
-  check-ins (add & remove individually), outcome ratings (taste, sourness, crunch,
-  overall), problems seen (mould, kahm yeast, mushy…), photos (reorder / remove),
-  and free-text notes.
+- **Track everything:** conditions, **spices** (add your own and they're remembered),
+  equipment (vessel / weight / lid), timeline check-ins (add & remove individually),
+  outcome ratings (taste, sourness, crunch, overall), problems seen (mould, kahm yeast,
+  mushy…), photos (reorder / remove), and free-text notes.
+- **Add your own vegetables & spices** — type a new one once and it becomes a normal,
+  remembered option next time.
+- **In-app changelog** — browse every improvement version-by-version from Settings →
+  "What's new".
 - **Taste-test reminders** — set a per-batch interval; the app flags batches that are
   due, and (with permission) shows a notification when you open it.
 - **Insights** — success rate, average rating, and scatter charts for rating vs.

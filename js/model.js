@@ -30,7 +30,29 @@ export function mergeVegetables(extra = []) {
 export const LID_TYPES = ['Airlock', 'Burping / self-venting lid', 'Plain lid', 'Cloth / open'];
 export const WEIGHT_TYPES = ['Glass weight', 'Ceramic weight', 'Cabbage leaf', 'Smaller jar', 'None'];
 export const PROBLEMS = ['Mould', 'Kahm yeast', 'Mushy / soft', 'Too salty', 'Not sour enough', 'Off smell'];
-export const COMMON_ADDITIONS = ['Garlic', 'Dill', 'Mustard seed', 'Black pepper', 'Bay leaf', 'Ginger', 'Chilli'];
+// Spices / flavourings. Stored on a batch under the `additions` field (kept for
+// backward compatibility with data saved before the rename to "Spices").
+export const COMMON_SPICES = ['Garlic', 'Dill', 'Mustard seed', 'Black pepper', 'Bay leaf', 'Ginger', 'Chilli'];
+
+/** Spices seen in past batches that aren't built-in — sorted, de-duplicated. */
+export function usedSpices(batches) {
+  const builtin = new Set(COMMON_SPICES);
+  const extras = new Set();
+  for (const b of (Array.isArray(batches) ? batches : [])) {
+    for (const s of (b && b.additions) || []) if (s && !builtin.has(s)) extras.add(s);
+  }
+  return [...extras].sort((a, b) => a.localeCompare(b));
+}
+
+/** Built-in spices first (original order), then any unique extras as given. */
+export function mergeSpices(extra = []) {
+  const seen = new Set();
+  const out = [];
+  for (const s of [...COMMON_SPICES, ...extra]) {
+    if (s && !seen.has(s)) { seen.add(s); out.push(s); }
+  }
+  return out;
+}
 
 // Recommended brine window for vegetable ferments.
 export const BRINE_MIN = 2.0;
@@ -293,7 +315,7 @@ export function toCSV(batches) {
     ['Vessel', (b) => b.vesselType],
     ['Weight', (b) => b.weightType],
     ['Lid', (b) => b.lidType],
-    ['Additions', (b) => (b.additions || []).join('; ')],
+    ['Spices', (b) => (b.additions || []).join('; ')],
     ['Status', (b) => statusLabel(batchStatus(b))],
     ['Success', (b) => (b.outcome && b.outcome.recorded ? (b.outcome.success ? 'yes' : 'no') : '')],
     ['Taste', (b) => (b.outcome && b.outcome.taste) ?? ''],
