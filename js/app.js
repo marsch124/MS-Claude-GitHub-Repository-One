@@ -8,7 +8,7 @@ import {
   RECIPE_CATEGORIES, newRecipe, duplicateRecipe, sampleSourdoughRecipe,
 } from './model.js';
 import { APP_VERSION, CHANGELOG } from './changelog.js';
-import { hasApiKey, getApiKey, setApiKey, buildRecipeFromText } from './ai.js';
+import { hasApiKey, getApiKey, setApiKey, buildRecipeFromText, buildBatchFromText } from './ai.js';
 import * as db from './db.js';
 import { barChart, scatterChart } from './charts.js';
 
@@ -235,6 +235,13 @@ function renderForm(batch, isEdit, presets, vegOptions, spiceOptions) {
   const form = h(`<section class="screen">
     <header class="topbar"><a class="back" href="${isEdit ? `#/batch/${batch.id}` : '#/'}">‹</a><h1>${isEdit ? 'Edit batch' : 'New batch'}</h1></header>
     <form id="batchForm" class="form">
+      ${!isEdit ? `<fieldset class="ai-panel"><legend>✨ Build with AI</legend>
+        <div class="field-label">Describe or dictate this batch — tap the 🎤 on your keyboard and talk. AI fills in the fields below for you to review.</div>
+        <textarea id="aiText" rows="3" placeholder="e.g. Carrot sticks in a 2.5% brine, about 20°C, glass weight and a burping lid, garlic and dill, taste every 3 days."></textarea>
+        <button type="button" id="aiBuild" class="btn ghost full">✨ Build batch with AI</button>
+        <div id="aiStatus" class="hint"></div>
+      </fieldset>` : ''}
+
       ${!isEdit && presetOpts ? `<label class="preset-pick">Start from a batch template
         <select id="presetPick"><option value="">— none —</option>${presetOpts}</select></label>` : ''}
 
@@ -337,6 +344,32 @@ function renderForm(batch, isEdit, presets, vegOptions, spiceOptions) {
   };
   $('#addSpiceBtn', form).addEventListener('click', addSpice);
   newSpiceInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addSpice(); } });
+
+  const aiBtn = $('#aiBuild', form);
+  if (aiBtn) aiBtn.addEventListener('click', async () => {
+    const text = $('#aiText', form).value.trim();
+    const status = $('#aiStatus', form);
+    if (!text) { status.className = 'hint caution'; status.textContent = 'Type or dictate a description first.'; return; }
+    if (!hasApiKey()) {
+      status.className = 'hint caution';
+      status.innerHTML = 'Add your Anthropic API key in <a href="#/settings">Settings → AI assistant</a> first.';
+      return;
+    }
+    aiBtn.disabled = true;
+    status.className = 'hint';
+    status.textContent = '✨ Building your batch…';
+    try {
+      const built = await buildBatchFromText(text);
+      built.id = editing.id;                 // keep the same draft
+      built.createdAt = editing.createdAt;
+      editing = built;
+      renderForm(editing, false, presets, vegOptions, spiceOptions); // re-render with fields filled
+    } catch (e) {
+      aiBtn.disabled = false;
+      status.className = 'hint caution';
+      status.textContent = '⚠ ' + e.message;
+    }
+  });
 
   const picker = $('#presetPick', form);
   if (picker) picker.addEventListener('change', () => {
@@ -731,13 +764,46 @@ async function renderSettings() {
         <a class="btn ghost" href="#/manage-lists">Manage vegetables &amp; spices →</a>
       </div>
 
-      <div class="setting-block">
-        <h3>AI recipe assistant</h3>
-        <p class="muted">Optional. Lets you build a recipe by describing or dictating it. Uses your own Anthropic API key, stored only on this device; only the text you describe is sent to Anthropic. <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Get a key ↗</a></p>
-        <label>API key <input type="password" id="aiKey" placeholder="sk-ant-…" autocomplete="off" value="${esc(getApiKey())}"></label>
-        <button class="btn ghost" id="saveKey">Save key</button>
-        <button class="btn ghost" id="clearKey">Clear</button>
-        <span id="keyState" class="muted">${hasApiKey() ? '✓ key saved' : ''}</span>
+      <div class="setting-block ai-settings">
+        <h3>✨ AI assistant <span class="ai-badge">${hasApiKey() ? 'on' : 'optional'}</span></h3>
+        <p class="muted">Fill in a <strong>recipe</strong> or start a <strong>batch</strong> just by describing it in your own words — or dictating it with the 🎤 on your keyboard. You always review and edit before anything is saved.</p>
+
+        <div class="ai-about">
+          <h4>How it works</h4>
+          <ul>
+            <li>On a <strong>new batch</strong> or a <strong>new recipe</strong> you'll see a “<strong>✨ Build with AI</strong>” box. Type or dictate a description (e.g. <em>“carrots, 2.5% brine, 20°C, airlock, garlic and dill”</em>), tap the button, and the fields fill in for you.</li>
+            <li>It's powered by <strong>Claude Opus 4.8</strong>, Anthropic's most capable model, so it understands loose, natural descriptions.</li>
+            <li>Nothing is ever saved automatically — the AI only <em>fills in the form</em>, and you review, tweak, and save yourself.</li>
+          </ul>
+
+          <h4>Your key, your data — private by design</h4>
+          <ul>
+            <li>It uses <strong>your own Anthropic API key</strong>, stored <strong>only on this device</strong>. The key is never sent to us or to GitHub and never leaves your phone except to talk directly to Anthropic.</li>
+            <li>Only the <strong>text you describe</strong> is sent to Anthropic, so it can structure it. Your batches, photos, ratings, notes, recipes and everything else <strong>stay on your device</strong> and are never uploaded.</li>
+            <li>The rest of FermentLog works <strong>fully offline</strong> — only this one button needs the internet.</li>
+          </ul>
+
+          <h4>What it costs</h4>
+          <ul>
+            <li>Billed <strong>pay-as-you-go on your own Anthropic account</strong>, not through this app. A recipe or batch is only a few hundred words, so it costs a <strong>fraction of a cent</strong> each; even hundreds add up to a euro or two.</li>
+            <li>You're always in control of spending at <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com ↗</a>.</li>
+          </ul>
+
+          <h4>Set it up once</h4>
+          <ol>
+            <li>Create a free account at <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com ↗</a> and add a little pay-as-you-go credit.</li>
+            <li>Open <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">API keys ↗</a> and create a key — it starts with <code>sk-ant-</code>.</li>
+            <li>Paste it below and tap <strong>Save key</strong>. The “Build with AI” buttons light up straight away.</li>
+          </ol>
+        </div>
+
+        <label>Your API key <input type="password" id="aiKey" placeholder="sk-ant-…" autocomplete="off" value="${esc(getApiKey())}"></label>
+        <div class="ai-key-actions">
+          <button class="btn ghost" id="saveKey">Save key</button>
+          <button class="btn ghost" id="clearKey">Clear</button>
+          <span id="keyState" class="muted">${hasApiKey() ? '✓ key saved on this device' : ''}</span>
+        </div>
+        <p class="muted small-note">You can remove the key anytime with <strong>Clear</strong> — it's deleted from this device immediately.</p>
       </div>
 
       <div class="setting-block">
@@ -785,7 +851,7 @@ async function renderSettings() {
   const keyState = $('#keyState', screen);
   $('#saveKey', screen).addEventListener('click', () => {
     setApiKey($('#aiKey', screen).value);
-    keyState.textContent = hasApiKey() ? '✓ key saved' : '';
+    keyState.textContent = hasApiKey() ? '✓ key saved on this device' : '';
   });
   $('#clearKey', screen).addEventListener('click', () => {
     setApiKey('');
@@ -1062,7 +1128,7 @@ function renderRecipeForm(recipe, isEdit = false) {
     if (!text) { status.className = 'hint caution'; status.textContent = 'Type or dictate a description first.'; return; }
     if (!hasApiKey()) {
       status.className = 'hint caution';
-      status.innerHTML = 'Add your Anthropic API key in <a href="#/settings">Settings → AI recipe assistant</a> first.';
+      status.innerHTML = 'Add your Anthropic API key in <a href="#/settings">Settings → AI assistant</a> first.';
       return;
     }
     aiBtn.disabled = true;

@@ -11,7 +11,7 @@ import {
   newRecipe, duplicateRecipe, sampleSourdoughRecipe, RECIPE_CATEGORIES,
 } from '../js/model.js';
 import { APP_VERSION, CHANGELOG } from '../js/changelog.js';
-import { normalizeRecipe, extractJSON } from '../js/ai.js';
+import { normalizeRecipe, extractJSON, normalizeBatch } from '../js/ai.js';
 
 test('computeBrinePercent: standard 2.5% brine', () => {
   assert.equal(computeBrinePercent(25, 975), 2.5);
@@ -298,6 +298,33 @@ test('normalizeRecipe: keeps a valid category and full steps', () => {
   const r = normalizeRecipe({ title: 'Loaf', category: 'Sourdough', steps: [{ title: 'Bake', detail: 'hot', time: '45 min' }] });
   assert.equal(r.category, 'Sourdough');
   assert.deepEqual(r.steps[0], { title: 'Bake', detail: 'hot', time: '45 min' });
+});
+
+test('normalizeBatch: coerces numbers, maps lid/weight, keeps defaults', () => {
+  const b = normalizeBatch({
+    name: 'Spicy', vegetable: 'Kohlrabi', saltGrams: 26, waterMl: 1000, roomTempC: 19,
+    jarSizeMl: null, additions: ['Garlic', ''], vesselType: 'Glass jar',
+    lidType: 'airlock', weightType: 'glass weight', remindEveryDays: 2,
+  });
+  assert.equal(b.name, 'Spicy');
+  assert.equal(b.vegetable, 'Kohlrabi');
+  assert.equal(b.saltGrams, 26);
+  assert.equal(b.roomTempC, 19);
+  assert.equal(b.lidType, 'Airlock');          // mapped to canonical option
+  assert.equal(b.weightType, 'Glass weight');
+  assert.deepEqual(b.additions, ['Garlic']);   // blank dropped
+  assert.equal(b.remindEveryDays, 2);
+  assert.equal(b.jarSizeMl, 1000);             // null → default kept
+  assert.ok(b.id.startsWith('b_'));            // real batch skeleton
+  assert.deepEqual(b.checkIns, []);
+  assert.equal(b.outcome, null);
+});
+
+test('normalizeBatch: empty input falls back to carrot defaults', () => {
+  const b = normalizeBatch({});
+  assert.equal(b.vegetable, 'Carrot sticks');
+  assert.equal(b.saltGrams, 25);
+  assert.equal(b.waterMl, 1000);
 });
 
 test('extractJSON: parses clean JSON and JSON embedded in prose', () => {

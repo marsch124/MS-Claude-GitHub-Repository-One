@@ -2,9 +2,19 @@
 // APP_VERSION is the single source of truth shown in Settings and used to
 // decide when to surface the "What's new" banner. Newest entry first.
 
-export const APP_VERSION = '4.1';
+export const APP_VERSION = '4.2';
 
 export const CHANGELOG = [
+  {
+    version: '4.2',
+    date: '2026-07-21',
+    title: 'Start a batch by talking to it too 🎤🫙',
+    changes: [
+      'The "Build with AI" box now works for batches as well as recipes: on a new batch, describe or dictate the jar — e.g. "carrots, 2.5% brine, 20°C, airlock, garlic and dill, taste every 3 days" — and it fills in vegetable, salt/water (it even works out the grams from a brine %), temperature, spices, equipment and the reminder for you to review.',
+      'Settings now has a full write-up of the AI assistant: how it works, exactly what stays private on your device, what it costs, and a step-by-step guide to getting a key.',
+      'Same as before: optional, uses your own Anthropic API key stored only on your device, and only the text you describe is ever sent — everything else stays offline.',
+    ],
+  },
   {
     version: '4.1',
     date: '2026-07-21',
