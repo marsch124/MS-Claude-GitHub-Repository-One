@@ -77,6 +77,15 @@ a { color: inherit; text-decoration: none; }
 .empty-emoji { font-size: 3.5rem; }
 .empty p { color: var(--muted); margin: 6px 0 22px; }
 
+/* Home summary strip + section headings */
+.home-stats { display: flex; gap: 8px; margin-bottom: 14px; }
+.hs { flex: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 6px; text-align: center; font-size: .72rem; color: var(--muted); box-shadow: var(--shadow); }
+.hs strong { display: block; font-size: 1.25rem; font-weight: 800; color: var(--brand-ink); }
+.group-h { font-size: .95rem; color: var(--brand-ink); margin: 4px 0 10px; display: flex; align-items: baseline; gap: 8px; }
+.group-h span { color: var(--muted); font-weight: 600; font-size: .8rem; }
+.group-h + .cards { margin-bottom: 18px; }
+
 /* Cards list */
 .cards { display: flex; flex-direction: column; gap: 12px; }
 .card {

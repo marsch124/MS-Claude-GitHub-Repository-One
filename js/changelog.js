@@ -4,9 +4,19 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.2';
+export const APP_VERSION = '5.3';
 
 export const CHANGELOG = [
+  {
+    version: '5.3',
+    date: '2026-07-21 · 19:34 CEST',
+    title: 'A livelier Batches home 🫙',
+    changes: [
+      'The Batches screen now opens with an at-a-glance summary — how many jars are fermenting, in the fridge, and done.',
+      'Your list is grouped with Ongoing jars first (due-for-a-taste ones right at the top), so the jar you want to open is always within easy reach, with finished ones below.',
+      'A warmer empty state for your very first jar, with a quick link to the guide.',
+    ],
+  },
   {
     version: '5.2',
     date: '2026-07-21 · 19:18 CEST',

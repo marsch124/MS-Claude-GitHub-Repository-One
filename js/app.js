@@ -184,11 +184,23 @@ async function fillJars(wrap) {
     wrap.appendChild(h(`<div class="empty">
       <div class="empty-emoji">🥕</div>
       <h2>No jars yet</h2>
-      <p>Start your first jar and begin learning what makes the best ferment.</p>
+      <p>Start your first jar and begin learning what makes the best ferment. Log the brine, temperature and spices, then track how it turns out.</p>
       <a class="btn primary" href="#/new">＋ New batch</a>
+      <a class="btn ghost" href="#/how">📖 How it works</a>
     </div>`));
     return;
   }
+
+  // At-a-glance summary of what's happening right now.
+  const nFerment = batches.filter((b) => batchStatus(b) === 'fermenting').length;
+  const nFridge = batches.filter((b) => batchStatus(b) === 'fridge').length;
+  const nDone = batches.filter((b) => batchStatus(b) === 'done').length;
+  wrap.appendChild(h(`<div class="home-stats">
+    <span class="hs"><strong>${nFerment}</strong> fermenting</span>
+    <span class="hs"><strong>${nFridge}</strong> in fridge</span>
+    <span class="hs"><strong>${nDone}</strong> done</span>
+  </div>`));
+
   const due = dueBatches(batches);
   if (due.length) {
     wrap.appendChild(h(`<div class="due-banner">
@@ -197,9 +209,32 @@ async function fillJars(wrap) {
       <div class="due-names">${due.map((b) => esc(b.name || b.vegetable)).join(' · ')}</div></div>
     </div>`));
   }
-  const list = h('<div class="cards"></div>');
-  for (const b of batches) list.appendChild(batchCard(b));
-  wrap.appendChild(list);
+
+  // Ongoing jars first (still fermenting / in fridge), most-actionable at the top.
+  const dueIds = new Set(due.map((b) => b.id));
+  const statusOrder = { fermenting: 0, fridge: 1 };
+  const ongoing = batches.filter((b) => batchStatus(b) !== 'done').sort((a, b) => {
+    const ad = dueIds.has(a.id) ? 0 : 1;
+    const bd = dueIds.has(b.id) ? 0 : 1;
+    if (ad !== bd) return ad - bd;                                   // due ones first
+    if (ad === 0) return (nextCheckDue(a) || '').localeCompare(nextCheckDue(b) || ''); // most overdue first
+    const ao = statusOrder[batchStatus(a)] ?? 2;
+    const bo = statusOrder[batchStatus(b)] ?? 2;
+    if (ao !== bo) return ao - bo;                                   // fermenting before fridge
+    return (b.startDate || '').localeCompare(a.startDate || '');     // newest first
+  });
+  const finished = batches.filter((b) => batchStatus(b) === 'done');
+
+  const section = (label, count, items) => {
+    if (!items.length) return;
+    // Only show headings when there is a split to make; a single group reads fine flat.
+    if (ongoing.length && finished.length) wrap.appendChild(h(`<h2 class="group-h">${label} <span>${count}</span></h2>`));
+    const list = h('<div class="cards"></div>');
+    for (const b of items) list.appendChild(batchCard(b));
+    wrap.appendChild(list);
+  };
+  section('Ongoing', ongoing.length, ongoing);
+  section('Finished', finished.length, finished);
 }
 
 async function fillBakes(wrap) {
