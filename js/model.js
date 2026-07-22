@@ -440,6 +440,50 @@ export function duplicateBake(bake, now = new Date()) {
   return b;
 }
 
+/** Aggregate bakes for the Bake insights screen. Degrades gracefully when empty. */
+export function summarizeBakes(bakes) {
+  const list = Array.isArray(bakes) ? bakes : [];
+  const rated = list
+    .map((b) => ({ bake: b, rating: overallBakeRating(b) }))
+    .filter((r) => r.rating != null)
+    .sort((a, b) => (a.bake.bakeDate || '').localeCompare(b.bake.bakeDate || ''));
+
+  const avgBy = (keyFn) => {
+    const buckets = new Map();
+    for (const r of rated) {
+      const key = keyFn(r.bake);
+      if (!key) continue;
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(r.rating);
+    }
+    return [...buckets.entries()]
+      .map(([label, vals]) => ({ label, value: round1(vals.reduce((a, b) => a + b, 0) / vals.length), count: vals.length }))
+      .sort((a, b) => b.value - a.value);
+  };
+
+  const problemCounts = new Map();
+  for (const b of list) for (const p of (b.problems || [])) problemCounts.set(p, (problemCounts.get(p) || 0) + 1);
+  const problems = [...problemCounts.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+
+  const ratings = rated.map((r) => r.rating);
+  const avgOverall = ratings.length ? round1(ratings.reduce((a, b) => a + b, 0) / ratings.length) : null;
+  let bestBake = null;
+  let bestRating = -Infinity;
+  for (const r of rated) if (r.rating > bestRating) { bestRating = r.rating; bestBake = r.bake; }
+
+  return {
+    total: list.length,
+    rated: rated.length,
+    avgOverall,
+    byRecipe: avgBy((b) => b.recipeTitle),
+    byCategory: avgBy((b) => b.category),
+    problems,
+    ratingOverTime: rated.map((r, i) => ({ x: i + 1, y: r.rating, name: r.bake.name })),
+    bestBake,
+    bestRating: bestBake ? round1(bestRating) : null,
+  };
+}
+
 // ---------- Recipes ----------
 
 export const RECIPE_CATEGORIES = ['Sourdough', 'Vegetable ferment', 'Drink / kombucha', 'Dairy', 'Other'];

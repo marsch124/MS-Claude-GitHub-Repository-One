@@ -3,11 +3,12 @@
 // batch is a single self-contained record (simple to export/import as JSON).
 
 const DB_NAME = 'fermentlog';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORE = 'batches';
 const PRESETS = 'presets';
 const RECIPES = 'recipes';
 const BAKES = 'bakes';
+const LESSONS = 'bakeLessons';
 
 function open() {
   return new Promise((resolve, reject) => {
@@ -19,6 +20,7 @@ function open() {
       if (!db.objectStoreNames.contains(PRESETS)) db.createObjectStore(PRESETS, { keyPath: 'id' });
       if (!db.objectStoreNames.contains(RECIPES)) db.createObjectStore(RECIPES, { keyPath: 'id' });
       if (!db.objectStoreNames.contains(BAKES)) db.createObjectStore(BAKES, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(LESSONS)) db.createObjectStore(LESSONS, { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -185,6 +187,35 @@ export async function deleteBake(id) {
   });
 }
 
+// --- Bake lessons ---
+
+export async function getBakeLessons() {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const req = tx(db, 'readonly', LESSONS).getAll();
+    req.onsuccess = () => resolve((req.result || []).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')));
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function saveBakeLesson(lesson) {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const req = tx(db, 'readwrite', LESSONS).put(lesson);
+    req.onsuccess = () => resolve(lesson);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function deleteBakeLesson(id) {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const req = tx(db, 'readwrite', LESSONS).delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
 async function putAll(store, items) {
   const db = await open();
   return new Promise((resolve, reject) => {
@@ -198,8 +229,8 @@ async function putAll(store, items) {
 // --- Backup helpers (Export / Import) ---
 
 export async function exportJSON() {
-  const [batches, presets, recipes, bakes] = await Promise.all([getAllBatches(), getPresets(), getRecipes(), getBakes()]);
-  return JSON.stringify({ app: 'fermentlog', version: 3, exportedAt: new Date().toISOString(), batches, presets, recipes, bakes }, null, 2);
+  const [batches, presets, recipes, bakes, bakeLessons] = await Promise.all([getAllBatches(), getPresets(), getRecipes(), getBakes(), getBakeLessons()]);
+  return JSON.stringify({ app: 'fermentlog', version: 4, exportedAt: new Date().toISOString(), batches, presets, recipes, bakes, bakeLessons }, null, 2);
 }
 
 export async function importJSON(text, { merge = false } = {}) {
@@ -219,6 +250,7 @@ export async function importJSON(text, { merge = false } = {}) {
     if (Array.isArray(data.presets)) await putAll(PRESETS, data.presets);
     if (Array.isArray(data.recipes)) await putAll(RECIPES, data.recipes);
     if (Array.isArray(data.bakes)) await putAll(BAKES, data.bakes);
+    if (Array.isArray(data.bakeLessons)) await putAll(LESSONS, data.bakeLessons);
   }
   return incoming.length;
 }

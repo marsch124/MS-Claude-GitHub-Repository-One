@@ -2,7 +2,7 @@
 // Calls the Anthropic Messages API directly from the browser using the user's
 // own API key (stored only on this device). Needs internet and a key; only the
 // text the user describes is sent. Everything else in the app stays on-device.
-import { RECIPE_CATEGORIES, newRecipe, newBatch, LID_TYPES, WEIGHT_TYPES } from './model.js';
+import { RECIPE_CATEGORIES, newRecipe, newBatch, LID_TYPES, WEIGHT_TYPES, BAKE_CATEGORIES, BAKE_PROBLEMS, newBake } from './model.js';
 
 const KEY_STORAGE = 'fermentlog-anthropic-key';
 const MODEL = 'claude-opus-4-8';
@@ -248,6 +248,58 @@ const TIPS_SCHEMA = {
   properties: { notes: { type: 'string' } },
   required: ['notes'],
 };
+
+// ---------- Bakes ----------
+
+const BAKE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    name: { type: 'string' },
+    category: { type: 'string', enum: BAKE_CATEGORIES },
+    bakeDate: { type: 'string' },
+    crust: NUM_OR_NULL,
+    crumb: NUM_OR_NULL,
+    flavour: NUM_OR_NULL,
+    overall: NUM_OR_NULL,
+    problems: { type: 'array', items: { type: 'string' } },
+    notes: { type: 'string' },
+  },
+  required: ['name', 'category', 'bakeDate', 'crust', 'crumb', 'flavour', 'overall', 'problems', 'notes'],
+};
+
+/** Turn a spoken description of a bake into structured fields. */
+export async function buildBakeFromText(text) {
+  const today = new Date().toISOString().slice(0, 10);
+  const system = `You turn a home baker's freeform description of a bake into structured fields.
+Today is ${today}.
+Rules:
+- name: a short label (e.g. "Everyday sourdough"). category must be exactly one of: ${BAKE_CATEGORIES.join(', ')}.
+- bakeDate in YYYY-MM-DD. "today" = ${today}; "yesterday" = the day before. If a date is stated use it; otherwise use today.
+- crust, crumb, flavour, overall are 1–5 integer ratings inferred from how the baker describes them (e.g. "great crust" ≈ 5, "a bit dense crumb" ≈ 2). Use null for any not mentioned.
+- problems: choose from ${BAKE_PROBLEMS.join(', ')} where they fit; short custom phrases are allowed if clearly stated. [] if none.
+- notes: anything else worth keeping, else "".
+Never ask questions.`;
+  return normalizeBake(await callStructured(system, BAKE_SCHEMA, `Build a bake from this description:\n\n${text}`));
+}
+
+/** Coerce arbitrary AI output onto a fresh bake (pure, testable). */
+export function normalizeBake(ai, now = new Date()) {
+  const obj = ai && typeof ai === 'object' ? ai : {};
+  const str = (v) => (typeof v === 'string' ? v.trim() : '');
+  const arr = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim()).map((x) => x.trim()) : []);
+  const rating = (v) => (Number.isFinite(v) ? Math.max(1, Math.min(5, Math.round(v))) : undefined);
+  const today = now.toISOString().slice(0, 10);
+  const b = newBake(now);
+  if (str(obj.name)) b.name = str(obj.name);
+  b.category = BAKE_CATEGORIES.includes(obj.category) ? obj.category : 'Sourdough';
+  const validDate = typeof obj.bakeDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(obj.bakeDate) && !Number.isNaN(new Date(obj.bakeDate).getTime());
+  b.bakeDate = validDate ? obj.bakeDate : today;
+  b.ratings = { crust: rating(obj.crust), crumb: rating(obj.crumb), flavour: rating(obj.flavour), overall: rating(obj.overall) };
+  b.problems = arr(obj.problems);
+  b.notes = str(obj.notes);
+  return b;
+}
 
 /** Suggest a few practical tips for a batch's setup, as a plain-text notes string. */
 export async function buildBatchTips(batch) {

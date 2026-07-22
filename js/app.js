@@ -6,12 +6,12 @@ import {
   nextCheckDue, dueBatches, toCSV, presetFromBatch, batchFromPreset, duplicateBatch,
   usedVegetables, mergeVegetables, usedSpices, mergeSpices, renamedList, withoutItem,
   RECIPE_CATEGORIES, newRecipe, duplicateRecipe, sampleSourdoughRecipe,
-  BAKE_CATEGORIES, BAKE_PROBLEMS, newBake, overallBakeRating, duplicateBake,
+  BAKE_CATEGORIES, BAKE_PROBLEMS, newBake, overallBakeRating, duplicateBake, summarizeBakes,
 } from './model.js';
 import { APP_VERSION, CHANGELOG } from './changelog.js';
 import {
   hasApiKey, getApiKey, setApiKey, buildRecipeFromText, buildBatchFromText,
-  buildCheckInFromText, improveRecipe, buildBatchTips,
+  buildCheckInFromText, improveRecipe, buildBatchTips, buildBakeFromText,
 } from './ai.js';
 import * as db from './db.js';
 import { barChart, scatterChart } from './charts.js';
@@ -133,6 +133,7 @@ async function render() {
   else if (hash.startsWith('#/recipe-edit/')) await editRecipe(hash.slice(14));
   else if (hash.startsWith('#/recipe/')) await renderRecipeDetail(hash.slice(9));
   else if (hash === '#/bake-new') renderBakeForm(consumePendingBake());
+  else if (hash === '#/bake-insights') await renderBakeInsights();
   else if (hash.startsWith('#/bake-edit/')) await editBake(hash.slice(12));
   else if (hash.startsWith('#/bake/')) await renderBakeDetail(hash.slice(7));
   else if (hash.startsWith('#/edit/')) await editExisting(hash.slice(7));
@@ -201,7 +202,10 @@ async function fillJars(wrap) {
 
 async function fillBakes(wrap) {
   const bakes = await db.getBakes();
-  wrap.appendChild(h('<a class="btn primary full new-bake" href="#/bake-new">＋ New bake</a>'));
+  wrap.appendChild(h(`<div class="bakes-actions">
+    <a class="btn primary new-bake" href="#/bake-new">＋ New bake</a>
+    <a class="btn ghost" href="#/bake-insights">📊 Insights &amp; lessons</a>
+  </div>`));
   if (!bakes.length) {
     wrap.appendChild(h(`<div class="empty">
       <div class="empty-emoji">🥖</div>
@@ -213,6 +217,66 @@ async function fillBakes(wrap) {
   const list = h('<div class="cards"></div>');
   for (const bk of bakes) list.appendChild(bakeCard(bk));
   wrap.appendChild(list);
+}
+
+async function renderBakeInsights() {
+  const [bakes, lessons] = await Promise.all([db.getBakes(), db.getBakeLessons()]);
+  const s = summarizeBakes(bakes);
+  const screen = h(`<section class="screen">
+    <header class="topbar"><a class="back" href="#/">‹</a><h1>Bake insights</h1></header>
+  </section>`);
+
+  screen.appendChild(h(`<div class="kpis">
+    <div class="kpi"><span class="kpi-num">${s.total}</span><span class="kpi-lbl">bakes</span></div>
+    <div class="kpi"><span class="kpi-num">${s.rated}</span><span class="kpi-lbl">rated</span></div>
+    <div class="kpi"><span class="kpi-num">${s.avgOverall ?? '—'}</span><span class="kpi-lbl">avg rating</span></div>
+    <div class="kpi"><span class="kpi-num">${s.problems.length}</span><span class="kpi-lbl">problem types</span></div>
+  </div>`));
+
+  if (s.bestBake) {
+    const bb = s.bestBake;
+    screen.appendChild(h(`<div class="best-card">
+      <div class="best-emoji">🏆</div>
+      <div>
+        <div class="best-title">Best bake so far: ${esc(bb.name || bb.category)} ${ratingStars(s.bestRating)}</div>
+        <div class="best-sub">${esc(bb.category || '')} · ${esc(bb.bakeDate || '')}${bb.recipeTitle ? ` · ${esc(bb.recipeTitle)}` : ''}</div>
+        <a class="best-link" href="#/bake/${bb.id}">Open this bake →</a>
+      </div>
+    </div>`));
+  }
+
+  screen.appendChild(chartCard('Rating trend (oldest → newest)', scatterChart(s.ratingOverTime, { xLabel: 'Bake', xUnit: '' })));
+  screen.appendChild(chartCard('Average rating by recipe', barChart(s.byRecipe, { unit: '★', max: 5 })));
+  screen.appendChild(chartCard('Average rating by category', barChart(s.byCategory, { unit: '★', max: 5 })));
+  screen.appendChild(chartCard('Problems encountered', barChart(s.problems, { unit: '' })));
+
+  // Lessons learned notebook
+  const lessonList = lessons.length
+    ? lessons.map((l) => `<li><span>${esc(l.text)}</span><button class="link-del" data-id="${l.id}" aria-label="Delete">✕</button></li>`).join('')
+    : '<li class="muted">No lessons yet — add what you learn as you bake.</li>';
+  const block = h(`<div class="setting-block">
+    <h3>📓 Lessons learned</h3>
+    <p class="muted">Your running notebook of baking lessons — kept in your backups.</p>
+    <ul class="lesson-list">${lessonList}</ul>
+    <form id="lessonForm" class="ci-form">
+      <input name="text" placeholder="e.g. Longer cold proof = tangier, more open crumb" required>
+      <button class="btn ghost small">Add</button>
+    </form>
+  </div>`);
+  screen.appendChild(block);
+  swap(screen);
+
+  $('#lessonForm', block).addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = new FormData(e.target).get('text').trim();
+    if (!text) return;
+    await db.saveBakeLesson({ id: `l_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, text, createdAt: new Date().toISOString() });
+    renderBakeInsights();
+  });
+  block.querySelectorAll('.link-del').forEach((btn) => btn.addEventListener('click', async () => {
+    await db.deleteBakeLesson(btn.dataset.id);
+    renderBakeInsights();
+  }));
 }
 
 function bakeCard(bk) {
@@ -1481,6 +1545,13 @@ async function renderBakeForm(bake, isEdit = false) {
   const form = h(`<section class="screen">
     <header class="topbar"><a class="back" href="${isEdit ? `#/bake/${bake.id}` : '#/'}">‹</a><h1>${isEdit ? 'Edit bake' : 'New bake'}</h1></header>
     <form id="bakeForm" class="form">
+      ${!isEdit ? `<fieldset class="ai-panel"><legend>✨ Build with AI</legend>
+        <div class="field-label">Describe or dictate this bake — tap the 🎤 and talk. AI fills in the fields below.</div>
+        <textarea id="aiText" rows="3" placeholder="e.g. Sourdough yesterday, lovely crisp crust, crumb a little dense, tasted great. Bake #12."></textarea>
+        <button type="button" id="aiBuild" class="btn ghost full">✨ Build bake with AI</button>
+        <div id="aiStatus" class="hint"></div>
+      </fieldset>` : ''}
+
       <fieldset><legend>About</legend>
         <label>Name <input name="name" value="${esc(bake.name)}" placeholder="e.g. Everyday sourdough"></label>
         <label>Category <select name="category">${cats}</select></label>
@@ -1514,6 +1585,22 @@ async function renderBakeForm(bake, isEdit = false) {
       values[group.dataset.key] = v;
       [...group.children].forEach((s, i) => s.classList.toggle('on', i < v));
     });
+  });
+
+  const aiBtn = $('#aiBuild', form);
+  if (aiBtn) aiBtn.addEventListener('click', async () => {
+    const text = $('#aiText', form).value.trim();
+    const status = $('#aiStatus', form);
+    if (!text) { status.className = 'hint caution'; status.textContent = 'Type or dictate a description first.'; return; }
+    if (!hasApiKey()) { status.className = 'hint caution'; status.innerHTML = 'Add your API key in <a href="#/settings">Settings → AI assistant</a> first.'; return; }
+    aiBtn.disabled = true; status.className = 'hint'; status.textContent = '✨ Building your bake…';
+    try {
+      const built = await buildBakeFromText(text);
+      built.id = editingBake.id;
+      built.photos = editingBake.photos || [];
+      built.createdAt = editingBake.createdAt;
+      renderBakeForm(built, false);
+    } catch (e) { aiBtn.disabled = false; status.className = 'hint caution'; status.textContent = '⚠ ' + e.message; }
   });
 
   renderBakePhotos(form);
@@ -1636,6 +1723,8 @@ function renderHowItWorks() {
           <li>Switch to <strong>Bakes</strong> and tap <strong>＋ New bake</strong> to log one.</li>
           <li>From a <strong>sourdough recipe</strong>, tap <strong>🥖 Log a bake from this</strong> to start a bake already linked to it.</li>
           <li>From a <strong>vegetable-ferment recipe</strong>, tap <strong>🫙 Start a batch from this</strong> to pre-fill a new jar.</li>
+          <li>On a new bake, <strong>✨ Build with AI</strong> turns a spoken description into the fields.</li>
+          <li><strong>Bake insights</strong> (Bakes → “Insights &amp; lessons”) shows your best bake, ratings by recipe and category, problem frequency, and a <strong>lessons-learned notebook</strong>.</li>
         </ul>
         <p class="muted">So <em>Batch</em> stays the word for a fermenting jar, and <em>Bake</em> covers bread.</p>`)}
 

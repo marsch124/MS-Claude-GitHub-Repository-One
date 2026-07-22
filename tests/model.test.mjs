@@ -9,10 +9,10 @@ import {
   VEGETABLES, usedVegetables, mergeVegetables,
   COMMON_SPICES, usedSpices, mergeSpices, renamedList, withoutItem,
   newRecipe, duplicateRecipe, sampleSourdoughRecipe, RECIPE_CATEGORIES,
-  newBake, overallBakeRating, duplicateBake, BAKE_CATEGORIES,
+  newBake, overallBakeRating, duplicateBake, BAKE_CATEGORIES, summarizeBakes,
 } from '../js/model.js';
 import { APP_VERSION, CHANGELOG } from '../js/changelog.js';
-import { normalizeRecipe, extractJSON, normalizeBatch, normalizeCheckIn } from '../js/ai.js';
+import { normalizeRecipe, extractJSON, normalizeBatch, normalizeCheckIn, normalizeBake } from '../js/ai.js';
 
 test('computeBrinePercent: standard 2.5% brine', () => {
   assert.equal(computeBrinePercent(25, 975), 2.5);
@@ -341,6 +341,20 @@ test('normalizeCheckIn: bad/absent date falls back to today', () => {
   assert.equal(normalizeCheckIn({ date: '2026-13-40', tasteNote: 'x' }, now).date, '2026-07-21');
 });
 
+test('normalizeBake: clamps ratings, category, date; assembles ratings object', () => {
+  const now = new Date('2026-07-21T09:00:00Z');
+  const b = normalizeBake({ name: 'Loaf', category: 'Nope', bakeDate: 'yesterday', crust: 9, crumb: 2, flavour: null, overall: 4.6, problems: ['Dense crumb', ''], notes: 'good' }, now);
+  assert.equal(b.name, 'Loaf');
+  assert.equal(b.category, 'Sourdough');       // unknown clamped
+  assert.equal(b.bakeDate, '2026-07-21');      // bad date → today
+  assert.equal(b.ratings.crust, 5);            // 9 → 5
+  assert.equal(b.ratings.crumb, 2);
+  assert.equal(b.ratings.flavour, undefined);  // null → unset
+  assert.equal(b.ratings.overall, 5);          // 4.6 → 5
+  assert.deepEqual(b.problems, ['Dense crumb']);
+  assert.ok(b.id.startsWith('k_'));
+});
+
 test('extractJSON: parses clean JSON and JSON embedded in prose', () => {
   assert.deepEqual(extractJSON('{"a":1}'), { a: 1 });
   assert.deepEqual(extractJSON('Sure! ```json\n{"a":2}\n``` done'), { a: 2 });
@@ -374,6 +388,28 @@ test('duplicateBake: fresh id, today date, "(copy)" name', () => {
   assert.equal(dup.bakeDate, '2026-07-21');
   assert.notEqual(dup.id, src.id);
   assert.notEqual(dup.ratings, src.ratings); // deep-copied
+});
+
+test('summarizeBakes: empty degrades; aggregates ratings/recipes/problems', () => {
+  assert.equal(summarizeBakes([]).total, 0);
+  assert.equal(summarizeBakes([]).avgOverall, null);
+  const bakes = [
+    { name: 'A', category: 'Sourdough', recipeTitle: 'Everyday', bakeDate: '2026-06-01', ratings: { overall: 5 }, problems: [] },
+    { name: 'B', category: 'Sourdough', recipeTitle: 'Everyday', bakeDate: '2026-06-08', ratings: { overall: 3 }, problems: ['Dense crumb'] },
+    { name: 'C', category: 'Bread', recipeTitle: '', bakeDate: '2026-06-15', ratings: { crust: 4, crumb: 4, flavour: 4 }, problems: ['Dense crumb'] },
+    { name: 'D', category: 'Sourdough', bakeDate: '2026-06-20' }, // unrated
+  ];
+  const s = summarizeBakes(bakes);
+  assert.equal(s.total, 4);
+  assert.equal(s.rated, 3);
+  assert.equal(s.bestBake.name, 'A');
+  assert.equal(s.bestRating, 5);
+  const everyday = s.byRecipe.find((r) => r.label === 'Everyday');
+  assert.equal(everyday.value, 4);   // (5+3)/2
+  assert.equal(everyday.count, 2);
+  const dense = s.problems.find((p) => p.label === 'Dense crumb');
+  assert.equal(dense.value, 2);
+  assert.deepEqual(s.ratingOverTime.map((p) => p.name), ['A', 'B', 'C']); // oldest→newest
 });
 
 // ---------- changelog integrity ----------

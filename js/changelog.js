@@ -4,9 +4,19 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.0';
+export const APP_VERSION = '5.1';
 
 export const CHANGELOG = [
+  {
+    version: '5.1',
+    date: '2026-07-21 · 19:07 CEST',
+    title: 'Bake insights, a lessons notebook, and AI bakes 🍞✨',
+    changes: [
+      'New Bake insights (from the Bakes tab → "Insights & lessons"): your best bake, average rating, a rating trend, and average rating by recipe and by category, plus how often each problem shows up.',
+      'A Lessons learned notebook lives on that screen — jot down what you learn as you bake (e.g. "longer cold proof = tangier"). It\'s saved on your device and included in backups.',
+      'Build a bake with AI: on a new bake, describe or dictate it — "sourdough yesterday, crisp crust, crumb a bit dense, tasted great" — and it fills in the date, ratings, problems and notes for you to review.',
+    ],
+  },
   {
     version: '5.0',
     date: '2026-07-21 · 18:52 CEST',
