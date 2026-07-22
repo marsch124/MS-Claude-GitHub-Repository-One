@@ -4,9 +4,17 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.6';
+export const APP_VERSION = '5.7';
 
 export const CHANGELOG = [
+  {
+    version: '5.7',
+    date: '2026-07-22 · 22:58 CEST',
+    title: 'Clearer wording on the empty home',
+    changes: [
+      'Reworded the empty Batches screen to say "No ferments yet" and "Start your first ferment…", matching the "My Ferments" heading — clearer than the old jar-specific wording.',
+    ],
+  },
   {
     version: '5.6',
     date: '2026-07-22 · 22:41 CEST',

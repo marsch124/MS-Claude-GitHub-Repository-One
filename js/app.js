@@ -198,8 +198,8 @@ async function fillJars(wrap) {
   if (!batches.length) {
     wrap.appendChild(h(`<div class="empty">
       <div class="empty-emoji">${ILLUS.carrot}</div>
-      <h2>No jars yet</h2>
-      <p>Start your first jar and begin learning what makes the best ferment. Log the brine, temperature and spices, then track how it turns out.</p>
+      <h2>No ferments yet</h2>
+      <p>Start your first ferment and begin learning what makes a great batch. Log the brine, temperature and spices, then track how it turns out.</p>
     </div>`));
     return;
   }
