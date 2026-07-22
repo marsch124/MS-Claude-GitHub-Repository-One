@@ -52,6 +52,9 @@ No account, no server, no cost.
 New here? Read the illustrated **[How FermentLog works](docs/HOW-IT-WORKS.md)** walkthrough,
 or open it in the app at **Settings → How FermentLog works**.
 
+Curious how it was built? The **[development log](docs/DEVELOPMENT-LOG.md)** chronicles the
+whole journey, version by version.
+
 ## Run it locally
 
 ```bash
