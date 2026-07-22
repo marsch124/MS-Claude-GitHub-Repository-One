@@ -30,7 +30,17 @@ const IC = {
   bread: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 14.5a4.5 4.5 0 0 1 2.6-4.1A4 4 0 0 1 9.2 6h5.6a4 4 0 0 1 1.6 4.4A4.5 4.5 0 0 1 19 14.5V17a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1Z"/><path d="M9.5 11.5 8 16m4-4.5L10.5 16m4-4.5L13 16"/></svg>',
   chart: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20h14"/><path d="M7.5 20v-4.5"/><path d="M12 20V8"/><path d="M16.5 20v-7"/></svg>',
   search: '<svg class="ic ic-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.2"/><path d="m20 20-3.6-3.6"/></svg>',
+  book: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4.5h8.5a3 3 0 0 1 3 3V20H9a3 3 0 0 1-3-3Z"/><path d="M9.5 9h5M9.5 12.5h5"/></svg>',
 };
+
+// Larger carrot-toned illustrations (empty states and card thumbnails). Sized by CSS (.gfx).
+const ILLUS = {
+  jar: '<svg class="gfx" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8"/><path d="M8 4v1.4a3 3 0 0 1-.9 2.1A4 4 0 0 0 6 10.4V18a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3v-7.6a4 4 0 0 0-1.1-2.9A3 3 0 0 1 16 5.4V4"/><path d="M6.4 12h11.2"/></svg>',
+  carrot: '<svg class="gfx" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M24 25C20 31 21 39 24 44c2 5 6 9 8 9s6-4 8-9c3-5 4-13 0-19Z" fill="currentColor" fill-opacity=".12"/><path d="M32 25V13"/><path d="M32 19c-3-4-8-5-12-4M32 19c3-4 8-5 12-4"/><path d="M27 33l3 1.6M37 33l-3 1.6M29 41l3 1.6M35 41l-3 1.6"/></svg>',
+  bread: '<svg class="gfx" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 40C11 26 21 19 32 19s21 7 21 21c0 4-4 7-8 7H19c-4 0-8-3-8-7Z" fill="currentColor" fill-opacity=".12"/><path d="M24 28l6 8M33 27l6 8M42 28l4 6"/></svg>',
+  book: '<svg class="gfx" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 14h20a6 6 0 0 1 6 6v30H24a6 6 0 0 1-6-6Z" fill="currentColor" fill-opacity=".12"/><path d="M26 26h13M26 33h13M26 40h8"/></svg>',
+};
+const recipeGfx = (r) => (r.category === 'Sourdough' ? ILLUS.bread : ILLUS.book);
 
 let editing = null;        // working copy of a batch being created/edited
 let insightsVeg = null;    // active vegetable filter on the Insights screen
@@ -194,10 +204,10 @@ async function fillJars(wrap) {
   </div>`));
   if (!batches.length) {
     wrap.appendChild(h(`<div class="empty">
-      <div class="empty-emoji">🥕</div>
+      <div class="empty-emoji">${ILLUS.carrot}</div>
       <h2>No jars yet</h2>
       <p>Start your first jar and begin learning what makes the best ferment. Log the brine, temperature and spices, then track how it turns out.</p>
-      <a class="btn ghost" href="#/how">📖 How it works</a>
+      <a class="btn ghost" href="#/settings">${IC.book} How it works</a>
     </div>`));
     return;
   }
@@ -256,7 +266,7 @@ async function fillBakes(wrap) {
   </div>`));
   if (!bakes.length) {
     wrap.appendChild(h(`<div class="empty">
-      <div class="empty-emoji">🥖</div>
+      <div class="empty-emoji">${ILLUS.bread}</div>
       <h2>No bakes yet</h2>
       <p>Log your sourdough and other bakes — the date, a photo, and how the crumb turned out.</p>
     </div>`));
@@ -352,7 +362,7 @@ function batchCard(b) {
   const due = status === 'fermenting' && dueBatches([b]).length;
   const thumb = b.photos && b.photos[0]
     ? `<img class="thumb" src="${b.photos[0]}" alt="">`
-    : `<div class="thumb placeholder">🫙</div>`;
+    : `<div class="thumb placeholder">${ILLUS.jar}</div>`;
   return h(`<a class="card" href="#/batch/${b.id}">
     ${thumb}
     <div class="card-body">
@@ -989,7 +999,9 @@ async function renderSettings() {
         <h3>✨ AI assistant <span class="ai-badge">${hasApiKey() ? 'on' : 'optional'}</span></h3>
         <p class="muted">Fill in a <strong>recipe</strong> or start a <strong>batch</strong> just by describing it in your own words — or dictating it with the 🎤 on your keyboard. You always review and edit before anything is saved.</p>
 
-        <div class="ai-about">
+        <details class="disclosure">
+          <summary>How it works, privacy &amp; pricing</summary>
+          <div class="ai-about">
           <h4>How it works</h4>
           <ul>
             <li>On a <strong>new batch</strong> or a <strong>new recipe</strong> you'll see a “<strong>✨ Build with AI</strong>” box. Type or dictate a description (e.g. <em>“carrots, 2.5% brine, 20°C, airlock, garlic and dill”</em>), tap the button, and the fields fill in for you.</li>
@@ -1016,7 +1028,8 @@ async function renderSettings() {
             <li>Open <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">API keys ↗</a> and create a key — it starts with <code>sk-ant-</code>.</li>
             <li>Paste it below and tap <strong>Save key</strong>. The “Build with AI” buttons light up straight away.</li>
           </ol>
-        </div>
+          </div>
+        </details>
 
         <label>Your API key <input type="password" id="aiKey" placeholder="sk-ant-…" autocomplete="off" value="${esc(getApiKey())}"></label>
         <div class="ai-key-actions">
@@ -1036,9 +1049,12 @@ async function renderSettings() {
       </div>
 
       <div class="setting-block">
-        <h3>Help</h3>
-        <p class="muted">New here, or want a refresher? Take the full tour.</p>
-        <a class="btn ghost" href="#/how">📖 How FermentLog works →</a>
+        <h3>How FermentLog works</h3>
+        <p class="muted">New here, or want a refresher? The full tour — tap to open.</p>
+        <details class="disclosure guide-disclosure">
+          <summary>${IC.book} How FermentLog works</summary>
+          ${guideBodyHTML()}
+        </details>
       </div>
 
       <div class="setting-block danger-block">
@@ -1169,18 +1185,17 @@ async function onManageAction(btn, batches) {
 let editingRecipe = null;
 let pendingRecipeDraft = null; // an AI-improved draft handed to the edit route
 const linesToList = (text) => String(text || '').split('\n').map((s) => s.trim()).filter(Boolean);
-const recipeEmoji = (r) => (r.category === 'Sourdough' ? '🥖' : r.category === 'Drink / kombucha' ? '🫖' : r.category === 'Dairy' ? '🧀' : '🫙');
 
 async function renderRecipes() {
   const recipes = await db.getRecipes();
-  const wrap = h(`<section class="screen"><header class="topbar"><h1>Recipes</h1><a class="search-btn" href="#/search" aria-label="Search">🔍</a><a class="edit" href="#/recipe-new">＋ New</a></header></section>`);
+  const wrap = h(`<section class="screen"><header class="topbar"><h1>Recipes</h1><a class="search-btn" href="#/search" aria-label="Search">${IC.search}</a><a class="edit" href="#/recipe-new">＋ New</a></header></section>`);
   if (!recipes.length) {
     const empty = h(`<div class="empty">
-      <div class="empty-emoji">🥖</div>
+      <div class="empty-emoji">${ILLUS.book}</div>
       <h2>No recipes yet</h2>
       <p>Keep your fermentation and baking recipes here — ingredients, timed steps, and storage notes.</p>
       <a class="btn primary" href="#/recipe-new">＋ New recipe</a>
-      <button class="btn ghost" id="sourdoughExample">🥖 Start from a sourdough example</button>
+      <button class="btn ghost" id="sourdoughExample">${IC.bread} Start from a sourdough example</button>
     </div>`);
     wrap.appendChild(empty);
     swap(wrap);
@@ -1200,7 +1215,7 @@ async function renderRecipes() {
 function recipeCard(r) {
   const thumb = r.photos && r.photos[0]
     ? `<img class="thumb" src="${r.photos[0]}" alt="">`
-    : `<div class="thumb placeholder">${recipeEmoji(r)}</div>`;
+    : `<div class="thumb placeholder">${recipeGfx(r)}</div>`;
   return h(`<a class="card" href="#/recipe/${r.id}">
     ${thumb}
     <div class="card-body">
@@ -1243,8 +1258,8 @@ async function renderRecipeDetail(id) {
       ${r.storage ? `<div class="detail-block"><h3>Storage &amp; keeping</h3><p>${esc(r.storage)}</p></div>` : ''}
       <div class="use-recipe no-print">
         ${r.category === 'Vegetable ferment'
-          ? '<button id="toBatch" class="btn primary full">🫙 Start a batch from this</button>'
-          : '<button id="toBake" class="btn primary full">🥖 Log a bake from this</button>'}
+          ? `<button id="toBatch" class="btn primary full">${IC.jar} Start a batch from this</button>`
+          : `<button id="toBake" class="btn primary full">${IC.bread} Log a bake from this</button>`}
       </div>
       <div class="detail-actions no-print">
         <button id="improveRecipe" class="btn ghost">✨ Improve</button>
@@ -1526,9 +1541,9 @@ async function renderSearch() {
     const r = searchAll(q, { batches, bakes, recipes });
     if (!r.total) { box.innerHTML = `<p class="muted search-hint">No matches for “${esc(q)}”.</p>`; return; }
     box.innerHTML =
-      group('🫙 Jars', r.batches, (b) => ({ href: `#/batch/${b.id}`, title: b.name || b.vegetable || 'Untitled batch', sub: `${b.vegetable || ''} · ${fmtBrine(b)}` }))
-      + group('🍞 Bakes', r.bakes, (b) => ({ href: `#/bake/${b.id}`, title: b.name || b.category || 'Untitled bake', sub: `${b.category || ''} · ${b.bakeDate || ''}` }))
-      + group('🥖 Recipes', r.recipes, (rr) => ({ href: `#/recipe/${rr.id}`, title: rr.title || 'Untitled recipe', sub: rr.category || '' }));
+      group(`${IC.jar} Jars`, r.batches, (b) => ({ href: `#/batch/${b.id}`, title: b.name || b.vegetable || 'Untitled batch', sub: `${b.vegetable || ''} · ${fmtBrine(b)}` }))
+      + group(`${IC.bread} Bakes`, r.bakes, (b) => ({ href: `#/bake/${b.id}`, title: b.name || b.category || 'Untitled bake', sub: `${b.category || ''} · ${b.bakeDate || ''}` }))
+      + group(`${IC.book} Recipes`, r.recipes, (rr) => ({ href: `#/recipe/${rr.id}`, title: rr.title || 'Untitled recipe', sub: rr.category || '' }));
   };
   input.addEventListener('input', draw);
   draw();
@@ -1747,19 +1762,16 @@ async function addBakePhoto(e, root) {
 }
 
 // ---------- How it works ----------
-function renderHowItWorks() {
+function guideBodyHTML() {
   const sec = (title, body) => `<div class="guide-sec"><h3>${title}</h3>${body}</div>`;
-  const screen = h(`<section class="screen">
-    <header class="topbar"><a class="back" href="#/settings">‹</a><h1>How it works</h1></header>
-    <p class="cl-intro">A full tour of FermentLog. Everything here works offline and stays on your device. 🥕</p>
-    <div class="guide">
+  return `<div class="guide">
       ${sec('The basics', `
         <p>FermentLog is your private logbook for home fermenting — and now baking too. It lives entirely on your phone, works offline, and can be installed to your home screen like a normal app. There are five tabs along the bottom:</p>
         <ul>
-          <li><strong>Batches</strong> 🫙 — every jar you're fermenting.</li>
-          <li><strong>Recipes</strong> 🥖 — reusable recipes, including sourdough.</li>
+          <li><strong>Batches</strong> ${IC.jar} — every jar you're fermenting.</li>
+          <li><strong>Recipes</strong> ${IC.book} — reusable recipes, including sourdough.</li>
           <li><strong>New</strong> ＋ — start a new batch.</li>
-          <li><strong>Insights</strong> 📊 — charts that reveal what makes your best ferments.</li>
+          <li><strong>Insights</strong> ${IC.chart} — charts that reveal what makes your best ferments.</li>
           <li><strong>Settings</strong> ⚙️ — backups, appearance, the AI assistant and this guide.</li>
         </ul>`)}
 
@@ -1784,7 +1796,7 @@ function renderHowItWorks() {
         </ul>`)}
 
       ${sec('Search', `
-        <p>Tap the <strong>🔍</strong> in the Batches or Recipes header to search across <strong>everything at once</strong> — jars, bakes and recipes. Results group by type as you type, and it looks inside names, vegetables and spices, taste-test notes, bake problems, and recipe ingredients, equipment and steps.</p>`)}
+        <p>Tap the <strong>${IC.search}</strong> in the Batches or Recipes header to search across <strong>everything at once</strong> — jars, bakes and recipes. Results group by type as you type, and it looks inside names, vegetables and spices, taste-test notes, bake problems, and recipe ingredients, equipment and steps.</p>`)}
 
       ${sec('Insights', `
         <p>Once you've logged a few finished batches, the Insights tab shows what's working:</p>
@@ -1808,8 +1820,8 @@ function renderHowItWorks() {
         <p>The first tab has a <strong>Jars / Bakes</strong> toggle. <strong>Bakes</strong> are for sourdough and other baking — each records a name, date, an optional linked recipe, photos, <strong>crust / crumb / flavour / overall</strong> ratings, problems (dense, gummy, over-proofed…) and notes.</p>
         <ul>
           <li>Switch to <strong>Bakes</strong> and tap <strong>＋ New bake</strong> to log one.</li>
-          <li>From a <strong>sourdough recipe</strong>, tap <strong>🥖 Log a bake from this</strong> to start a bake already linked to it.</li>
-          <li>From a <strong>vegetable-ferment recipe</strong>, tap <strong>🫙 Start a batch from this</strong> to pre-fill a new jar.</li>
+          <li>From a <strong>sourdough recipe</strong>, tap <strong>${IC.bread} Log a bake from this</strong> to start a bake already linked to it.</li>
+          <li>From a <strong>vegetable-ferment recipe</strong>, tap <strong>${IC.jar} Start a batch from this</strong> to pre-fill a new jar.</li>
           <li>On a new bake, <strong>✨ Build with AI</strong> turns a spoken description into the fields.</li>
           <li><strong>Bake insights</strong> (Bakes → “Insights &amp; lessons”) shows your best bake, ratings by recipe and category, problem frequency, and a <strong>lessons-learned notebook</strong>.</li>
         </ul>
@@ -1843,7 +1855,14 @@ function renderHowItWorks() {
       ${sec('Staying up to date', `
         <p>Every improvement is listed under <a href="#/changelog">Settings → What's new</a>, newest first, with the date and time it shipped. A one-time banner points you there after each update.</p>
         <p class="muted">Prefer pictures? There's an illustrated, screenshot-by-screenshot version of this guide in the project's <code>docs/HOW-IT-WORKS.md</code>.</p>`)}
-    </div>
+    </div>`;
+}
+
+function renderHowItWorks() {
+  const screen = h(`<section class="screen">
+    <header class="topbar"><a class="back" href="#/settings">‹</a><h1>How it works</h1></header>
+    <p class="cl-intro">A full tour of FermentLog. Everything here works offline and stays on your device. 🥕</p>
+    ${guideBodyHTML()}
   </section>`);
   swap(screen);
 }

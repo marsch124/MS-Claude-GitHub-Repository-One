@@ -4,9 +4,20 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.4';
+export const APP_VERSION = '5.5';
 
 export const CHANGELOG = [
+  {
+    version: '5.5',
+    date: '2026-07-22 · 21:58 CEST',
+    title: 'Carrot-toned icons everywhere, and a tidier Settings 🥕',
+    changes: [
+      'Swapped the leftover emoji — the baguette, carrot, jar and search glyphs dotted around the app — for the clean, carrot-orange icon set, including the empty-state illustrations, card thumbnails, the recipe-link buttons, and the search results.',
+      'The search button on the Recipes screen now uses the same orange magnifier as the Batches screen.',
+      'The full "How FermentLog works" guide now lives right on the Settings screen as a tap-to-open section, instead of a separate page — so it is one tap away without taking up room.',
+      'The AI assistant\'s "How it works, privacy & pricing" write-up is now a tap-to-open section too, keeping Settings compact.',
+    ],
+  },
   {
     version: '5.4',
     date: '2026-07-22 · 11:12 CEST',

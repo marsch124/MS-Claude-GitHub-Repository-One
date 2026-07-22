@@ -225,6 +225,23 @@ a { color: inherit; text-decoration: none; }
 svg.ic { width: 1.15em; height: 1.15em; vertical-align: -0.2em; color: var(--brand); flex: none; }
 .seg svg.ic { margin-right: 3px; }
 
+/* Larger carrot-toned illustrations (empty states + card thumbnails) */
+svg.gfx { color: var(--brand); display: block; }
+.empty-emoji svg.gfx { width: 92px; height: 92px; margin: 0 auto; }
+.thumb.placeholder svg.gfx { width: 58%; height: 58%; }
+
+/* --- Collapsible disclosure (details/summary) --- */
+.disclosure { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.disclosure > summary { cursor: pointer; padding: 12px 14px; font-weight: 600; color: var(--brand-ink);
+  list-style: none; display: flex; align-items: center; gap: 8px; }
+.disclosure > summary::-webkit-details-marker { display: none; }
+.disclosure > summary::after { content: '⌄'; margin-left: auto; font-size: 1.15em; line-height: 1;
+  transition: transform .2s ease; }
+.disclosure[open] > summary { border-bottom: 1px solid var(--line); }
+.disclosure[open] > summary::after { transform: rotate(180deg); }
+.disclosure .ai-about { margin: 0; background: none; border-radius: 0; padding: 12px 14px; }
+.guide-disclosure .guide { padding: 12px; }
+
 /* --- Search --- */
 .search-btn { display: inline-flex; align-items: center; padding: 4px 6px; text-decoration: none; }
 .search-btn svg.ic { width: 23px; height: 23px; vertical-align: middle; }
