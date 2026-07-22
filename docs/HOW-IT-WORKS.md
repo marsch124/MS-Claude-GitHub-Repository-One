@@ -89,7 +89,19 @@ recipe.
 
 ---
 
-## 6. The AI assistant (optional)
+## 6. Bakes — sourdough & baking 🍞
+
+The first tab has a **Jars / Bakes** toggle. **Bakes** are for sourdough and other baking —
+each records a name, date, an optional **linked recipe**, photos, **crust / crumb / flavour /
+overall** ratings, problems (dense, gummy, over-proofed…) and notes.
+
+<img src="img/bakes.png" width="320" alt="The bakes list">
+
+From a **sourdough recipe**, tap **🥖 Log a bake from this** to start a bake already linked to
+it; from a **vegetable-ferment recipe**, tap **🫙 Start a batch from this** to pre-fill a new
+jar. So *Batch* stays the word for a fermenting jar, and *Bake* covers bread.
+
+## 7. The AI assistant (optional)
 
 Describe or dictate a recipe or batch and AI fills in the fields — you always review before
 saving. It uses **your own Anthropic API key**, stored **only on your device**; only the text

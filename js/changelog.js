@@ -4,9 +4,20 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '4.4';
+export const APP_VERSION = '5.0';
 
 export const CHANGELOG = [
+  {
+    version: '5.0',
+    date: '2026-07-21 · 18:52 CEST',
+    title: 'Bakes — sourdough gets its own log 🍞',
+    changes: [
+      'New Bakes log: the first tab now has a Jars / Bakes toggle. Bakes are for sourdough and other baking — each records a name, date, an optional linked recipe, photos, crust/crumb/flavour/overall ratings, problems (dense, gummy, over-proofed…) and notes.',
+      'Recipes now connect to your log: on a vegetable-ferment recipe, tap "🫙 Start a batch from this" to pre-fill a new jar; on any other recipe (e.g. sourdough), tap "🥖 Log a bake from this" to start a bake already linked to the recipe.',
+      'So "Batch" stays the word for a fermenting jar, while "Bake" covers bread — each with a home that fits it.',
+      'Backups (Export/Import) now include your bakes too.',
+    ],
+  },
   {
     version: '4.4',
     date: '2026-07-21 · 18:31 CEST',

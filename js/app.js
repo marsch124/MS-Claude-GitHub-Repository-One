@@ -6,6 +6,7 @@ import {
   nextCheckDue, dueBatches, toCSV, presetFromBatch, batchFromPreset, duplicateBatch,
   usedVegetables, mergeVegetables, usedSpices, mergeSpices, renamedList, withoutItem,
   RECIPE_CATEGORIES, newRecipe, duplicateRecipe, sampleSourdoughRecipe,
+  BAKE_CATEGORIES, BAKE_PROBLEMS, newBake, overallBakeRating, duplicateBake,
 } from './model.js';
 import { APP_VERSION, CHANGELOG } from './changelog.js';
 import {
@@ -24,6 +25,10 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
 
 let editing = null;        // working copy of a batch being created/edited
 let insightsVeg = null;    // active vegetable filter on the Insights screen
+let pendingBatchDraft = null; // a batch pre-filled from a recipe, for the New form
+const LOGVIEW_KEY = 'fermentlog-logview';
+function logView() { try { return localStorage.getItem(LOGVIEW_KEY) === 'bakes' ? 'bakes' : 'jars'; } catch { return 'jars'; } }
+function setLogView(v) { try { localStorage.setItem(LOGVIEW_KEY, v); } catch {} }
 
 // ---------- Theme ----------
 const THEME_KEY = 'fermentlog-theme';
@@ -127,6 +132,9 @@ async function render() {
   else if (hash === '#/recipe-new') renderRecipeForm(newRecipe());
   else if (hash.startsWith('#/recipe-edit/')) await editRecipe(hash.slice(14));
   else if (hash.startsWith('#/recipe/')) await renderRecipeDetail(hash.slice(9));
+  else if (hash === '#/bake-new') renderBakeForm(consumePendingBake());
+  else if (hash.startsWith('#/bake-edit/')) await editBake(hash.slice(12));
+  else if (hash.startsWith('#/bake/')) await renderBakeDetail(hash.slice(7));
   else if (hash.startsWith('#/edit/')) await editExisting(hash.slice(7));
   else if (hash.startsWith('#/batch/')) await renderDetail(hash.slice(8));
   else await renderList();
@@ -146,42 +154,83 @@ function syncNav(hash) {
 
 // ---------- Batches list ----------
 async function renderList() {
+  const view = logView();
+  const wrap = h(`<section class="screen"><header class="topbar"><h1>${view === 'bakes' ? 'My bakes' : 'My ferments'}</h1></header></section>`);
+  const toggle = h(`<div class="segmented logtoggle">
+    <button class="seg ${view === 'jars' ? 'on' : ''}" data-v="jars">🫙 Jars</button>
+    <button class="seg ${view === 'bakes' ? 'on' : ''}" data-v="bakes">🥖 Bakes</button>
+  </div>`);
+  toggle.querySelectorAll('.seg').forEach((btn) => btn.addEventListener('click', () => { setLogView(btn.dataset.v); renderList(); }));
+  wrap.appendChild(toggle);
+
+  if (view === 'bakes') await fillBakes(wrap);
+  else await fillJars(wrap);
+  swap(wrap);
+}
+
+async function fillJars(wrap) {
   const batches = await db.getAllBatches();
-  const wrap = h(`<section class="screen"><header class="topbar"><h1>My ferments</h1></header></section>`);
-
-  if (!batches.length) {
-    wrap.appendChild(h(`<div class="empty">
-      <div class="empty-emoji">🥕</div>
-      <h2>No batches yet</h2>
-      <p>Start your first jar and begin learning what makes the best ferment.</p>
-      <a class="btn primary" href="#/new">＋ New batch</a>
-    </div>`));
-    return swap(wrap);
-  }
-
   if (isVersionUnseen()) {
-    const wn = h(`<a class="whatsnew-banner" href="#/changelog">
+    wrap.appendChild(h(`<a class="whatsnew-banner" href="#/changelog">
       <span class="wn-ico">✨</span>
       <div><strong>FermentLog v${APP_VERSION} — what's new</strong>
       <div class="wn-sub">Tap to see everything that's been added.</div></div>
-    </a>`);
-    wrap.appendChild(wn);
+    </a>`));
   }
-
+  if (!batches.length) {
+    wrap.appendChild(h(`<div class="empty">
+      <div class="empty-emoji">🥕</div>
+      <h2>No jars yet</h2>
+      <p>Start your first jar and begin learning what makes the best ferment.</p>
+      <a class="btn primary" href="#/new">＋ New batch</a>
+    </div>`));
+    return;
+  }
   const due = dueBatches(batches);
   if (due.length) {
-    const banner = h(`<div class="due-banner">
+    wrap.appendChild(h(`<div class="due-banner">
       <span class="due-ico">⏰</span>
       <div><strong>${due.length} batch${due.length > 1 ? 'es' : ''} due for a taste test</strong>
       <div class="due-names">${due.map((b) => esc(b.name || b.vegetable)).join(' · ')}</div></div>
-    </div>`);
-    wrap.appendChild(banner);
+    </div>`));
   }
-
   const list = h('<div class="cards"></div>');
   for (const b of batches) list.appendChild(batchCard(b));
   wrap.appendChild(list);
-  swap(wrap);
+}
+
+async function fillBakes(wrap) {
+  const bakes = await db.getBakes();
+  wrap.appendChild(h('<a class="btn primary full new-bake" href="#/bake-new">＋ New bake</a>'));
+  if (!bakes.length) {
+    wrap.appendChild(h(`<div class="empty">
+      <div class="empty-emoji">🥖</div>
+      <h2>No bakes yet</h2>
+      <p>Log your sourdough and other bakes — the date, a photo, and how the crumb turned out.</p>
+    </div>`));
+    return;
+  }
+  const list = h('<div class="cards"></div>');
+  for (const bk of bakes) list.appendChild(bakeCard(bk));
+  wrap.appendChild(list);
+}
+
+function bakeCard(bk) {
+  const rating = overallBakeRating(bk);
+  const thumb = bk.photos && bk.photos[0]
+    ? `<img class="thumb" src="${bk.photos[0]}" alt="">`
+    : '<div class="thumb placeholder">🍞</div>';
+  return h(`<a class="card" href="#/bake/${bk.id}">
+    ${thumb}
+    <div class="card-body">
+      <div class="card-title">${esc(bk.name || bk.category || 'Untitled bake')}</div>
+      <div class="card-meta">
+        <span class="pill pill-recipe">${esc(bk.category || '')}</span>
+        <span>${esc(bk.bakeDate || '')}</span>
+      </div>
+      <div class="card-rating">${rating != null ? ratingStars(rating) : '<span class="muted">not rated yet</span>'}</div>
+    </div>
+  </a>`);
 }
 
 function batchCard(b) {
@@ -209,7 +258,8 @@ function batchCard(b) {
 
 // ---------- New batch (with preset picker) ----------
 async function renderNew() {
-  const batch = newBatch();
+  const batch = pendingBatchDraft || newBatch();
+  pendingBatchDraft = null;
   const [presets, vegOptions, spiceOptions] = await Promise.all([
     db.getPresets(), vegetableOptionsFor(batch.vegetable), spiceOptionsFor(batch.additions)]);
   renderForm(batch, false, presets, vegOptions, spiceOptions);
@@ -1079,6 +1129,11 @@ async function renderRecipeDetail(id) {
       <div class="detail-block"><h3>Equipment</h3>${listBlock(r.equipment)}</div>
       <div class="detail-block"><h3>Method</h3>${steps}</div>
       ${r.storage ? `<div class="detail-block"><h3>Storage &amp; keeping</h3><p>${esc(r.storage)}</p></div>` : ''}
+      <div class="use-recipe no-print">
+        ${r.category === 'Vegetable ferment'
+          ? '<button id="toBatch" class="btn primary full">🫙 Start a batch from this</button>'
+          : '<button id="toBake" class="btn primary full">🥖 Log a bake from this</button>'}
+      </div>
       <div class="detail-actions no-print">
         <button id="improveRecipe" class="btn ghost">✨ Improve</button>
         <button id="dupRecipe" class="btn ghost">🧬 Duplicate</button>
@@ -1089,6 +1144,10 @@ async function renderRecipeDetail(id) {
     </div>
   </section>`);
   swap(el);
+  const toBatch = $('#toBatch', el);
+  if (toBatch) toBatch.addEventListener('click', () => { pendingBatchDraft = batchDraftFromRecipe(r); setLogView('jars'); location.assign('#/new'); });
+  const toBake = $('#toBake', el);
+  if (toBake) toBake.addEventListener('click', () => { pendingBakeDraft = bakeDraftFromRecipe(r); location.assign('#/bake-new'); });
   const improveBtn = $('#improveRecipe', el);
   improveBtn.addEventListener('click', async () => {
     const status = $('#improveStatus', el);
@@ -1328,6 +1387,194 @@ async function addRecipePhoto(e, root) {
   e.target.value = '';
 }
 
+// ---------- Bakes ----------
+let editingBake = null;
+let pendingBakeDraft = null;
+function consumePendingBake() { const b = pendingBakeDraft || newBake(); pendingBakeDraft = null; return b; }
+
+function batchDraftFromRecipe(recipe) {
+  const b = newBatch();
+  b.name = recipe.title || '';
+  const title = (recipe.title || '').toLowerCase();
+  const vegMatch = VEGETABLES.find((v) => title.includes(v.toLowerCase()) || title.includes(v.toLowerCase().split(' ')[0]));
+  if (vegMatch) b.vegetable = vegMatch;
+  const ing = (recipe.ingredients || []).join(' ').toLowerCase();
+  b.additions = [...new Set([...COMMON_SPICES, ...getCustomSpices()].filter((s) => ing.includes(s.toLowerCase())))];
+  b.notes = `From recipe: ${recipe.title}`;
+  return b;
+}
+
+function bakeDraftFromRecipe(recipe) {
+  const bk = newBake();
+  bk.name = recipe.title || '';
+  bk.category = recipe.category === 'Sourdough' ? 'Sourdough' : 'Other';
+  bk.recipeId = recipe.id;
+  bk.recipeTitle = recipe.title || '';
+  return bk;
+}
+
+async function renderBakeDetail(id) {
+  const bk = await db.getBake(id);
+  if (!bk) return location.assign('#/');
+  const rating = overallBakeRating(bk);
+  const photos = (bk.photos || []).map((s) => `<img class="detail-photo" src="${s}" alt="">`).join('');
+  const probs = (bk.problems || []).length ? bk.problems.map((p) => `<span class="tag warn-tag">${esc(p)}</span>`).join('') : '<span class="muted">none</span>';
+  const rec = bk.recipeId && bk.recipeTitle ? `<a class="best-link" href="#/recipe/${bk.recipeId}">${esc(bk.recipeTitle)} →</a>` : '';
+  const el = h(`<section class="screen">
+    <header class="topbar no-print"><a class="back" href="#/">‹</a><h1>${esc(bk.name || 'Bake')}</h1><a class="edit" href="#/bake-edit/${bk.id}">Edit</a></header>
+    <div class="detail">
+      <div class="pill pill-recipe big">${esc(bk.category || '')} · ${esc(bk.bakeDate || '')}</div>
+      ${photos ? `<div class="detail-photos">${photos}</div>` : ''}
+      ${rec ? `<div class="detail-block"><h3>From recipe</h3>${rec}</div>` : ''}
+      <div class="detail-block"><h3>How it turned out ${rating != null ? `<span class="head-rating">${ratingStars(rating)}</span>` : ''}</h3>
+        <div class="stat-grid small">
+          <div class="stat"><span>Crust</span><strong>${ratingStars(bk.ratings && bk.ratings.crust)}</strong></div>
+          <div class="stat"><span>Crumb</span><strong>${ratingStars(bk.ratings && bk.ratings.crumb)}</strong></div>
+          <div class="stat"><span>Flavour</span><strong>${ratingStars(bk.ratings && bk.ratings.flavour)}</strong></div>
+          <div class="stat"><span>Overall</span><strong>${ratingStars(bk.ratings && bk.ratings.overall)}</strong></div>
+        </div>
+      </div>
+      <div class="detail-block"><h3>Problems</h3><div class="tags">${probs}</div></div>
+      ${bk.notes ? `<div class="detail-block"><h3>Notes</h3><p>${esc(bk.notes)}</p></div>` : ''}
+      <div class="detail-actions no-print">
+        <button id="dupBake" class="btn ghost">🧬 Duplicate</button>
+        <button id="shareBake" class="btn ghost">↗ Share</button>
+        <button id="printBake" class="btn ghost">🖨 Print</button>
+      </div>
+    </div>
+  </section>`);
+  swap(el);
+  $('#dupBake', el).addEventListener('click', async () => { const d = duplicateBake(bk); await db.saveBake(d); location.assign(`#/bake/${d.id}`); });
+  $('#shareBake', el).addEventListener('click', () => shareBake(bk));
+  $('#printBake', el).addEventListener('click', () => window.print());
+}
+
+function shareBake(bk) {
+  const L = [`${bk.name || 'Bake'} (${bk.category})`, `Date: ${bk.bakeDate}`];
+  const r = overallBakeRating(bk);
+  if (r != null) L.push(`Rating: ${ratingStars(r)}`);
+  if ((bk.problems || []).length) L.push(`Problems: ${bk.problems.join(', ')}`);
+  if (bk.notes) L.push(`Notes: ${bk.notes}`);
+  const text = L.join('\n');
+  (async () => {
+    try { if (navigator.share) { await navigator.share({ title: bk.name || 'Bake', text }); return; } await navigator.clipboard.writeText(text); alert('Bake summary copied to clipboard.'); } catch { /* cancelled */ }
+  })();
+}
+
+async function editBake(id) {
+  const bk = await db.getBake(id);
+  if (!bk) return location.assign('#/');
+  renderBakeForm(structuredClone(bk), true);
+}
+
+async function renderBakeForm(bake, isEdit = false) {
+  editingBake = bake;
+  const recipes = await db.getRecipes();
+  const cats = BAKE_CATEGORIES.map((c) => `<option ${c === bake.category ? 'selected' : ''}>${c}</option>`).join('');
+  const recOpts = ['<option value="">— none —</option>',
+    ...recipes.map((r) => `<option value="${r.id}" ${r.id === bake.recipeId ? 'selected' : ''}>${esc(r.title || 'Untitled')}</option>`)].join('');
+  const probChips = BAKE_PROBLEMS.map((p) => `<label class="chip"><input type="checkbox" value="${esc(p)}" ${bake.problems?.includes(p) ? 'checked' : ''}>${esc(p)}</label>`).join('');
+  const values = { ...(bake.ratings || {}) };
+  const starRow = (label, key) => `<div class="rating-row"><span>${label}</span>
+    <div class="stars" data-key="${key}">${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="star ${values[key] >= n ? 'on' : ''}" data-v="${n}">★</button>`).join('')}</div></div>`;
+
+  const form = h(`<section class="screen">
+    <header class="topbar"><a class="back" href="${isEdit ? `#/bake/${bake.id}` : '#/'}">‹</a><h1>${isEdit ? 'Edit bake' : 'New bake'}</h1></header>
+    <form id="bakeForm" class="form">
+      <fieldset><legend>About</legend>
+        <label>Name <input name="name" value="${esc(bake.name)}" placeholder="e.g. Everyday sourdough"></label>
+        <label>Category <select name="category">${cats}</select></label>
+        <label>Bake date <input type="date" name="bakeDate" value="${bake.bakeDate}"></label>
+        <label>From recipe (optional) <select name="recipeId">${recOpts}</select></label>
+      </fieldset>
+      <fieldset><legend>How did it turn out?</legend>
+        ${starRow('Crust', 'crust')}${starRow('Crumb', 'crumb')}${starRow('Flavour', 'flavour')}${starRow('Overall', 'overall')}
+        <div class="field-label">Problems</div>
+        <div class="chips">${probChips}</div>
+      </fieldset>
+      <fieldset><legend>Photos</legend>
+        <div class="photos" id="bphotos"></div>
+        <label class="btn ghost file">📷 Add photo<input type="file" accept="image/*" id="bphotoInput" hidden></label>
+      </fieldset>
+      <fieldset><legend>Notes</legend>
+        <textarea name="notes" rows="3" placeholder="Anything worth remembering…">${esc(bake.notes)}</textarea>
+      </fieldset>
+      <div class="actions">
+        <button type="submit" class="btn primary">${isEdit ? 'Save bake' : 'Log bake'}</button>
+        ${isEdit ? '<button type="button" id="delBake" class="btn danger">Delete</button>' : ''}
+      </div>
+    </form>
+  </section>`);
+  swap(form);
+
+  form.querySelectorAll('.stars').forEach((group) => {
+    group.addEventListener('click', (e) => {
+      const btn = e.target.closest('.star'); if (!btn) return;
+      const v = Number(btn.dataset.v);
+      values[group.dataset.key] = v;
+      [...group.children].forEach((s, i) => s.classList.toggle('on', i < v));
+    });
+  });
+
+  renderBakePhotos(form);
+  $('#bphotoInput', form).addEventListener('change', (e) => addBakePhoto(e, form));
+  if (isEdit) $('#delBake', form).addEventListener('click', async () => {
+    if (confirm('Delete this bake permanently?')) { await db.deleteBake(bake.id); location.assign('#/'); }
+  });
+
+  $('#bakeForm', form).addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const rid = fd.get('recipeId') || '';
+    Object.assign(editingBake, {
+      name: fd.get('name').trim(),
+      category: fd.get('category'),
+      bakeDate: fd.get('bakeDate'),
+      recipeId: rid,
+      recipeTitle: (recipes.find((r) => r.id === rid) || {}).title || '',
+      problems: [...form.querySelectorAll('.chips input:checked')].map((c) => c.value),
+      notes: fd.get('notes').trim(),
+      ratings: { crust: values.crust, crumb: values.crumb, flavour: values.flavour, overall: values.overall },
+    });
+    if (!editingBake.name) { alert('Please give the bake a name.'); return; }
+    await db.saveBake(editingBake);
+    location.assign(`#/bake/${editingBake.id}`);
+  });
+}
+
+function renderBakePhotos(root) {
+  const box = $('#bphotos', root);
+  box.innerHTML = '';
+  const photos = editingBake.photos || [];
+  photos.forEach((src, i) => {
+    const item = h(`<div class="photo"><img src="${src}" alt="">
+      <div class="photo-tools">
+        <button type="button" data-act="left" ${i === 0 ? 'disabled' : ''} aria-label="Move left">◀</button>
+        <button type="button" data-act="del" class="del" aria-label="Remove">✕</button>
+        <button type="button" data-act="right" ${i === photos.length - 1 ? 'disabled' : ''} aria-label="Move right">▶</button>
+      </div></div>`);
+    item.addEventListener('click', (e) => {
+      const act = e.target.dataset.act;
+      if (act === 'del') photos.splice(i, 1);
+      else if (act === 'left') { [photos[i - 1], photos[i]] = [photos[i], photos[i - 1]]; }
+      else if (act === 'right') { [photos[i + 1], photos[i]] = [photos[i], photos[i + 1]]; }
+      else return;
+      renderBakePhotos(root);
+    });
+    box.appendChild(item);
+  });
+}
+
+async function addBakePhoto(e, root) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const dataUrl = await shrinkImage(file, 1000, 0.75);
+  editingBake.photos = editingBake.photos || [];
+  editingBake.photos.push(dataUrl);
+  renderBakePhotos(root);
+  e.target.value = '';
+}
+
 // ---------- How it works ----------
 function renderHowItWorks() {
   const sec = (title, body) => `<div class="guide-sec"><h3>${title}</h3>${body}</div>`;
@@ -1382,6 +1629,15 @@ function renderHowItWorks() {
           <li>Describe or dictate a recipe with <strong>✨ Build with AI</strong>.</li>
           <li>On a saved recipe, <strong>✨ Improve</strong> tidies it up, and you can Duplicate / Share / Print it.</li>
         </ul>`)}
+
+      ${sec('Bakes (sourdough & baking)', `
+        <p>The first tab has a <strong>Jars / Bakes</strong> toggle. <strong>Bakes</strong> are for sourdough and other baking — each records a name, date, an optional linked recipe, photos, <strong>crust / crumb / flavour / overall</strong> ratings, problems (dense, gummy, over-proofed…) and notes.</p>
+        <ul>
+          <li>Switch to <strong>Bakes</strong> and tap <strong>＋ New bake</strong> to log one.</li>
+          <li>From a <strong>sourdough recipe</strong>, tap <strong>🥖 Log a bake from this</strong> to start a bake already linked to it.</li>
+          <li>From a <strong>vegetable-ferment recipe</strong>, tap <strong>🫙 Start a batch from this</strong> to pre-fill a new jar.</li>
+        </ul>
+        <p class="muted">So <em>Batch</em> stays the word for a fermenting jar, and <em>Bake</em> covers bread.</p>`)}
 
       ${sec('The AI assistant', `
         <p>Optional, and fully explained under <a href="#/settings">Settings → AI assistant</a>. In short: describe or dictate a recipe or batch and it fills in the fields; you always review before saving. It uses <strong>your own Anthropic API key</strong>, stored only on this device — only the text you describe is ever sent, and everything else stays offline. It costs a fraction of a cent per use on your own account.</p>`)}

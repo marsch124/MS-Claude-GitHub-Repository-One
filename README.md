@@ -22,6 +22,10 @@ No account, no server, no cost.
   remembered option next time.
 - **In-app changelog** — browse every improvement version-by-version from Settings →
   "What's new".
+- **Bakes** — a dedicated log for **sourdough & baking** (via a Jars / Bakes toggle on the
+  first tab): name, date, an optional linked recipe, photos, crust/crumb/flavour/overall
+  ratings, problems and notes. Recipes connect to your log — "Start a batch from this" on a
+  veg-ferment recipe, or "Log a bake from this" on a sourdough recipe.
 - **Recipes** — a separate recipe book (its own tab) for full recipes including
   **sourdough bread**: title, category, description, photos, ingredients, equipment,
   hands-on & total time, **timed step-by-step method**, and storage notes. Comes with a

@@ -398,6 +398,48 @@ export function ratingStars(n) {
   return '★★★★★'.slice(0, full) + '☆☆☆☆☆'.slice(0, 5 - full);
 }
 
+// ---------- Bakes (sourdough & other baking) ----------
+
+export const BAKE_CATEGORIES = ['Sourdough', 'Bread', 'Other'];
+export const BAKE_PROBLEMS = ['Dense crumb', 'Gummy', 'Flat / didn’t rise', 'Over-proofed', 'Under-proofed', 'Burnt', 'Pale crust'];
+
+/** An empty bake with sensible defaults. */
+export function newBake(now = new Date()) {
+  return {
+    id: `k_${now.getTime()}_${Math.random().toString(36).slice(2, 8)}`,
+    name: '',
+    category: 'Sourdough',
+    bakeDate: isoDay(now),
+    recipeId: '',
+    recipeTitle: '',
+    photos: [],
+    ratings: { crust: undefined, crumb: undefined, flavour: undefined, overall: undefined },
+    problems: [],
+    notes: '',
+    createdAt: now.toISOString(),
+  };
+}
+
+/** Overall score for a bake: explicit overall, else the average of the parts. */
+export function overallBakeRating(bake) {
+  const r = bake && bake.ratings;
+  if (!r) return null;
+  if (Number.isFinite(r.overall)) return r.overall;
+  const parts = [r.crust, r.crumb, r.flavour].filter(Number.isFinite);
+  if (!parts.length) return null;
+  return parts.reduce((a, b) => a + b, 0) / parts.length;
+}
+
+/** Duplicate a bake with a fresh id, today's date and a "(copy)" name. */
+export function duplicateBake(bake, now = new Date()) {
+  const b = typeof structuredClone === 'function' ? structuredClone(bake) : JSON.parse(JSON.stringify(bake));
+  b.id = `k_${now.getTime()}_${Math.random().toString(36).slice(2, 8)}`;
+  b.name = bake.name ? `${bake.name} (copy)` : '';
+  b.bakeDate = isoDay(now);
+  b.createdAt = now.toISOString();
+  return b;
+}
+
 // ---------- Recipes ----------
 
 export const RECIPE_CATEGORIES = ['Sourdough', 'Vegetable ferment', 'Drink / kombucha', 'Dairy', 'Other'];

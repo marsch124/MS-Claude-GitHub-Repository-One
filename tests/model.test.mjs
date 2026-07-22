@@ -9,6 +9,7 @@ import {
   VEGETABLES, usedVegetables, mergeVegetables,
   COMMON_SPICES, usedSpices, mergeSpices, renamedList, withoutItem,
   newRecipe, duplicateRecipe, sampleSourdoughRecipe, RECIPE_CATEGORIES,
+  newBake, overallBakeRating, duplicateBake, BAKE_CATEGORIES,
 } from '../js/model.js';
 import { APP_VERSION, CHANGELOG } from '../js/changelog.js';
 import { normalizeRecipe, extractJSON, normalizeBatch, normalizeCheckIn } from '../js/ai.js';
@@ -344,6 +345,35 @@ test('extractJSON: parses clean JSON and JSON embedded in prose', () => {
   assert.deepEqual(extractJSON('{"a":1}'), { a: 1 });
   assert.deepEqual(extractJSON('Sure! ```json\n{"a":2}\n``` done'), { a: 2 });
   assert.throws(() => extractJSON('no json here'));
+});
+
+// ---------- bakes ----------
+test('newBake: defaults, unique id, sourdough category', () => {
+  const b = newBake(new Date('2026-07-21T10:00:00Z'));
+  assert.equal(b.category, 'Sourdough');
+  assert.ok(BAKE_CATEGORIES.includes(b.category));
+  assert.equal(b.bakeDate, '2026-07-21');
+  assert.deepEqual(b.problems, []);
+  assert.ok(b.id.startsWith('k_'));
+  assert.notEqual(newBake().id, newBake().id);
+});
+
+test('overallBakeRating: explicit overall, else average of parts', () => {
+  assert.equal(overallBakeRating({ ratings: { overall: 5 } }), 5);
+  assert.equal(overallBakeRating({ ratings: { crust: 4, crumb: 2, flavour: 3 } }), 3);
+  assert.equal(overallBakeRating({ ratings: {} }), null);
+  assert.equal(overallBakeRating({}), null);
+});
+
+test('duplicateBake: fresh id, today date, "(copy)" name', () => {
+  const src = newBake(new Date('2026-06-01T10:00:00Z'));
+  src.name = 'Country loaf';
+  src.ratings = { overall: 5 };
+  const dup = duplicateBake(src, new Date('2026-07-21T10:00:00Z'));
+  assert.equal(dup.name, 'Country loaf (copy)');
+  assert.equal(dup.bakeDate, '2026-07-21');
+  assert.notEqual(dup.id, src.id);
+  assert.notEqual(dup.ratings, src.ratings); // deep-copied
 });
 
 // ---------- changelog integrity ----------
