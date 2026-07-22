@@ -557,3 +557,36 @@ export function sampleSourdoughRecipe(now = new Date()) {
     storage: 'Cool completely (at least 1 h) before slicing — the crumb sets as it cools. Keep cut-side down on a board at room temperature for 2–3 days, or slice and freeze for up to 3 months. Refresh slices straight from the freezer in a toaster.',
   };
 }
+
+// ---------- Unified search ----------
+
+const searchNorm = (s) => String(s == null ? '' : s).toLowerCase();
+
+export function batchSearchText(b) {
+  return [b.name, b.vegetable, b.vesselType, b.lidType, b.weightType, b.notes,
+    ...(b.additions || []), ...((b.checkIns || []).map((c) => c && c.tasteNote))].map(searchNorm).join(' ');
+}
+
+export function bakeSearchText(bk) {
+  return [bk.name, bk.category, bk.recipeTitle, bk.notes, ...(bk.problems || [])].map(searchNorm).join(' ');
+}
+
+export function recipeSearchText(r) {
+  return [r.title, r.category, r.description, r.storage, ...(r.ingredients || []), ...(r.equipment || []),
+    ...((r.steps || []).flatMap((s) => [s && s.title, s && s.detail]))].map(searchNorm).join(' ');
+}
+
+/**
+ * Search across jars (batches), bakes and recipes. An item matches when every
+ * whitespace-separated term appears somewhere in its searchable text (AND).
+ * Empty query returns no results.
+ */
+export function searchAll(query, { batches = [], bakes = [], recipes = [] } = {}) {
+  const terms = searchNorm(query).split(/\s+/).filter(Boolean);
+  if (!terms.length) return { batches: [], bakes: [], recipes: [], total: 0 };
+  const match = (text) => terms.every((t) => text.includes(t));
+  const jb = (batches || []).filter((b) => match(batchSearchText(b)));
+  const bk = (bakes || []).filter((x) => match(bakeSearchText(x)));
+  const rc = (recipes || []).filter((r) => match(recipeSearchText(r)));
+  return { batches: jb, bakes: bk, recipes: rc, total: jb.length + bk.length + rc.length };
+}

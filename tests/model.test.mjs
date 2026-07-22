@@ -10,6 +10,7 @@ import {
   COMMON_SPICES, usedSpices, mergeSpices, renamedList, withoutItem,
   newRecipe, duplicateRecipe, sampleSourdoughRecipe, RECIPE_CATEGORIES,
   newBake, overallBakeRating, duplicateBake, BAKE_CATEGORIES, summarizeBakes,
+  searchAll,
 } from '../js/model.js';
 import { APP_VERSION, CHANGELOG } from '../js/changelog.js';
 import { normalizeRecipe, extractJSON, normalizeBatch, normalizeCheckIn, normalizeBake } from '../js/ai.js';
@@ -410,6 +411,31 @@ test('summarizeBakes: empty degrades; aggregates ratings/recipes/problems', () =
   const dense = s.problems.find((p) => p.label === 'Dense crumb');
   assert.equal(dense.value, 2);
   assert.deepEqual(s.ratingOverTime.map((p) => p.name), ['A', 'B', 'C']); // oldest→newest
+});
+
+test('searchAll: matches across jars, bakes and recipes; AND terms; empty → none', () => {
+  const data = {
+    batches: [
+      { id: 'b1', name: 'Spicy carrot', vegetable: 'Carrot sticks', additions: ['Garlic'], checkIns: [{ tasteNote: 'very tangy' }] },
+      { id: 'b2', name: 'Kraut', vegetable: 'Cabbage', additions: [] },
+    ],
+    bakes: [{ id: 'k1', name: 'Country loaf', category: 'Sourdough', problems: ['Dense crumb'] }],
+    recipes: [{ id: 'r1', title: 'Everyday Sourdough', category: 'Sourdough', ingredients: ['500 g flour'], steps: [] }],
+  };
+  assert.equal(searchAll('', data).total, 0);
+  const carrot = searchAll('carrot', data);
+  assert.deepEqual(carrot.batches.map((b) => b.id), ['b1']);
+  assert.equal(carrot.bakes.length, 0);
+
+  // matches across types
+  const sour = searchAll('sourdough', data);
+  assert.equal(sour.bakes.length, 1);
+  assert.equal(sour.recipes.length, 1);
+
+  // AND semantics + deep fields (checkIns / additions)
+  assert.deepEqual(searchAll('tangy garlic', data).batches.map((b) => b.id), ['b1']);
+  assert.equal(searchAll('dense crumb', data).bakes.length, 1);
+  assert.equal(searchAll('carrot zzzz', data).total, 0);
 });
 
 // ---------- changelog integrity ----------

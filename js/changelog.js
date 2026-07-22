@@ -4,9 +4,19 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.1';
+export const APP_VERSION = '5.2';
 
 export const CHANGELOG = [
+  {
+    version: '5.2',
+    date: '2026-07-21 · 19:18 CEST',
+    title: 'Unified search 🔍',
+    changes: [
+      'A search screen that looks across everything at once — jars, bakes and recipes — with results grouped by type as you type. Reach it from the 🔍 in the Batches or Recipes header.',
+      'It searches the useful fields too: names, vegetables and spices, taste-test notes, bake problems, recipe ingredients, equipment and steps.',
+      'Tap any result to jump straight to it.',
+    ],
+  },
   {
     version: '5.1',
     date: '2026-07-21 · 19:07 CEST',

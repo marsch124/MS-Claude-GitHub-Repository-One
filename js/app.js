@@ -7,6 +7,7 @@ import {
   usedVegetables, mergeVegetables, usedSpices, mergeSpices, renamedList, withoutItem,
   RECIPE_CATEGORIES, newRecipe, duplicateRecipe, sampleSourdoughRecipe,
   BAKE_CATEGORIES, BAKE_PROBLEMS, newBake, overallBakeRating, duplicateBake, summarizeBakes,
+  searchAll,
 } from './model.js';
 import { APP_VERSION, CHANGELOG } from './changelog.js';
 import {
@@ -128,6 +129,7 @@ async function render() {
   else if (hash === '#/manage-lists') await renderManageLists();
   else if (hash === '#/changelog') renderChangelog();
   else if (hash === '#/how') renderHowItWorks();
+  else if (hash === '#/search') await renderSearch();
   else if (hash === '#/recipes') await renderRecipes();
   else if (hash === '#/recipe-new') renderRecipeForm(newRecipe());
   else if (hash.startsWith('#/recipe-edit/')) await editRecipe(hash.slice(14));
@@ -156,7 +158,7 @@ function syncNav(hash) {
 // ---------- Batches list ----------
 async function renderList() {
   const view = logView();
-  const wrap = h(`<section class="screen"><header class="topbar"><h1>${view === 'bakes' ? 'My bakes' : 'My ferments'}</h1></header></section>`);
+  const wrap = h(`<section class="screen"><header class="topbar"><h1>${view === 'bakes' ? 'My bakes' : 'My ferments'}</h1><a class="search-btn" href="#/search" aria-label="Search">🔍</a></header></section>`);
   const toggle = h(`<div class="segmented logtoggle">
     <button class="seg ${view === 'jars' ? 'on' : ''}" data-v="jars">🫙 Jars</button>
     <button class="seg ${view === 'bakes' ? 'on' : ''}" data-v="bakes">🥖 Bakes</button>
@@ -1125,7 +1127,7 @@ const recipeEmoji = (r) => (r.category === 'Sourdough' ? '🥖' : r.category ===
 
 async function renderRecipes() {
   const recipes = await db.getRecipes();
-  const wrap = h(`<section class="screen"><header class="topbar"><h1>Recipes</h1><a class="edit" href="#/recipe-new">＋ New</a></header></section>`);
+  const wrap = h(`<section class="screen"><header class="topbar"><h1>Recipes</h1><a class="search-btn" href="#/search" aria-label="Search">🔍</a><a class="edit" href="#/recipe-new">＋ New</a></header></section>`);
   if (!recipes.length) {
     const empty = h(`<div class="empty">
       <div class="empty-emoji">🥖</div>
@@ -1451,6 +1453,42 @@ async function addRecipePhoto(e, root) {
   e.target.value = '';
 }
 
+// ---------- Unified search ----------
+async function renderSearch() {
+  const [batches, bakes, recipes] = await Promise.all([db.getAllBatches(), db.getBakes(), db.getRecipes()]);
+  const screen = h(`<section class="screen">
+    <header class="topbar"><a class="back" href="#/">‹</a><h1>Search</h1></header>
+    <input id="searchInput" class="search-input" type="search" placeholder="Search jars, bakes & recipes…" autocomplete="off" autocapitalize="none">
+    <div id="searchResults" class="search-results"></div>
+  </section>`);
+  swap(screen);
+  const input = $('#searchInput', screen);
+  const box = $('#searchResults', screen);
+
+  const group = (label, items, mapper) => {
+    if (!items.length) return '';
+    const rows = items.map((it) => {
+      const m = mapper(it);
+      return `<a class="search-row" href="${m.href}"><span class="search-title">${esc(m.title)}</span><span class="search-sub">${esc(m.sub)}</span></a>`;
+    }).join('');
+    return `<div class="search-group"><div class="search-group-h">${label} <span>${items.length}</span></div>${rows}</div>`;
+  };
+
+  const draw = () => {
+    const q = input.value.trim();
+    if (!q) { box.innerHTML = '<p class="muted search-hint">Type to search across your jars, bakes and recipes.</p>'; return; }
+    const r = searchAll(q, { batches, bakes, recipes });
+    if (!r.total) { box.innerHTML = `<p class="muted search-hint">No matches for “${esc(q)}”.</p>`; return; }
+    box.innerHTML =
+      group('🫙 Jars', r.batches, (b) => ({ href: `#/batch/${b.id}`, title: b.name || b.vegetable || 'Untitled batch', sub: `${b.vegetable || ''} · ${fmtBrine(b)}` }))
+      + group('🍞 Bakes', r.bakes, (b) => ({ href: `#/bake/${b.id}`, title: b.name || b.category || 'Untitled bake', sub: `${b.category || ''} · ${b.bakeDate || ''}` }))
+      + group('🥖 Recipes', r.recipes, (rr) => ({ href: `#/recipe/${rr.id}`, title: rr.title || 'Untitled recipe', sub: rr.category || '' }));
+  };
+  input.addEventListener('input', draw);
+  draw();
+  input.focus();
+}
+
 // ---------- Bakes ----------
 let editingBake = null;
 let pendingBakeDraft = null;
@@ -1698,6 +1736,9 @@ function renderHowItWorks() {
           <li><strong>Record the outcome</strong> — rate taste, sourness, crunch and overall, mark success, and note any problems (mould, kahm yeast, mushy…).</li>
           <li><strong>Duplicate</strong>, <strong>Share</strong> or <strong>Print</strong> the batch, or get <strong>✨ AI tips</strong> for its setup.</li>
         </ul>`)}
+
+      ${sec('Search', `
+        <p>Tap the <strong>🔍</strong> in the Batches or Recipes header to search across <strong>everything at once</strong> — jars, bakes and recipes. Results group by type as you type, and it looks inside names, vegetables and spices, taste-test notes, bake problems, and recipe ingredients, equipment and steps.</p>`)}
 
       ${sec('Insights', `
         <p>Once you've logged a few finished batches, the Insights tab shows what's working:</p>
