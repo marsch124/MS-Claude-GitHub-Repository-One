@@ -221,8 +221,13 @@ a { color: inherit; text-decoration: none; }
   display: grid; place-items: center; margin-top: -2px; box-shadow: 0 2px 8px rgba(232, 114, 44, 0.4); }
 .tabbar .fab-tab .ico svg { width: 20px; height: 20px; }
 
+/* --- Carrot-toned inline icons (match the tab-bar set) --- */
+svg.ic { width: 1.15em; height: 1.15em; vertical-align: -0.2em; color: var(--brand); flex: none; }
+.seg svg.ic { margin-right: 3px; }
+
 /* --- Search --- */
-.search-btn { font-size: 1.2rem; padding: 4px 6px; text-decoration: none; }
+.search-btn { display: inline-flex; align-items: center; padding: 4px 6px; text-decoration: none; }
+.search-btn svg.ic { width: 23px; height: 23px; vertical-align: middle; }
 .search-input { width: 100%; padding: 12px 14px; font-size: 1rem; border: 1.5px solid var(--brand);
   border-radius: 12px; background: var(--surface-2); color: var(--ink); font-family: inherit; margin-bottom: 14px; }
 .search-hint { text-align: center; padding: 20px; }
@@ -237,8 +242,8 @@ a { color: inherit; text-decoration: none; }
 /* --- Jars / Bakes toggle --- */
 .logtoggle { display: flex; width: 100%; margin-bottom: 14px; }
 .logtoggle .seg { flex: 1; }
-.bakes-actions { display: flex; gap: 8px; margin-bottom: 14px; }
-.bakes-actions .btn { flex: 1; }
+.list-actions { display: flex; gap: 8px; margin-bottom: 14px; }
+.list-actions .btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
 .use-recipe { margin-top: 8px; }
 .lesson-list { list-style: none; padding: 0; margin: 0 0 10px; }
 .lesson-list li { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); line-height: 1.45; }
@@ -338,7 +343,8 @@ a { color: inherit; text-decoration: none; }
 /* --- Segmented control --- */
 .segmented { display: inline-flex; background: var(--surface-2); border-radius: 12px; padding: 4px; gap: 2px; }
 .seg { border: none; background: none; padding: 8px 16px; border-radius: 9px; font-size: .9rem; font-weight: 600;
-  color: var(--muted); cursor: pointer; font-family: inherit; }
+  color: var(--muted); cursor: pointer; font-family: inherit;
+  display: inline-flex; align-items: center; justify-content: center; }
 .seg.on { background: var(--surface); color: var(--brand-ink); box-shadow: var(--shadow); }
 
 /* --- Preset list --- */

@@ -4,9 +4,20 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.3';
+export const APP_VERSION = '5.4';
 
 export const CHANGELOG = [
+  {
+    version: '5.4',
+    date: '2026-07-22 · 11:12 CEST',
+    title: 'Carrot-toned icons and a tidier Batches home 🥕',
+    changes: [
+      'The Jars / Bakes toggle and the search button now use clean, carrot-orange icons that match the bottom navigation — no more mismatched emoji.',
+      'The heading now reads "My Ferments" (and "My Bakes"), so it\'s clear which log you\'re looking at.',
+      'The Jars page now shares the Bakes page layout: a matching row of "＋ New batch" and "Insights" actions right at the top, while keeping the ongoing-first list below.',
+      'The Bakes "Insights & lessons" button now uses the same bar-chart icon as Insights in the bottom navigation.',
+    ],
+  },
   {
     version: '5.3',
     date: '2026-07-21 · 19:34 CEST',

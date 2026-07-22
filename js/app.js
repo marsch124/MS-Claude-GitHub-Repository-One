@@ -24,6 +24,14 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const fmtBrine = (b) => { const v = computeBrinePercent(b.saltGrams, b.waterMl); return v == null ? '—' : `${v.toFixed(1)}%`; };
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
+// Carrot-toned inline icons, matching the bottom tab-bar set (color: var(--brand) via .ic).
+const IC = {
+  jar: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8"/><path d="M8 4v1.4a3 3 0 0 1-.9 2.1A4 4 0 0 0 6 10.4V18a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3v-7.6a4 4 0 0 0-1.1-2.9A3 3 0 0 1 16 5.4V4"/><path d="M6.4 12h11.2"/></svg>',
+  bread: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 14.5a4.5 4.5 0 0 1 2.6-4.1A4 4 0 0 1 9.2 6h5.6a4 4 0 0 1 1.6 4.4A4.5 4.5 0 0 1 19 14.5V17a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1Z"/><path d="M9.5 11.5 8 16m4-4.5L10.5 16m4-4.5L13 16"/></svg>',
+  chart: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20h14"/><path d="M7.5 20v-4.5"/><path d="M12 20V8"/><path d="M16.5 20v-7"/></svg>',
+  search: '<svg class="ic ic-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.2"/><path d="m20 20-3.6-3.6"/></svg>',
+};
+
 let editing = null;        // working copy of a batch being created/edited
 let insightsVeg = null;    // active vegetable filter on the Insights screen
 let pendingBatchDraft = null; // a batch pre-filled from a recipe, for the New form
@@ -158,10 +166,10 @@ function syncNav(hash) {
 // ---------- Batches list ----------
 async function renderList() {
   const view = logView();
-  const wrap = h(`<section class="screen"><header class="topbar"><h1>${view === 'bakes' ? 'My bakes' : 'My ferments'}</h1><a class="search-btn" href="#/search" aria-label="Search">🔍</a></header></section>`);
+  const wrap = h(`<section class="screen"><header class="topbar"><h1>${view === 'bakes' ? 'My Bakes' : 'My Ferments'}</h1><a class="search-btn" href="#/search" aria-label="Search">${IC.search}</a></header></section>`);
   const toggle = h(`<div class="segmented logtoggle">
-    <button class="seg ${view === 'jars' ? 'on' : ''}" data-v="jars">🫙 Jars</button>
-    <button class="seg ${view === 'bakes' ? 'on' : ''}" data-v="bakes">🥖 Bakes</button>
+    <button class="seg ${view === 'jars' ? 'on' : ''}" data-v="jars">${IC.jar} Jars</button>
+    <button class="seg ${view === 'bakes' ? 'on' : ''}" data-v="bakes">${IC.bread} Bakes</button>
   </div>`);
   toggle.querySelectorAll('.seg').forEach((btn) => btn.addEventListener('click', () => { setLogView(btn.dataset.v); renderList(); }));
   wrap.appendChild(toggle);
@@ -180,12 +188,15 @@ async function fillJars(wrap) {
       <div class="wn-sub">Tap to see everything that's been added.</div></div>
     </a>`));
   }
+  wrap.appendChild(h(`<div class="list-actions">
+    <a class="btn primary" href="#/new">＋ New batch</a>
+    <a class="btn ghost" href="#/insights">${IC.chart} Insights</a>
+  </div>`));
   if (!batches.length) {
     wrap.appendChild(h(`<div class="empty">
       <div class="empty-emoji">🥕</div>
       <h2>No jars yet</h2>
       <p>Start your first jar and begin learning what makes the best ferment. Log the brine, temperature and spices, then track how it turns out.</p>
-      <a class="btn primary" href="#/new">＋ New batch</a>
       <a class="btn ghost" href="#/how">📖 How it works</a>
     </div>`));
     return;
@@ -239,9 +250,9 @@ async function fillJars(wrap) {
 
 async function fillBakes(wrap) {
   const bakes = await db.getBakes();
-  wrap.appendChild(h(`<div class="bakes-actions">
+  wrap.appendChild(h(`<div class="list-actions">
     <a class="btn primary new-bake" href="#/bake-new">＋ New bake</a>
-    <a class="btn ghost" href="#/bake-insights">📊 Insights &amp; lessons</a>
+    <a class="btn ghost" href="#/bake-insights">${IC.chart} Insights &amp; lessons</a>
   </div>`));
   if (!bakes.length) {
     wrap.appendChild(h(`<div class="empty">
