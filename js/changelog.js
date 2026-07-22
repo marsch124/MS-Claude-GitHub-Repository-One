@@ -4,9 +4,18 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.5';
+export const APP_VERSION = '5.6';
 
 export const CHANGELOG = [
+  {
+    version: '5.6',
+    date: '2026-07-22 · 22:41 CEST',
+    title: 'A cleaner Batches home 🥕',
+    changes: [
+      'Tidied the Batches home: the "What\'s new" banner and the "How it works" link no longer sit on the main screen — both live under Settings now, where you can reach them any time.',
+      'Redrew the carrot in the empty state so it\'s longer and more tapered — a proper carrot rather than a stubby one.',
+    ],
+  },
   {
     version: '5.5',
     date: '2026-07-22 · 21:58 CEST',

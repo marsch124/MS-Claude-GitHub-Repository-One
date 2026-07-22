@@ -36,7 +36,7 @@ const IC = {
 // Larger carrot-toned illustrations (empty states and card thumbnails). Sized by CSS (.gfx).
 const ILLUS = {
   jar: '<svg class="gfx" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8"/><path d="M8 4v1.4a3 3 0 0 1-.9 2.1A4 4 0 0 0 6 10.4V18a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3v-7.6a4 4 0 0 0-1.1-2.9A3 3 0 0 1 16 5.4V4"/><path d="M6.4 12h11.2"/></svg>',
-  carrot: '<svg class="gfx" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M24 25C20 31 21 39 24 44c2 5 6 9 8 9s6-4 8-9c3-5 4-13 0-19Z" fill="currentColor" fill-opacity=".12"/><path d="M32 25V13"/><path d="M32 19c-3-4-8-5-12-4M32 19c3-4 8-5 12-4"/><path d="M27 33l3 1.6M37 33l-3 1.6M29 41l3 1.6M35 41l-3 1.6"/></svg>',
+  carrot: '<svg class="gfx" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M25 26C26 39 28 50 31 56c.4.9 1.6.9 2 0 3-6 5-17 6-30Z" fill="currentColor" fill-opacity=".12"/><path d="M32 26V10"/><path d="M32 16c-3-5-9-7-13-5M32 16c3-5 9-7 13-5"/><path d="M28 35l3 1.6M37 35l-3 1.6M30 43l2.4 1.4M35 43l-2.4 1.4"/></svg>',
   bread: '<svg class="gfx" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 40C11 26 21 19 32 19s21 7 21 21c0 4-4 7-8 7H19c-4 0-8-3-8-7Z" fill="currentColor" fill-opacity=".12"/><path d="M24 28l6 8M33 27l6 8M42 28l4 6"/></svg>',
   book: '<svg class="gfx" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 14h20a6 6 0 0 1 6 6v30H24a6 6 0 0 1-6-6Z" fill="currentColor" fill-opacity=".12"/><path d="M26 26h13M26 33h13M26 40h8"/></svg>',
 };
@@ -191,13 +191,6 @@ async function renderList() {
 
 async function fillJars(wrap) {
   const batches = await db.getAllBatches();
-  if (isVersionUnseen()) {
-    wrap.appendChild(h(`<a class="whatsnew-banner" href="#/changelog">
-      <span class="wn-ico">✨</span>
-      <div><strong>FermentLog v${APP_VERSION} — what's new</strong>
-      <div class="wn-sub">Tap to see everything that's been added.</div></div>
-    </a>`));
-  }
   wrap.appendChild(h(`<div class="list-actions">
     <a class="btn primary" href="#/new">＋ New batch</a>
     <a class="btn ghost" href="#/insights">${IC.chart} Insights</a>
@@ -207,7 +200,6 @@ async function fillJars(wrap) {
       <div class="empty-emoji">${ILLUS.carrot}</div>
       <h2>No jars yet</h2>
       <p>Start your first jar and begin learning what makes the best ferment. Log the brine, temperature and spices, then track how it turns out.</p>
-      <a class="btn ghost" href="#/settings">${IC.book} How it works</a>
     </div>`));
     return;
   }
