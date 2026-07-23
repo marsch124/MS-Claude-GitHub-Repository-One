@@ -224,6 +224,7 @@ a { color: inherit; text-decoration: none; }
 /* --- Carrot-toned inline icons (match the tab-bar set) --- */
 svg.ic { width: 1.15em; height: 1.15em; vertical-align: -0.2em; color: var(--brand); flex: none; }
 .seg svg.ic { margin-right: 3px; }
+.btn > svg.ic { margin-right: 5px; }
 
 /* Larger carrot-toned illustrations (empty states + card thumbnails) */
 svg.gfx { color: var(--brand); display: block; }

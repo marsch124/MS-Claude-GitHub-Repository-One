@@ -31,6 +31,8 @@ const IC = {
   chart: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20h14"/><path d="M7.5 20v-4.5"/><path d="M12 20V8"/><path d="M16.5 20v-7"/></svg>',
   search: '<svg class="ic ic-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.2"/><path d="m20 20-3.6-3.6"/></svg>',
   book: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4.5h8.5a3 3 0 0 1 3 3V20H9a3 3 0 0 1-3-3Z"/><path d="M9.5 9h5M9.5 12.5h5"/></svg>',
+  up: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V6"/><path d="m6 12 6-6 6 6"/></svg>',
+  down: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v14"/><path d="m6 12 6 6 6-6"/></svg>',
 };
 
 // Larger carrot-toned illustrations (empty states and card thumbnails). Sized by CSS (.gfx).
@@ -1098,9 +1100,9 @@ async function renderSettings() {
       <div class="setting-block">
         <h3>Backup & export</h3>
         <p class="muted">Your data lives only on this device. Keep a backup, or export a spreadsheet.</p>
-        <button class="btn primary" id="exportBtn">⬇ Export backup (JSON)</button>
-        <label class="btn ghost file">⬆ Import backup<input type="file" accept="application/json,.json" id="importInput" hidden></label>
-        <button class="btn ghost" id="csvBtn">📊 Export CSV</button>
+        <button class="btn ghost" id="exportBtn">${IC.up} Export backup (JSON)</button>
+        <label class="btn ghost file">${IC.down} Import backup<input type="file" accept="application/json,.json" id="importInput" hidden></label>
+        <button class="btn ghost" id="csvBtn">${IC.chart} Export CSV</button>
 
         <div class="backup-reminder">
           <label class="cadence-row">Remind me to back up

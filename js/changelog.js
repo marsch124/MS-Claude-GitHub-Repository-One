@@ -4,9 +4,19 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.10';
+export const APP_VERSION = '5.11';
 
 export const CHANGELOG = [
+  {
+    version: '5.11',
+    date: '2026-07-23 · 10:34 CEST',
+    title: 'Tidier backup buttons',
+    changes: [
+      'The Export, Import and CSV buttons now share one calm style — no more oversized orange Export button.',
+      'Clearer arrows: Export points up (data leaving the app) and Import points down (data coming in).',
+      'The Export CSV button uses the carrot-orange chart icon to match the rest of the app.',
+    ],
+  },
   {
     version: '5.10',
     date: '2026-07-23 · 10:12 CEST',
