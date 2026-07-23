@@ -1,9 +1,9 @@
 // app.js — screens, navigation and wiring for FermentLog.
 import {
   VEGETABLES, FORMS, splitVegForm, LID_TYPES, WEIGHT_TYPES, PROBLEMS, COMMON_SPICES, DEFAULT_REMIND_DAYS,
-  computeBrinePercent, isBrineInRange, daysBetween, fermentDays, batchStatus, statusLabel,
+  computeBrinePercent, isBrineInRange, daysBetween, batchStatus, statusLabel,
   overallRating, summarizeStats, recommendation, newBatch, ratingStars,
-  nextCheckDue, dueBatches, toCSV, toFullCSV, exportSheets, presetFromBatch, batchFromPreset, duplicateBatch,
+  nextCheckDue, dueBatches, exportSheets, presetFromBatch, batchFromPreset, duplicateBatch,
   usedVegetables, mergeVegetables, usedSpices, mergeSpices, renamedList, withoutItem,
   RECIPE_CATEGORIES, newRecipe, duplicateRecipe, sampleSourdoughRecipe,
   BAKE_CATEGORIES, BAKE_PROBLEMS, newBake, overallBakeRating, duplicateBake, summarizeBakes,
@@ -223,6 +223,34 @@ function markVersionSeen() { try { localStorage.setItem(SEEN_KEY, APP_VERSION); 
 
 // ---------- Router ----------
 async function render() {
+  try {
+    await renderRoute();
+  } catch (err) {
+    console.error('FermentLog: a screen failed to render', err);
+    try { showErrorScreen(err); } catch { /* last resort: leave the current screen */ }
+  }
+}
+
+function showErrorScreen(err) {
+  const el = h(`<section class="screen"><header class="topbar"><h1>Something went wrong</h1></header>
+    <div class="empty">
+      <div class="empty-emoji">⚠️</div>
+      <h2>That screen hit a snag</h2>
+      <p>Your data is safe on this device. Try reloading — and if it keeps happening, export a backup so nothing is lost.</p>
+      <div class="list-actions">
+        <button class="btn primary" id="errReload">↻ Reload</button>
+        <button class="btn ghost" id="errExport">${IC.up} Export backup</button>
+      </div>
+      <a class="btn ghost" href="#/">Go to Home</a>
+      <pre class="err-detail">${esc(String((err && err.message) || err || 'Unknown error'))}</pre>
+    </div>
+  </section>`);
+  swap(el);
+  $('#errReload', el).addEventListener('click', () => location.reload());
+  $('#errExport', el).addEventListener('click', () => exportBackup().catch(() => {}));
+}
+
+async function renderRoute() {
   const hash = location.hash || '#/';
   app.classList.add('fade');
   if (hash === '#/' || hash === '') await renderList();
@@ -2187,6 +2215,35 @@ window.addEventListener('hashchange', render);
 migrateVegetableForms().finally(render);
 maybeNotifyDue();
 
+// Catch anything that escapes the render() boundary (e.g. an async event handler).
+window.addEventListener('unhandledrejection', (e) => console.error('FermentLog: unhandled rejection', e.reason));
+
+// ---------- Service worker + "update available" prompt ----------
+function showUpdateBanner(worker) {
+  if (document.getElementById('updateBanner')) return;
+  const el = h(`<div id="updateBanner" class="update-banner">
+    <span>✨ A new version of FermentLog is ready.</span>
+    <button class="btn primary small" id="updateNow">Refresh</button>
+  </div>`);
+  document.body.appendChild(el);
+  $('#updateNow', el).addEventListener('click', () => { updateAccepted = true; el.remove(); worker.postMessage('SKIP_WAITING'); });
+}
+let updateAccepted = false;
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js').catch(() => {}));
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (updateAccepted) location.reload(); });
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('./service-worker.js');
+      if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg.waiting);
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner(nw);
+        });
+      });
+      // Check for a new deploy hourly while the app stays open.
+      setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+    } catch { /* offline or unsupported — the app still works */ }
+  });
 }

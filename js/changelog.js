@@ -4,9 +4,19 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.18';
+export const APP_VERSION = '5.19';
 
 export const CHANGELOG = [
+  {
+    version: '5.19',
+    date: '2026-07-23 · 15:20 CEST',
+    title: 'Steadier and safer 🛡️',
+    changes: [
+      'When a new version is published, the app now shows a small “A new version is ready — Refresh” prompt instead of you having to hunt for it. Tap Refresh and it updates cleanly.',
+      'If any screen ever hits a snag, you now get a friendly recovery screen with Reload and Export-backup buttons instead of a blank page — your data stays safe throughout.',
+      'Behind the scenes: every change is now checked automatically before it ships (linting plus a headless run-through of every screen), so breakages get caught before they reach your phone.',
+    ],
+  },
   {
     version: '5.18',
     date: '2026-07-23 · 14:48 CEST',

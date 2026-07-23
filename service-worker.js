@@ -1,6 +1,6 @@
 // service-worker.js — offline app shell caching.
 // Bump CACHE when you change any of the cached files to force an update.
-const CACHE = 'fermentlog-v29';
+const CACHE = 'fermentlog-v30';
 const ASSETS = [
   './',
   './index.html',
@@ -18,8 +18,13 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  // Don't auto-skip: a new version waits until the page tells it to activate,
+  // so we can show an "update ready" prompt instead of swapping under the user.
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
 });
+
+// The page posts 'SKIP_WAITING' when the user taps "Refresh".
+self.addEventListener('message', (e) => { if (e.data === 'SKIP_WAITING') self.skipWaiting(); });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
