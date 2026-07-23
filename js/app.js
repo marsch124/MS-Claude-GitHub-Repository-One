@@ -211,7 +211,7 @@ function syncNav(hash) {
 // ---------- Batches list ----------
 async function renderList() {
   const view = logView();
-  const wrap = h(`<section class="screen"><header class="topbar"><h1>Home</h1><a class="search-btn" href="#/search" aria-label="Search">${IC.search}</a></header></section>`);
+  const wrap = h(`<section class="screen"><header class="topbar"><h1>Home <span class="home-ver">v${APP_VERSION}</span></h1><a class="search-btn" href="#/search" aria-label="Search">${IC.search}</a></header></section>`);
   const toggle = h(`<div class="segmented logtoggle">
     <button class="seg ${view === 'jars' ? 'on' : ''}" data-v="jars">${IC.jar} Jars</button>
     <button class="seg ${view === 'bakes' ? 'on' : ''}" data-v="bakes">${IC.bread} Bakes</button>

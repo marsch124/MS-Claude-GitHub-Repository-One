@@ -226,6 +226,9 @@ svg.ic { width: 1.15em; height: 1.15em; vertical-align: -0.2em; color: var(--bra
 .seg svg.ic { margin-right: 3px; }
 .btn > svg.ic { margin-right: 5px; }
 
+/* Small, greyed version tag on the Home heading (temporary dev aid) */
+.home-ver { font-size: .55em; font-weight: 500; color: var(--muted); vertical-align: middle; letter-spacing: .02em; }
+
 /* Larger carrot-toned illustrations (empty states + card thumbnails) */
 svg.gfx { color: var(--brand); display: block; }
 .empty-emoji svg.gfx { width: 92px; height: 92px; margin: 0 auto; }

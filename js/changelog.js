@@ -4,9 +4,17 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.14';
+export const APP_VERSION = '5.15';
 
 export const CHANGELOG = [
+  {
+    version: '5.15',
+    date: '2026-07-23 · 12:20 CEST',
+    title: 'Version tag on Home',
+    changes: [
+      'Added a small, greyed version number next to the Home heading — a handy at-a-glance check of which version you\'re on while we\'re iterating quickly. The full version and changelog remain under Settings.',
+    ],
+  },
   {
     version: '5.14',
     date: '2026-07-23 · 12:06 CEST',
