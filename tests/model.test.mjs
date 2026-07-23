@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   computeBrinePercent, isBrineInRange, daysBetween, fermentDays, batchStatus,
   overallRating, summarizeStats, newBatch, ratingStars,
-  nextCheckDue, isCheckDue, dueBatches, recommendation, toCSV,
+  nextCheckDue, isCheckDue, dueBatches, recommendation, toCSV, toFullCSV,
   presetFromBatch, batchFromPreset, duplicateBatch, DEFAULT_REMIND_DAYS,
   VEGETABLES, usedVegetables, mergeVegetables,
   COMMON_SPICES, usedSpices, mergeSpices, renamedList, withoutItem,
@@ -466,4 +466,30 @@ test('duplicateBatch: copies recipe, resets progress and names it (copy)', () =>
   assert.equal(dup.movedToFridgeDate, '');
   assert.equal(dup.startDate, '2026-08-01');
   assert.notEqual(dup.id, src.id);
+});
+
+test('toFullCSV: includes ferments, bakes, recipes and lessons as sections', () => {
+  const batch = { ...newBatch(), name: 'Garlic carrots', saltGrams: 25, waterMl: 1000 };
+  const bake = { ...newBake(), name: 'Country loaf', category: 'Sourdough', ratings: { crust: 4, crumb: 3, flavour: 5, overall: undefined }, problems: ['dense'], notes: 'nice' };
+  const recipe = { ...newRecipe(), title: 'Everyday sourdough', ingredients: ['flour', 'water'], steps: [{ title: 'Bulk', detail: 'warm', time: '4h' }] };
+  const lessons = [{ id: 'l1', text: 'Longer cold proof = tangier', createdAt: '2026-07-21T10:00:00.000Z' }];
+  const csv = toFullCSV({ batches: [batch], bakes: [bake], recipes: [recipe], lessons });
+  assert.match(csv, /# Ferments \(batches\)/);
+  assert.match(csv, /Garlic carrots/);
+  assert.match(csv, /# Bakes/);
+  assert.match(csv, /Country loaf/);
+  // overall falls back to the average of the parts (4+3+5)/3 = 4 (whole number)
+  assert.match(csv, /Country loaf,Sourdough,[^,]*,,4,3,5,4,dense,nice/);
+  assert.match(csv, /# Recipes/);
+  assert.match(csv, /Everyday sourdough/);
+  assert.match(csv, /1\. Bulk \(4h\): warm/);
+  assert.match(csv, /# Lessons learned & improvements/);
+  assert.match(csv, /Longer cold proof = tangier,2026-07-21/);
+});
+
+test('toFullCSV: empty data still yields all four labelled sections', () => {
+  const csv = toFullCSV({});
+  for (const label of ['# Ferments (batches)', '# Bakes', '# Recipes', '# Lessons learned & improvements']) {
+    assert.ok(csv.includes(label), `missing section ${label}`);
+  }
 });

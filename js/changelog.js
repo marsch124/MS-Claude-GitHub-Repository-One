@@ -4,9 +4,18 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.11';
+export const APP_VERSION = '5.12';
 
 export const CHANGELOG = [
+  {
+    version: '5.12',
+    date: '2026-07-23 · 11:02 CEST',
+    title: 'Complete CSV export 📊',
+    changes: [
+      'The CSV export now includes everything, not just ferments: your bakes, your recipes (ingredients, equipment, timed steps and storage), and your lessons-learned / improvements notebook — each as a clearly labelled section in one spreadsheet file.',
+      'Previously the CSV only covered fermenting batches; now a single export captures the whole logbook for spreadsheets.',
+    ],
+  },
   {
     version: '5.11',
     date: '2026-07-23 · 10:34 CEST',

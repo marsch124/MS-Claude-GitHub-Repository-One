@@ -340,6 +340,48 @@ export function toCSV(batches) {
   return [header, ...rows].join('\n');
 }
 
+/** One CSV covering everything: ferments, bakes, recipes and lessons, as labelled sections. */
+export function toFullCSV({ batches = [], bakes = [], recipes = [], lessons = [] } = {}) {
+  const section = (title, cols, items) => {
+    const header = cols.map((c) => c[0]).join(',');
+    const rows = (Array.isArray(items) ? items : []).map((it) => cols.map((c) => csvCell(c[1](it))).join(','));
+    return [title, header, ...(rows.length ? rows : ['(none yet)'])].join('\n');
+  };
+  const bakeCols = [
+    ['Name', (b) => b.name],
+    ['Category', (b) => b.category],
+    ['Date', (b) => b.bakeDate],
+    ['Recipe', (b) => b.recipeTitle],
+    ['Crust', (b) => b.ratings?.crust ?? ''],
+    ['Crumb', (b) => b.ratings?.crumb ?? ''],
+    ['Flavour', (b) => b.ratings?.flavour ?? ''],
+    ['Overall', (b) => { const o = overallBakeRating(b); return o == null ? '' : (Number.isInteger(o) ? o : o.toFixed(1)); }],
+    ['Problems', (b) => (b.problems || []).join('; ')],
+    ['Notes', (b) => b.notes],
+  ];
+  const recipeCols = [
+    ['Title', (r) => r.title],
+    ['Category', (r) => r.category],
+    ['Description', (r) => r.description],
+    ['Ingredients', (r) => (r.ingredients || []).join('; ')],
+    ['Equipment', (r) => (r.equipment || []).join('; ')],
+    ['Hands-on time', (r) => r.activeTime],
+    ['Total time', (r) => r.totalTime],
+    ['Steps', (r) => (r.steps || []).map((s, i) => `${i + 1}. ${s.title || ''}${s.time ? ` (${s.time})` : ''}${s.detail ? `: ${s.detail}` : ''}`).join(' | ')],
+    ['Storage', (r) => r.storage],
+  ];
+  const lessonCols = [
+    ['Lesson / improvement', (l) => l.text],
+    ['Added', (l) => (l.createdAt ? String(l.createdAt).slice(0, 10) : '')],
+  ];
+  return [
+    `# Ferments (batches)\n${toCSV(batches)}`,
+    section('# Bakes', bakeCols, bakes),
+    section('# Recipes', recipeCols, recipes),
+    section('# Lessons learned & improvements', lessonCols, lessons),
+  ].join('\n\n') + '\n';
+}
+
 // ---------- Creation / presets / duplication ----------
 
 /** Minimal empty batch with sensible Swedish-kitchen defaults. */

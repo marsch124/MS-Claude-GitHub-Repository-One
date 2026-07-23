@@ -3,7 +3,7 @@ import {
   VEGETABLES, LID_TYPES, WEIGHT_TYPES, PROBLEMS, COMMON_SPICES, DEFAULT_REMIND_DAYS,
   computeBrinePercent, isBrineInRange, daysBetween, fermentDays, batchStatus, statusLabel,
   overallRating, summarizeStats, recommendation, newBatch, ratingStars,
-  nextCheckDue, dueBatches, toCSV, presetFromBatch, batchFromPreset, duplicateBatch,
+  nextCheckDue, dueBatches, toCSV, toFullCSV, presetFromBatch, batchFromPreset, duplicateBatch,
   usedVegetables, mergeVegetables, usedSpices, mergeSpices, renamedList, withoutItem,
   RECIPE_CATEGORIES, newRecipe, duplicateRecipe, sampleSourdoughRecipe,
   BAKE_CATEGORIES, BAKE_PROBLEMS, newBake, overallBakeRating, duplicateBake, summarizeBakes,
@@ -1204,8 +1204,10 @@ async function renderSettings() {
     refreshLastBackup();
   });
   $('#csvBtn', screen).addEventListener('click', async () => {
-    const batches = await db.getAllBatches();
-    downloadFile(toCSV(batches), `fermentlog-${todayISO()}.csv`, 'text/csv');
+    const [batches, bakes, recipes, lessons] = await Promise.all([
+      db.getAllBatches(), db.getBakes(), db.getRecipes(), db.getBakeLessons(),
+    ]);
+    downloadFile(toFullCSV({ batches, bakes, recipes, lessons }), `fermentlog-${todayISO()}.csv`, 'text/csv');
   });
   $('#importInput', screen).addEventListener('change', async (e) => {
     const file = e.target.files[0]; if (!file) return;
@@ -1940,7 +1942,7 @@ function guideBodyHTML() {
           <li>Everything is stored <strong>on your device</strong> (in the browser's local database) and works <strong>fully offline</strong>.</li>
           <li><strong>Export a backup</strong> (JSON) any time and <strong>Import</strong> it on a new phone — it includes batches, recipes and templates.</li>
           <li>A gentle <strong>backup reminder</strong> appears on the Home screen once it's been longer than your chosen interval (default monthly) — adjust or turn it off under Settings → Backup &amp; export.</li>
-          <li><strong>Export CSV</strong> to open your batches in a spreadsheet.</li>
+          <li><strong>Export CSV</strong> to open everything in a spreadsheet — ferments, bakes, recipes and your lessons-learned notebook, as labelled sections in one file.</li>
           <li>Nothing is uploaded anywhere — the only time data leaves your phone is the optional AI feature, and then only the text you describe.</li>
         </ul>`)}
 
