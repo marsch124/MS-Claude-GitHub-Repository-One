@@ -2,9 +2,27 @@
 // No DOM, no storage: just data in, data out. This is the unit-tested core.
 
 export const VEGETABLES = [
-  'Carrot sticks', 'Cabbage', 'Cucumber', 'Beetroot', 'Cauliflower',
+  'Carrot', 'Cabbage', 'Cucumber', 'Beetroot', 'Cauliflower',
   'Green beans', 'Radish', 'Garlic', 'Onion', 'Pepper',
 ];
+
+// How the vegetable is cut / prepared — a separate property from the vegetable.
+export const FORMS = [
+  'Sticks', 'Slices', 'Rounds', 'Cubes', 'Spears', 'Wedges',
+  'Shredded', 'Grated', 'Chopped', 'Florets', 'Whole', 'Halved',
+];
+
+// Split a legacy combined name ("Carrot sticks") into { vegetable, form } — but only
+// when the last word is a recognised form, so custom names are never mangled.
+export function splitVegForm(name, forms = FORMS) {
+  const raw = (name || '').trim();
+  if (!raw.includes(' ')) return { vegetable: raw, form: '' };
+  const parts = raw.split(/\s+/);
+  const last = parts[parts.length - 1];
+  const match = forms.find((f) => f.toLowerCase() === last.toLowerCase());
+  if (!match) return { vegetable: raw, form: '' };
+  return { vegetable: parts.slice(0, -1).join(' '), form: match };
+}
 
 /** Vegetables seen in past batches that aren't built-in — sorted, de-duplicated. */
 export function usedVegetables(batches) {
@@ -262,6 +280,7 @@ export function summarizeStats(batches, { vegetable = null } = {}) {
   };
 
   const byVegetable = avgBy((b) => b.vegetable);
+  const byForm = avgBy((b) => b.form);
   const byLid = avgBy((b) => b.lidType);
 
   // Problem frequency across finished batches.
@@ -297,6 +316,7 @@ export function summarizeStats(batches, { vegetable = null } = {}) {
     ratingVsDays,
     ratingOverTime,
     byVegetable,
+    byForm,
     byLid,
     problems,
     bestBatch,
@@ -316,6 +336,7 @@ export function toCSV(batches) {
   const cols = [
     ['Name', (b) => b.name],
     ['Vegetable', (b) => b.vegetable],
+    ['Form', (b) => b.form],
     ['Start date', (b) => b.startDate],
     ['Days fermented', (b) => fermentDays(b) ?? ''],
     ['Brine %', (b) => { const v = computeBrinePercent(b.saltGrams, b.waterMl); return v == null ? '' : v.toFixed(1); }],
@@ -395,7 +416,7 @@ export function exportSheets({ batches = [], bakes = [], recipes = [], lessons =
     {
       name: 'Ferments',
       columns: [
-        { header: 'Name', width: 22 }, { header: 'Vegetable', width: 16 }, { header: 'Start date', width: 12 },
+        { header: 'Name', width: 22 }, { header: 'Vegetable', width: 16 }, { header: 'Form', width: 12 }, { header: 'Start date', width: 12 },
         { header: 'Days fermented', width: 10 }, { header: 'Brine %', width: 8 }, { header: 'Salt (g)', width: 8 },
         { header: 'Water (ml)', width: 10 }, { header: 'Room temp (°C)', width: 12 }, { header: 'Vessel', width: 16 },
         { header: 'Weight', width: 16 }, { header: 'Lid', width: 20 }, { header: 'Spices', width: 22 },
@@ -407,7 +428,7 @@ export function exportSheets({ batches = [], bakes = [], recipes = [], lessons =
         const brine = computeBrinePercent(b.saltGrams, b.waterMl);
         const o = b.outcome || {};
         return [
-          b.name || '', b.vegetable || '', b.startDate || '', num(fermentDays(b)),
+          b.name || '', b.vegetable || '', b.form || '', b.startDate || '', num(fermentDays(b)),
           brine == null ? null : Number(brine.toFixed(1)), num(b.saltGrams), num(b.waterMl), num(b.roomTempC),
           b.vesselType || '', b.weightType || '', b.lidType || '', (b.additions || []).join('\n'),
           statusLabel(batchStatus(b)), o.recorded ? (o.success ? 'Yes' : 'No') : '',
@@ -469,7 +490,8 @@ export function newBatch(now = new Date()) {
   return {
     id: `b_${now.getTime()}_${Math.random().toString(36).slice(2, 8)}`,
     name: '',
-    vegetable: 'Carrot sticks',
+    vegetable: 'Carrot',
+    form: 'Sticks',
     startDate: isoDay(now),
     saltGrams: 25,
     waterMl: 1000,
@@ -489,7 +511,7 @@ export function newBatch(now = new Date()) {
   };
 }
 
-const RECIPE_FIELDS = ['vegetable', 'saltGrams', 'waterMl', 'roomTempC', 'jarSizeMl',
+const RECIPE_FIELDS = ['vegetable', 'form', 'saltGrams', 'waterMl', 'roomTempC', 'jarSizeMl',
   'vesselType', 'weightType', 'lidType', 'remindEveryDays'];
 
 /** Save a batch's conditions/equipment as a reusable named preset. */
@@ -685,7 +707,7 @@ export function sampleSourdoughRecipe(now = new Date()) {
 const searchNorm = (s) => String(s == null ? '' : s).toLowerCase();
 
 export function batchSearchText(b) {
-  return [b.name, b.vegetable, b.vesselType, b.lidType, b.weightType, b.notes,
+  return [b.name, b.vegetable, b.form, b.vesselType, b.lidType, b.weightType, b.notes,
     ...(b.additions || []), ...((b.checkIns || []).map((c) => c && c.tasteNote))].map(searchNorm).join(' ');
 }
 

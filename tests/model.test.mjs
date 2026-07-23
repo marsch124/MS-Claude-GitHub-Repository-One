@@ -6,7 +6,7 @@ import {
   overallRating, summarizeStats, newBatch, ratingStars,
   nextCheckDue, isCheckDue, dueBatches, recommendation, toCSV, toFullCSV, exportSheets,
   presetFromBatch, batchFromPreset, duplicateBatch, DEFAULT_REMIND_DAYS,
-  VEGETABLES, usedVegetables, mergeVegetables,
+  VEGETABLES, FORMS, splitVegForm, usedVegetables, mergeVegetables,
   COMMON_SPICES, usedSpices, mergeSpices, renamedList, withoutItem,
   newRecipe, duplicateRecipe, sampleSourdoughRecipe, RECIPE_CATEGORIES,
   newBake, overallBakeRating, duplicateBake, BAKE_CATEGORIES, summarizeBakes,
@@ -69,7 +69,8 @@ test('ratingStars: renders filled/empty stars', () => {
 
 test('newBatch: sensible carrot defaults, unique id, reminder default', () => {
   const b = newBatch(new Date('2026-07-21T10:00:00Z'));
-  assert.equal(b.vegetable, 'Carrot sticks');
+  assert.equal(b.vegetable, 'Carrot');
+  assert.equal(b.form, 'Sticks');
   assert.equal(b.startDate, '2026-07-21');
   assert.equal(b.remindEveryDays, DEFAULT_REMIND_DAYS);
   assert.ok(computeBrinePercent(b.saltGrams, b.waterMl) > 0);
@@ -169,7 +170,7 @@ test('toCSV: header + escaping of commas/quotes/newlines', () => {
     { name: 'Has, comma "and" quote', vegetable: 'Cabbage', startDate: '2026-07-02', notes: 'line1\nline2' },
   ]);
   const lines = csv.split('\n');
-  assert.ok(lines[0].startsWith('Name,Vegetable,Start date'));
+  assert.ok(lines[0].startsWith('Name,Vegetable,Form,Start date'));
   assert.ok(csv.includes('"Has, comma ""and"" quote"'));
   assert.ok(csv.includes('"line1\nline2"'));
   assert.ok(csv.includes('2.5')); // brine computed
@@ -197,7 +198,7 @@ test('VEGETABLES no longer contains "Other"', () => {
 
 test('usedVegetables: distinct, non-built-in, sorted', () => {
   const batches = [
-    { vegetable: 'Carrot sticks' }, // built-in, excluded
+    { vegetable: 'Carrot' }, // built-in, excluded
     { vegetable: 'Kohlrabi' },
     { vegetable: 'Ramson' },
     { vegetable: 'Kohlrabi' },      // duplicate
@@ -208,10 +209,10 @@ test('usedVegetables: distinct, non-built-in, sorted', () => {
 });
 
 test('mergeVegetables: built-ins first, then unique extras', () => {
-  const merged = mergeVegetables(['Kohlrabi', 'Carrot sticks', 'Kohlrabi']);
-  assert.equal(merged[0], 'Carrot sticks');          // built-in order preserved
+  const merged = mergeVegetables(['Kohlrabi', 'Carrot', 'Kohlrabi']);
+  assert.equal(merged[0], 'Carrot');          // built-in order preserved
   assert.equal(merged.filter((v) => v === 'Kohlrabi').length, 1); // de-duped
-  assert.equal(merged.filter((v) => v === 'Carrot sticks').length, 1);
+  assert.equal(merged.filter((v) => v === 'Carrot').length, 1);
   assert.ok(merged.includes('Kohlrabi'));
 });
 
@@ -324,7 +325,7 @@ test('normalizeBatch: coerces numbers, maps lid/weight, keeps defaults', () => {
 
 test('normalizeBatch: empty input falls back to carrot defaults', () => {
   const b = normalizeBatch({});
-  assert.equal(b.vegetable, 'Carrot sticks');
+  assert.equal(b.vegetable, 'Carrot');
   assert.equal(b.saltGrams, 25);
   assert.equal(b.waterMl, 1000);
 });
@@ -504,9 +505,10 @@ test('exportSheets: four tabs with headers and typed cells', () => {
   const fer = sheets[0];
   assert.equal(fer.columns[0].header, 'Name');
   assert.equal(fer.rows[0][0], 'Garlic carrots');
-  assert.equal(fer.rows[0][4], 2.5);            // brine % as a number
-  assert.equal(typeof fer.rows[0][4], 'number');
-  assert.equal(fer.rows[0][17], '★★★★☆');       // overall as stars
+  assert.equal(fer.columns[2].header, 'Form');   // Form sits after Vegetable
+  assert.equal(fer.rows[0][5], 2.5);            // brine % as a number
+  assert.equal(typeof fer.rows[0][5], 'number');
+  assert.equal(fer.rows[0][18], '★★★★☆');       // overall as stars
   // bake overall falls back to the average of parts (4+3+5)/3 = 4 → four stars
   assert.equal(sheets[1].rows[0][7], '★★★★☆');
   assert.equal(sheets[3].columns.map((c) => c.header).join(','), 'Lesson / improvement,Logged by,Recipe,From (batch/bake),Added');
@@ -517,4 +519,13 @@ test('exportSheets: empty data still yields the four named tabs with no rows', (
   const sheets = exportSheets({});
   assert.deepEqual(sheets.map((s) => s.name), ['Ferments', 'Bakes', 'Recipes', 'Lessons']);
   assert.ok(sheets.every((s) => s.rows.length === 0 && s.columns.length > 0));
+});
+
+test('splitVegForm: separates a known form suffix, leaves others intact', () => {
+  assert.deepEqual(splitVegForm('Carrot sticks'), { vegetable: 'Carrot', form: 'Sticks' });
+  assert.deepEqual(splitVegForm('Red cabbage slices'), { vegetable: 'Red cabbage', form: 'Slices' });
+  assert.deepEqual(splitVegForm('Cucumber'), { vegetable: 'Cucumber', form: '' });
+  assert.deepEqual(splitVegForm('Green beans'), { vegetable: 'Green beans', form: '' }); // "beans" isn't a form
+  assert.deepEqual(splitVegForm(''), { vegetable: '', form: '' });
+  assert.ok(FORMS.includes('Sticks'));
 });

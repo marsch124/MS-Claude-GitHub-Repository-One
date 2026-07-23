@@ -4,9 +4,19 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.16';
+export const APP_VERSION = '5.17';
 
 export const CHANGELOG = [
+  {
+    version: '5.17',
+    date: '2026-07-23 · 14:30 CEST',
+    title: 'Vegetable and Form, split apart 🥕',
+    changes: [
+      'The vegetable and how it\'s cut are now two separate fields: a clean Vegetable (Carrot, Cucumber…) and a new Form (Sticks, Slices, Rounds, Cubes… or add your own). Both are dropdowns on the New batch page.',
+      'Your existing jars were tidied automatically — e.g. “Carrot sticks” became Vegetable “Carrot” + Form “Sticks”; anything not recognised was left exactly as it was.',
+      'Insights gains an “average rating by form (cut)” chart, and rating-by-vegetable now correctly groups all cuts of the same vegetable together. The Form is included in the Excel export, and the AI batch builder fills it in too.',
+    ],
+  },
   {
     version: '5.16',
     date: '2026-07-23 · 13:20 CEST',

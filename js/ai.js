@@ -136,6 +136,7 @@ const BATCH_SCHEMA = {
   properties: {
     name: { type: 'string' },
     vegetable: { type: 'string' },
+    form: { type: 'string' },
     saltGrams: NUM_OR_NULL,
     waterMl: NUM_OR_NULL,
     roomTempC: NUM_OR_NULL,
@@ -146,7 +147,7 @@ const BATCH_SCHEMA = {
     weightType: { type: 'string' },
     remindEveryDays: NUM_OR_NULL,
   },
-  required: ['name', 'vegetable', 'saltGrams', 'waterMl', 'roomTempC', 'jarSizeMl', 'additions', 'vesselType', 'lidType', 'weightType', 'remindEveryDays'],
+  required: ['name', 'vegetable', 'form', 'saltGrams', 'waterMl', 'roomTempC', 'jarSizeMl', 'additions', 'vesselType', 'lidType', 'weightType', 'remindEveryDays'],
 };
 
 const BATCH_SYSTEM = `You turn a home fermenter's freeform description of a new jar/batch into structured fields.
@@ -159,7 +160,9 @@ Rules:
 - lidType must be exactly one of: ${LID_TYPES.join(' | ')} — map the user's words to the closest one; use "" if none fits.
 - weightType must be exactly one of: ${WEIGHT_TYPES.join(' | ')} — map the user's words to the closest one; use "" if none fits.
 - remindEveryDays: number of days between taste-test reminders if stated, else null.
-- name: a short label if given, else "". vegetable: what is being fermented (e.g. "Carrot sticks"); if not stated, "".
+- name: a short label if given, else "".
+- vegetable: just the vegetable being fermented (e.g. "Carrot", "Cucumber", "Cabbage") — do NOT include how it's cut; if not stated, "".
+- form: how it's cut or prepared, as a single word if stated (e.g. Sticks, Slices, Rounds, Cubes, Spears, Shredded, Grated, Whole, Halved), else "".
 - Use null for any number not stated, and "" or [] for missing text/lists. Never ask questions.`;
 
 export async function buildBatchFromText(text) {
@@ -182,7 +185,8 @@ export function normalizeBatch(ai, now = new Date()) {
   const numOr = (v, d) => (Number.isFinite(v) ? v : d);
   const b = newBatch(now);
   if (str(obj.name)) b.name = str(obj.name);
-  if (str(obj.vegetable)) b.vegetable = str(obj.vegetable);
+  if (str(obj.vegetable)) { b.vegetable = str(obj.vegetable); b.form = str(obj.form); }
+  else if (str(obj.form)) b.form = str(obj.form);
   b.saltGrams = numOr(obj.saltGrams, b.saltGrams);
   b.waterMl = numOr(obj.waterMl, b.waterMl);
   b.roomTempC = numOr(obj.roomTempC, b.roomTempC);

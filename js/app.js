@@ -1,6 +1,6 @@
 // app.js — screens, navigation and wiring for FermentLog.
 import {
-  VEGETABLES, LID_TYPES, WEIGHT_TYPES, PROBLEMS, COMMON_SPICES, DEFAULT_REMIND_DAYS,
+  VEGETABLES, FORMS, splitVegForm, LID_TYPES, WEIGHT_TYPES, PROBLEMS, COMMON_SPICES, DEFAULT_REMIND_DAYS,
   computeBrinePercent, isBrineInRange, daysBetween, fermentDays, batchStatus, statusLabel,
   overallRating, summarizeStats, recommendation, newBatch, ratingStars,
   nextCheckDue, dueBatches, toCSV, toFullCSV, exportSheets, presetFromBatch, batchFromPreset, duplicateBatch,
@@ -137,6 +137,24 @@ async function vegetableOptionsFor(currentVeg) {
   const extras = [...new Set([...usedVegetables(batches), ...getCustomVegetables(), currentVeg]
     .filter((v) => v && !VEGETABLES.includes(v)))].sort((a, b) => a.localeCompare(b));
   return mergeVegetables(extras);
+}
+
+// ---------- Custom forms (cut/prep — remembered on this device) ----------
+const FORM_KEY = 'fermentlog-forms';
+const ADD_FORM = '__addform__';
+function getCustomForms() { try { return JSON.parse(localStorage.getItem(FORM_KEY)) || []; } catch { return []; } }
+function rememberForm(name) {
+  const v = (name || '').trim();
+  if (!v || FORMS.includes(v)) return;
+  const list = getCustomForms();
+  if (!list.includes(v)) { list.push(v); try { localStorage.setItem(FORM_KEY, JSON.stringify(list)); } catch {} }
+}
+async function formOptionsFor(currentForm) {
+  const batches = await db.getAllBatches();
+  const used = [...new Set(batches.map((b) => b.form).filter(Boolean))];
+  const extras = [...new Set([...used, ...getCustomForms(), currentForm]
+    .filter((v) => v && !FORMS.includes(v)))].sort((a, b) => a.localeCompare(b));
+  return [...FORMS, ...extras];
 }
 
 // ---------- Custom spices (remembered on this device) ----------
@@ -474,7 +492,7 @@ function batchCard(b) {
       <div class="card-title">${esc(b.name || b.vegetable || 'Untitled batch')}${due ? ' <span class="due-dot" title="Due for a taste test">⏰</span>' : ''}</div>
       <div class="card-meta">
         <span class="pill pill-${status}">${statusLabel(status)}</span>
-        <span>${esc(b.vegetable)}</span>
+        <span>${esc(b.vegetable)}${b.form ? ` · ${esc(b.form.toLowerCase())}` : ''}</span>
         <span>${fmtBrine(b)}</span>
         ${days != null ? `<span>${days} d</span>` : ''}
       </div>
@@ -487,24 +505,28 @@ function batchCard(b) {
 async function renderNew() {
   const batch = pendingBatchDraft || newBatch();
   pendingBatchDraft = null;
-  const [presets, vegOptions, spiceOptions] = await Promise.all([
-    db.getPresets(), vegetableOptionsFor(batch.vegetable), spiceOptionsFor(batch.additions)]);
-  renderForm(batch, false, presets, vegOptions, spiceOptions);
+  const [presets, vegOptions, formOptions, spiceOptions] = await Promise.all([
+    db.getPresets(), vegetableOptionsFor(batch.vegetable), formOptionsFor(batch.form), spiceOptionsFor(batch.additions)]);
+  renderForm(batch, false, presets, vegOptions, formOptions, spiceOptions);
 }
 
 async function editExisting(id) {
   const b = await db.getBatch(id);
   if (!b) return location.assign('#/');
-  const [vegOptions, spiceOptions] = await Promise.all([vegetableOptionsFor(b.vegetable), spiceOptionsFor(b.additions)]);
-  renderForm(structuredClone(b), true, [], vegOptions, spiceOptions);
+  const [vegOptions, formOptions, spiceOptions] = await Promise.all([vegetableOptionsFor(b.vegetable), formOptionsFor(b.form), spiceOptionsFor(b.additions)]);
+  renderForm(structuredClone(b), true, [], vegOptions, formOptions, spiceOptions);
 }
 
-function renderForm(batch, isEdit, presets, vegOptions, spiceOptions) {
+function renderForm(batch, isEdit, presets, vegOptions, formOptions, spiceOptions) {
   editing = batch;
   // Make sure this batch's own vegetable is always selectable.
   const options = batch.vegetable && !vegOptions.includes(batch.vegetable) ? [...vegOptions, batch.vegetable] : vegOptions;
   const veg = options.map((v) => `<option ${v === batch.vegetable ? 'selected' : ''}>${esc(v)}</option>`).join('')
     + `<option value="${ADD_VEG}">＋ Add another vegetable…</option>`;
+  const formOpts = (batch.form && !formOptions.includes(batch.form) ? [...formOptions, batch.form] : formOptions);
+  const forms = `<option value="" ${!batch.form ? 'selected' : ''}>— none —</option>`
+    + formOpts.map((v) => `<option ${v === batch.form ? 'selected' : ''}>${esc(v)}</option>`).join('')
+    + `<option value="${ADD_FORM}">＋ Add another form…</option>`;
   const lids = LID_TYPES.map((v) => `<option ${v === batch.lidType ? 'selected' : ''}>${v}</option>`).join('');
   const weights = WEIGHT_TYPES.map((v) => `<option ${v === batch.weightType ? 'selected' : ''}>${v}</option>`).join('');
   // Spice chips: built-ins + remembered + any this batch already has.
@@ -528,9 +550,15 @@ function renderForm(batch, isEdit, presets, vegOptions, spiceOptions) {
 
       <fieldset><legend>Basics</legend>
         <label>Name <input name="name" value="${esc(batch.name)}" placeholder="e.g. Spicy carrot #1"></label>
-        <label>Vegetable <select name="vegetable">${veg}</select></label>
+        <div class="row">
+          <label>Vegetable <select name="vegetable">${veg}</select></label>
+          <label>Form <select name="form">${forms}</select></label>
+        </div>
         <label id="customVegWrap" class="custom-veg" hidden>New vegetable
           <input name="customVeg" placeholder="e.g. Kohlrabi" autocomplete="off">
+        </label>
+        <label id="customFormWrap" class="custom-veg" hidden>New form
+          <input name="customForm" placeholder="e.g. Batons" autocomplete="off">
         </label>
         <label>Start date <input type="date" name="startDate" value="${batch.startDate}"></label>
         <label>Logged by ${loggedBySelect(batch.loggedBy)}</label>
@@ -608,6 +636,17 @@ function renderForm(batch, isEdit, presets, vegOptions, spiceOptions) {
   vegSel.addEventListener('change', toggleCustom);
   toggleCustom();
 
+  // Reveal the free-text field when "Add another form…" is chosen.
+  const formSel = $('[name=form]', f);
+  const customFormWrap = $('#customFormWrap', form);
+  const toggleCustomForm = () => {
+    const on = formSel.value === ADD_FORM;
+    customFormWrap.hidden = !on;
+    if (on) customFormWrap.querySelector('input').focus();
+  };
+  formSel.addEventListener('change', toggleCustomForm);
+  toggleCustomForm();
+
   // Add a custom spice as a new checked chip (and remember it for next time).
   const spiceChipsBox = $('#spiceChips', form);
   const newSpiceInput = $('#newSpice', form);
@@ -645,7 +684,7 @@ function renderForm(batch, isEdit, presets, vegOptions, spiceOptions) {
       built.id = editing.id;                 // keep the same draft
       built.createdAt = editing.createdAt;
       editing = built;
-      renderForm(editing, false, presets, vegOptions, spiceOptions); // re-render with fields filled
+      renderForm(editing, false, presets, vegOptions, formOptions, spiceOptions); // re-render with fields filled
     } catch (e) {
       aiBtn.disabled = false;
       status.className = 'hint caution';
@@ -660,7 +699,7 @@ function renderForm(batch, isEdit, presets, vegOptions, spiceOptions) {
     const filled = batchFromPreset(p);
     editing = filled;
     const opts = options.includes(filled.vegetable) ? options : [...options, filled.vegetable];
-    renderForm(filled, false, presets, opts, spiceOptions); // re-render prefilled (keeps lists)
+    renderForm(filled, false, presets, opts, formOptions, spiceOptions); // re-render prefilled (keeps lists)
   });
 
   renderPhotos(form);
@@ -689,9 +728,13 @@ function syncFormInto(target, f) {
   let vegetable = fd.get('vegetable');
   if (vegetable === ADD_VEG) vegetable = (fd.get('customVeg') || '').trim();
   rememberVegetable(vegetable);
+  let form = fd.get('form');
+  if (form === ADD_FORM) form = (fd.get('customForm') || '').trim();
+  rememberForm(form);
   Object.assign(target, {
     name: fd.get('name').trim(),
     vegetable,
+    form: form || '',
     startDate: fd.get('startDate'),
     saltGrams: numOrEmpty(fd.get('saltGrams')),
     waterMl: numOrEmpty(fd.get('waterMl')),
@@ -792,6 +835,7 @@ async function renderDetail(id) {
 
       <div class="stat-grid">
         <div class="stat"><span>Vegetable</span><strong>${esc(b.vegetable)}</strong></div>
+        <div class="stat"><span>Form</span><strong>${esc(b.form || '—')}</strong></div>
         <div class="stat"><span>Brine</span><strong class="${brineOk ? 'ok' : ''}">${fmtBrine(b)}</strong></div>
         <div class="stat"><span>Room temp</span><strong>${b.roomTempC ?? '—'}°C</strong></div>
         <div class="stat"><span>Started</span><strong>${b.startDate}</strong></div>
@@ -1068,6 +1112,7 @@ async function renderInsights() {
   screen.appendChild(chartCard('Rating vs. days fermented', scatterChart(s.ratingVsDays, { xLabel: 'Days', xUnit: ' d' })));
   screen.appendChild(chartCard('Rating trend (oldest → newest)', scatterChart(s.ratingOverTime, { xLabel: 'Attempt', xUnit: '' })));
   screen.appendChild(chartCard('Average rating by vegetable', barChart(s.byVegetable, { unit: '★', max: 5 })));
+  if (s.byForm && s.byForm.length) screen.appendChild(chartCard('Average rating by form (cut)', barChart(s.byForm, { unit: '★', max: 5 })));
   screen.appendChild(chartCard('Average rating by lid type', barChart(s.byLid, { unit: '★', max: 5 })));
   screen.appendChild(chartCard('Problems encountered', barChart(s.problems, { unit: '' })));
 
@@ -1959,7 +2004,7 @@ function guideBodyHTML() {
       ${sec('Logging a batch', `
         <p>Tap <strong>New</strong> to start a jar. You record:</p>
         <ul>
-          <li><strong>Conditions</strong> — vegetable, salt &amp; water (the <strong>brine %</strong> is worked out for you, with a hint for the ideal 2–3% range), room temperature and jar size.</li>
+          <li><strong>Conditions</strong> — the <strong>vegetable</strong> and its <strong>form</strong> (how it's cut — sticks, slices, cubes… a separate field so you can compare cuts later), salt &amp; water (the <strong>brine %</strong> is worked out for you, with a hint for the ideal 2–3% range), room temperature and jar size.</li>
           <li><strong>Spices</strong> — pick from common ones or add your own; they're remembered for next time.</li>
           <li><strong>Equipment</strong> — vessel, weight and lid type.</li>
           <li><strong>Reminder</strong> — how often you want to be nudged to taste-test (0 turns it off).</li>
@@ -2113,8 +2158,29 @@ async function maybeNotifyDue() {
 function numOrEmpty(v) { const s = String(v).trim(); return s === '' ? '' : Number(s); }
 function swap(node) { app.replaceChildren(node); window.scrollTo(0, 0); }
 
+// One-time: split legacy combined names ("Carrot sticks") into Vegetable + Form.
+const FORM_MIGRATION_KEY = 'fermentlog-form-migrated';
+async function migrateVegetableForms() {
+  if (localStorage.getItem(FORM_MIGRATION_KEY)) return;
+  try {
+    const batches = await db.getAllBatches();
+    for (const b of batches) {
+      if (b.form) continue;
+      const { vegetable, form } = splitVegForm(b.vegetable);
+      if (form) { b.vegetable = vegetable; b.form = form; await db.saveBatch(b); }
+    }
+    const presets = await db.getPresets();
+    for (const p of presets) {
+      if (p.form || !p.vegetable) continue;
+      const { vegetable, form } = splitVegForm(p.vegetable);
+      if (form) { p.vegetable = vegetable; p.form = form; await db.savePreset(p); }
+    }
+    localStorage.setItem(FORM_MIGRATION_KEY, '1');
+  } catch { /* leave the flag unset so it retries next launch */ }
+}
+
 window.addEventListener('hashchange', render);
-render();
+migrateVegetableForms().finally(render);
 maybeNotifyDue();
 
 if ('serviceWorker' in navigator) {
