@@ -4,9 +4,17 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.17';
+export const APP_VERSION = '5.18';
 
 export const CHANGELOG = [
+  {
+    version: '5.18',
+    date: '2026-07-23 · 14:48 CEST',
+    title: 'ISO dates',
+    changes: [
+      'Dates and times shown in the app now use ISO format (2026-07-23, and 2026-07-23 13:04) — the lesson timestamps and the “last backup” line, matching the rest of the app.',
+    ],
+  },
   {
     version: '5.17',
     date: '2026-07-23 · 14:30 CEST',

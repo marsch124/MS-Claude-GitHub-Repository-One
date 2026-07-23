@@ -24,6 +24,10 @@ const h = (html) => { const t = document.createElement('template'); t.innerHTML 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmtBrine = (b) => { const v = computeBrinePercent(b.saltGrams, b.waterMl); return v == null ? '—' : `${v.toFixed(1)}%`; };
 const todayISO = () => new Date().toISOString().slice(0, 10);
+const pad2 = (n) => String(n).padStart(2, '0');
+// Format a timestamp in ISO style using local time: YYYY-MM-DD and YYYY-MM-DD HH:MM.
+function fmtDate(iso) { const d = new Date(iso); return isNaN(d) ? '' : `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+function fmtDateTime(iso) { const d = new Date(iso); return isNaN(d) ? '' : `${fmtDate(iso)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
 
 // Carrot-toned inline icons, matching the bottom tab-bar set (color: var(--brand) via .ic).
 const IC = {
@@ -404,7 +408,7 @@ async function renderBakeInsights() {
   const lessonMeta = (l) => {
     const bits = [];
     if (l.loggedBy) bits.push(esc(l.loggedBy));
-    if (l.createdAt) bits.push(new Date(l.createdAt).toLocaleString());
+    if (l.createdAt) bits.push(fmtDateTime(l.createdAt));
     if (l.recipeTitle) bits.push(`Recipe: ${esc(l.recipeTitle)}`);
     if (l.linkLabel) bits.push(`From: ${esc(l.linkLabel)}`);
     return bits.join(' · ');
@@ -1311,7 +1315,7 @@ async function renderSettings() {
     if (!lastBackupNote) return;
     const last = lastBackupAt();
     lastBackupNote.textContent = last
-      ? `Last backup: ${new Date(last).toLocaleDateString()} (${Math.floor(daysSinceISO(last))} day(s) ago).`
+      ? `Last backup: ${fmtDate(last)} (${Math.floor(daysSinceISO(last))} day(s) ago).`
       : 'No backup exported yet.';
   };
   refreshLastBackup();
