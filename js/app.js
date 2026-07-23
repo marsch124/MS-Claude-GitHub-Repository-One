@@ -52,6 +52,35 @@ const INSIGHTSVIEW_KEY = 'fermentlog-insightsview';
 function insightsView() { try { return localStorage.getItem(INSIGHTSVIEW_KEY) === 'bakes' ? 'bakes' : 'ferments'; } catch { return 'ferments'; } }
 function setInsightsView(v) { try { localStorage.setItem(INSIGHTSVIEW_KEY, v); } catch {} }
 
+// ---------- Backup reminder ----------
+const BACKUP_LAST_KEY = 'fermentlog-backup-last';       // ISO of last export (null until first)
+const BACKUP_ANCHOR_KEY = 'fermentlog-backup-anchor';   // ISO baseline for the timer before any export
+const BACKUP_CADENCE_KEY = 'fermentlog-backup-cadence'; // days between reminders; 0 = off
+const BACKUP_SNOOZE_KEY = 'fermentlog-backup-snooze';   // ISO until which the banner is hidden
+const DEFAULT_BACKUP_CADENCE = 30;
+function backupCadence() { const n = parseInt(localStorage.getItem(BACKUP_CADENCE_KEY), 10); return Number.isFinite(n) ? n : DEFAULT_BACKUP_CADENCE; }
+function setBackupCadence(n) { try { localStorage.setItem(BACKUP_CADENCE_KEY, String(n)); } catch {} }
+function lastBackupAt() { try { return localStorage.getItem(BACKUP_LAST_KEY) || null; } catch { return null; } }
+function markBackedUp() { try { localStorage.setItem(BACKUP_LAST_KEY, new Date().toISOString()); localStorage.removeItem(BACKUP_SNOOZE_KEY); } catch {} }
+function snoozeBackup(days) { try { localStorage.setItem(BACKUP_SNOOZE_KEY, new Date(Date.now() + days * 864e5).toISOString()); } catch {} }
+const daysSinceISO = (iso) => (iso ? (Date.now() - new Date(iso).getTime()) / 864e5 : Infinity);
+function backupDue(hasData) {
+  const cad = backupCadence();
+  if (!cad || !hasData) return false;
+  const snooze = localStorage.getItem(BACKUP_SNOOZE_KEY);
+  if (snooze && Date.now() < new Date(snooze).getTime()) return false;
+  const last = lastBackupAt();
+  if (last) return daysSinceISO(last) >= cad;
+  // Never exported yet: start the clock from now so we nudge one interval later, not on day one.
+  let anchor = localStorage.getItem(BACKUP_ANCHOR_KEY);
+  if (!anchor) { anchor = new Date().toISOString(); try { localStorage.setItem(BACKUP_ANCHOR_KEY, anchor); } catch {} }
+  return daysSinceISO(anchor) >= cad;
+}
+async function exportBackup() {
+  downloadFile(await db.exportJSON(), `fermentlog-backup-${todayISO()}.json`, 'application/json');
+  markBackedUp();
+}
+
 // ---------- Theme ----------
 const THEME_KEY = 'fermentlog-theme';
 function applyTheme(mode) {
@@ -187,13 +216,33 @@ async function renderList() {
   toggle.querySelectorAll('.seg').forEach((btn) => btn.addEventListener('click', () => { setLogView(btn.dataset.v); renderList(); }));
   wrap.appendChild(toggle);
 
-  if (view === 'bakes') await fillBakes(wrap);
-  else await fillJars(wrap);
+  // A gentle backup nudge once it's been longer than the chosen interval.
+  const [allBatches, allBakes, allRecipes] = await Promise.all([db.getAllBatches(), db.getBakes(), db.getRecipes()]);
+  if (backupDue(allBatches.length || allBakes.length || allRecipes.length)) wrap.appendChild(backupBanner());
+
+  if (view === 'bakes') await fillBakes(wrap, allBakes);
+  else await fillJars(wrap, allBatches);
   swap(wrap);
 }
 
-async function fillJars(wrap) {
-  const batches = await db.getAllBatches();
+function backupBanner() {
+  const el = h(`<div class="backup-banner">
+    <div class="bb-row"><span class="bb-ico">⬇️</span>
+      <div><strong>Time for a backup</strong>
+      <div class="bb-sub">It's been a while — save a copy so your log is safe if this device is lost or its storage is cleared.</div></div>
+    </div>
+    <div class="bb-actions">
+      <button class="btn ghost small" data-a="later">Later</button>
+      <button class="btn primary small" data-a="export">Export now</button>
+    </div>
+  </div>`);
+  el.querySelector('[data-a=export]').addEventListener('click', async () => { await exportBackup(); renderList(); });
+  el.querySelector('[data-a=later]').addEventListener('click', () => { snoozeBackup(7); el.remove(); });
+  return el;
+}
+
+async function fillJars(wrap, batches) {
+  batches = batches || await db.getAllBatches();
   wrap.appendChild(h(`<div class="list-actions">
     <a class="btn primary" href="#/new">＋ New batch</a>
   </div>`));
@@ -252,8 +301,8 @@ async function fillJars(wrap) {
   section('Finished', finished.length, finished);
 }
 
-async function fillBakes(wrap) {
-  const bakes = await db.getBakes();
+async function fillBakes(wrap, bakes) {
+  bakes = bakes || await db.getBakes();
   wrap.appendChild(h(`<div class="list-actions">
     <a class="btn primary new-bake" href="#/bake-new">＋ New bake</a>
   </div>`));
@@ -1052,6 +1101,31 @@ async function renderSettings() {
         <button class="btn primary" id="exportBtn">⬇ Export backup (JSON)</button>
         <label class="btn ghost file">⬆ Import backup<input type="file" accept="application/json,.json" id="importInput" hidden></label>
         <button class="btn ghost" id="csvBtn">📊 Export CSV</button>
+
+        <div class="backup-reminder">
+          <label class="cadence-row">Remind me to back up
+            <select id="backupCadence">
+              <option value="0">Off</option>
+              <option value="7">Weekly</option>
+              <option value="14">Every 2 weeks</option>
+              <option value="30">Monthly</option>
+              <option value="90">Every 3 months</option>
+            </select>
+          </label>
+          <p class="muted small-note" id="lastBackupNote"></p>
+          <details class="disclosure">
+            <summary>How the backup reminder works</summary>
+            <div class="ai-about">
+              <ul>
+                <li>Everything you log is stored <strong>only on this device</strong>. A <strong>backup</strong> is a single <code>.json</code> file you can save to Files, iCloud Drive or email — your safety net if the phone is lost, or the app's storage gets cleared.</li>
+                <li>When it's been longer than your chosen interval since your last export, a gentle <strong>“Time for a backup”</strong> note appears at the top of the <strong>Home</strong> screen. Tap <strong>Export now</strong> and save the file somewhere safe.</li>
+                <li>The timer <strong>resets each time you export</strong> a backup here or from that note. <strong>Later</strong> hides the note for a week.</li>
+                <li>Pick your interval above — the default is <strong>Monthly</strong>. Choose <strong>Off</strong> to stop the reminders entirely.</li>
+                <li>To restore on this or a new device, use <strong>Import backup</strong> above and choose a saved <code>.json</code> file.</li>
+              </ul>
+            </div>
+          </details>
+        </div>
       </div>
 
       <div class="setting-block">
@@ -1108,8 +1182,24 @@ async function renderSettings() {
     keyState.textContent = 'cleared';
   });
 
+  const lastBackupNote = $('#lastBackupNote', screen);
+  const refreshLastBackup = () => {
+    if (!lastBackupNote) return;
+    const last = lastBackupAt();
+    lastBackupNote.textContent = last
+      ? `Last backup: ${new Date(last).toLocaleDateString()} (${Math.floor(daysSinceISO(last))} day(s) ago).`
+      : 'No backup exported yet.';
+  };
+  refreshLastBackup();
+  const cadSel = $('#backupCadence', screen);
+  if (cadSel) {
+    cadSel.value = String(backupCadence());
+    cadSel.addEventListener('change', () => setBackupCadence(parseInt(cadSel.value, 10) || 0));
+  }
+
   $('#exportBtn', screen).addEventListener('click', async () => {
-    downloadFile(await db.exportJSON(), `fermentlog-backup-${todayISO()}.json`, 'application/json');
+    await exportBackup();
+    refreshLastBackup();
   });
   $('#csvBtn', screen).addEventListener('click', async () => {
     const batches = await db.getAllBatches();
@@ -1847,6 +1937,7 @@ function guideBodyHTML() {
         <ul>
           <li>Everything is stored <strong>on your device</strong> (in the browser's local database) and works <strong>fully offline</strong>.</li>
           <li><strong>Export a backup</strong> (JSON) any time and <strong>Import</strong> it on a new phone — it includes batches, recipes and templates.</li>
+          <li>A gentle <strong>backup reminder</strong> appears on the Home screen once it's been longer than your chosen interval (default monthly) — adjust or turn it off under Settings → Backup &amp; export.</li>
           <li><strong>Export CSV</strong> to open your batches in a spreadsheet.</li>
           <li>Nothing is uploaded anywhere — the only time data leaves your phone is the optional AI feature, and then only the text you describe.</li>
         </ul>`)}

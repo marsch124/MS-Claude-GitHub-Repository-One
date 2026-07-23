@@ -4,9 +4,19 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.9';
+export const APP_VERSION = '5.10';
 
 export const CHANGELOG = [
+  {
+    version: '5.10',
+    date: '2026-07-23 · 10:12 CEST',
+    title: 'Backup reminders 💾',
+    changes: [
+      'FermentLog now gently reminds you to keep a backup: once it has been longer than your chosen interval since your last export, a "Time for a backup" note appears at the top of the Home screen — tap "Export now" to save a copy, or "Later" to hide it for a week.',
+      'Set the interval under Settings → Backup & export (Weekly, Every 2 weeks, Monthly — the default, Every 3 months, or Off). It also shows when you last backed up.',
+      'A "How the backup reminder works" explainer sits right there in Settings, covering what a backup is, where it goes, and how to restore.',
+    ],
+  },
   {
     version: '5.9',
     date: '2026-07-23 · 09:26 CEST',
