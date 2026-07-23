@@ -4,9 +4,19 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.7';
+export const APP_VERSION = '5.8';
 
 export const CHANGELOG = [
+  {
+    version: '5.8',
+    date: '2026-07-22 · 23:36 CEST',
+    title: 'A calmer Home, and Insights in one place 🏠',
+    changes: [
+      'Renamed the first tab to "Home" — matching the bottom navigation — since it holds both your ferments and your bakes.',
+      'Removed the "Insights" and "Insights & lessons" buttons from the Home screen to keep it uncluttered; it now focuses on your list and the New button.',
+      'The Insights tab now has a Ferments / Bakes toggle: switch to Bakes for your bake insights and the lessons-learned notebook, all in one place.',
+    ],
+  },
   {
     version: '5.7',
     date: '2026-07-22 · 22:58 CEST',

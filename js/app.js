@@ -48,6 +48,9 @@ let pendingBatchDraft = null; // a batch pre-filled from a recipe, for the New f
 const LOGVIEW_KEY = 'fermentlog-logview';
 function logView() { try { return localStorage.getItem(LOGVIEW_KEY) === 'bakes' ? 'bakes' : 'jars'; } catch { return 'jars'; } }
 function setLogView(v) { try { localStorage.setItem(LOGVIEW_KEY, v); } catch {} }
+const INSIGHTSVIEW_KEY = 'fermentlog-insightsview';
+function insightsView() { try { return localStorage.getItem(INSIGHTSVIEW_KEY) === 'bakes' ? 'bakes' : 'ferments'; } catch { return 'ferments'; } }
+function setInsightsView(v) { try { localStorage.setItem(INSIGHTSVIEW_KEY, v); } catch {} }
 
 // ---------- Theme ----------
 const THEME_KEY = 'fermentlog-theme';
@@ -176,7 +179,7 @@ function syncNav(hash) {
 // ---------- Batches list ----------
 async function renderList() {
   const view = logView();
-  const wrap = h(`<section class="screen"><header class="topbar"><h1>${view === 'bakes' ? 'My Bakes' : 'My Ferments'}</h1><a class="search-btn" href="#/search" aria-label="Search">${IC.search}</a></header></section>`);
+  const wrap = h(`<section class="screen"><header class="topbar"><h1>Home</h1><a class="search-btn" href="#/search" aria-label="Search">${IC.search}</a></header></section>`);
   const toggle = h(`<div class="segmented logtoggle">
     <button class="seg ${view === 'jars' ? 'on' : ''}" data-v="jars">${IC.jar} Jars</button>
     <button class="seg ${view === 'bakes' ? 'on' : ''}" data-v="bakes">${IC.bread} Bakes</button>
@@ -193,7 +196,6 @@ async function fillJars(wrap) {
   const batches = await db.getAllBatches();
   wrap.appendChild(h(`<div class="list-actions">
     <a class="btn primary" href="#/new">＋ New batch</a>
-    <a class="btn ghost" href="#/insights">${IC.chart} Insights</a>
   </div>`));
   if (!batches.length) {
     wrap.appendChild(h(`<div class="empty">
@@ -254,7 +256,6 @@ async function fillBakes(wrap) {
   const bakes = await db.getBakes();
   wrap.appendChild(h(`<div class="list-actions">
     <a class="btn primary new-bake" href="#/bake-new">＋ New bake</a>
-    <a class="btn ghost" href="#/bake-insights">${IC.chart} Insights &amp; lessons</a>
   </div>`));
   if (!bakes.length) {
     wrap.appendChild(h(`<div class="empty">
@@ -273,8 +274,9 @@ async function renderBakeInsights() {
   const [bakes, lessons] = await Promise.all([db.getBakes(), db.getBakeLessons()]);
   const s = summarizeBakes(bakes);
   const screen = h(`<section class="screen">
-    <header class="topbar"><a class="back" href="#/">‹</a><h1>Bake insights</h1></header>
+    <header class="topbar"><h1>Insights</h1></header>
   </section>`);
+  screen.appendChild(insightsToggle('bakes'));
 
   screen.appendChild(h(`<div class="kpis">
     <div class="kpi"><span class="kpi-num">${s.total}</span><span class="kpi-lbl">bakes</span></div>
@@ -887,11 +889,23 @@ function renderOutcomeForm(container, b, id) {
 }
 
 // ---------- Insights ----------
+// Ferments / Bakes switch shared by the two Insights screens.
+function insightsToggle(view) {
+  const t = h(`<div class="segmented logtoggle">
+    <button class="seg ${view === 'ferments' ? 'on' : ''}" data-v="ferments">${IC.jar} Ferments</button>
+    <button class="seg ${view === 'bakes' ? 'on' : ''}" data-v="bakes">${IC.bread} Bakes</button>
+  </div>`);
+  t.querySelectorAll('.seg').forEach((btn) => btn.addEventListener('click', () => { setInsightsView(btn.dataset.v); renderInsights(); }));
+  return t;
+}
+
 async function renderInsights() {
+  if (insightsView() === 'bakes') return renderBakeInsights();
   const batches = await db.getAllBatches();
   const s = summarizeStats(batches, { vegetable: insightsVeg });
   const rec = recommendation(insightsVeg ? batches.filter((b) => b.vegetable === insightsVeg) : batches);
   const screen = h(`<section class="screen"><header class="topbar"><h1>Insights</h1></header></section>`);
+  screen.appendChild(insightsToggle('ferments'));
 
   if (s.vegetables.length > 1) {
     const opts = ['<option value="">All vegetables</option>',
@@ -1760,7 +1774,7 @@ function guideBodyHTML() {
       ${sec('The basics', `
         <p>FermentLog is your private logbook for home fermenting — and now baking too. It lives entirely on your phone, works offline, and can be installed to your home screen like a normal app. There are five tabs along the bottom:</p>
         <ul>
-          <li><strong>Batches</strong> ${IC.jar} — every jar you're fermenting.</li>
+          <li><strong>Home</strong> ${IC.jar} — your jars (ferments) and bakes, with a toggle between them.</li>
           <li><strong>Recipes</strong> ${IC.book} — reusable recipes, including sourdough.</li>
           <li><strong>New</strong> ＋ — start a new batch.</li>
           <li><strong>Insights</strong> ${IC.chart} — charts that reveal what makes your best ferments.</li>
@@ -1815,7 +1829,7 @@ function guideBodyHTML() {
           <li>From a <strong>sourdough recipe</strong>, tap <strong>${IC.bread} Log a bake from this</strong> to start a bake already linked to it.</li>
           <li>From a <strong>vegetable-ferment recipe</strong>, tap <strong>${IC.jar} Start a batch from this</strong> to pre-fill a new jar.</li>
           <li>On a new bake, <strong>✨ Build with AI</strong> turns a spoken description into the fields.</li>
-          <li><strong>Bake insights</strong> (Bakes → “Insights &amp; lessons”) shows your best bake, ratings by recipe and category, problem frequency, and a <strong>lessons-learned notebook</strong>.</li>
+          <li><strong>Bake insights</strong> (the <strong>Insights</strong> tab → <strong>Bakes</strong>) shows your best bake, ratings by recipe and category, problem frequency, and a <strong>lessons-learned notebook</strong>.</li>
         </ul>
         <p class="muted">So <em>Batch</em> stays the word for a fermenting jar, and <em>Bake</em> covers bread.</p>`)}
 
