@@ -29,6 +29,35 @@ const pad2 = (n) => String(n).padStart(2, '0');
 function fmtDate(iso) { const d = new Date(iso); return isNaN(d) ? '' : `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
 function fmtDateTime(iso) { const d = new Date(iso); return isNaN(d) ? '' : `${fmtDate(iso)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
 
+// Await a save; on failure tell the user (distinguishing "storage full") instead of failing silently.
+async function saveGuard(promise) {
+  try { await promise; return true; }
+  catch (err) {
+    console.error('FermentLog: save failed', err);
+    const quota = err && (err.name === 'QuotaExceededError' || /quota|exceeded/i.test(String((err && err.message) || err)));
+    alert(quota
+      ? 'This device is out of storage for FermentLog. Export a backup, then remove some photos or delete old entries, and try again.'
+      : 'Sorry — that could not be saved. Please try again.');
+    return false;
+  }
+}
+// One malformed record shouldn't blank a whole list.
+function safeAppend(list, fn, item) {
+  try { list.appendChild(fn(item)); }
+  catch (err) { console.error('FermentLog: a card failed to render', err); }
+}
+// Warn (at most once a day) when on-device storage is nearly full.
+async function maybeWarnStorage() {
+  try {
+    if (!navigator.storage || !navigator.storage.estimate) return;
+    const { usage, quota } = await navigator.storage.estimate();
+    if (!quota || usage / quota <= 0.9) return;
+    if (localStorage.getItem('fermentlog-storage-warned') === todayISO()) return;
+    localStorage.setItem('fermentlog-storage-warned', todayISO());
+    alert('Heads up: this device is running low on storage for FermentLog. Consider exporting a backup and removing some photos.');
+  } catch { /* estimate unsupported — ignore */ }
+}
+
 // Carrot-toned inline icons, matching the bottom tab-bar set (color: var(--brand) via .ic).
 const IC = {
   jar: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8"/><path d="M8 4v1.4a3 3 0 0 1-.9 2.1A4 4 0 0 0 6 10.4V18a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3v-7.6a4 4 0 0 0-1.1-2.9A3 3 0 0 1 16 5.4V4"/><path d="M6.4 12h11.2"/></svg>',
@@ -375,7 +404,7 @@ async function fillJars(wrap, batches) {
     // Only show headings when there is a split to make; a single group reads fine flat.
     if (ongoing.length && finished.length) wrap.appendChild(h(`<h2 class="group-h">${label} <span>${count}</span></h2>`));
     const list = h('<div class="cards"></div>');
-    for (const b of items) list.appendChild(batchCard(b));
+    for (const b of items) safeAppend(list, batchCard, b);
     wrap.appendChild(list);
   };
   section('Ongoing', ongoing.length, ongoing);
@@ -396,7 +425,7 @@ async function fillBakes(wrap, bakes) {
     return;
   }
   const list = h('<div class="cards"></div>');
-  for (const bk of bakes) list.appendChild(bakeCard(bk));
+  for (const bk of bakes) safeAppend(list, bakeCard, bk);
   wrap.appendChild(list);
 }
 
@@ -750,7 +779,8 @@ function renderForm(batch, isEdit, presets, vegOptions, formOptions, spiceOption
     e.preventDefault();
     syncFormInto(editing, f);
     if (!editing.vegetable) { alert('Please type the vegetable name.'); customWrap.querySelector('input').focus(); return; }
-    await db.saveBatch(editing);
+    if (!(await saveGuard(db.saveBatch(editing)))) return;
+    maybeWarnStorage();
     location.assign(`#/batch/${editing.id}`);
   });
 }
@@ -1462,7 +1492,7 @@ async function renderRecipes() {
     return;
   }
   const list = h('<div class="cards"></div>');
-  for (const r of recipes) list.appendChild(recipeCard(r));
+  for (const r of recipes) safeAppend(list, recipeCard, r);
   wrap.appendChild(list);
   swap(wrap);
 }
@@ -1693,7 +1723,8 @@ function renderRecipeForm(recipe, isEdit = false) {
       updatedAt: new Date().toISOString(),
     });
     if (!editingRecipe.title) { alert('Please give the recipe a title.'); return; }
-    await db.saveRecipe(editingRecipe);
+    if (!(await saveGuard(db.saveRecipe(editingRecipe)))) return;
+    maybeWarnStorage();
     location.assign(`#/recipe/${editingRecipe.id}`);
   });
 }
@@ -1981,7 +2012,8 @@ async function renderBakeForm(bake, isEdit = false) {
       loggedBy: fd.get('loggedBy') || '',
     });
     if (!editingBake.name) { alert('Please give the bake a name.'); return; }
-    await db.saveBake(editingBake);
+    if (!(await saveGuard(db.saveBake(editingBake)))) return;
+    maybeWarnStorage();
     location.assign(`#/bake/${editingBake.id}`);
   });
 }

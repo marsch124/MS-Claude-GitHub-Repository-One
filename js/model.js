@@ -24,6 +24,32 @@ export function splitVegForm(name, forms = FORMS) {
   return { vegetable: parts.slice(0, -1).join(' '), form: match };
 }
 
+// Defensive shape guards applied when reading records from storage, so a
+// malformed or older record can never crash a `.map`/`.filter` in the UI.
+const asArray = (v) => (Array.isArray(v) ? v : []);
+export function coerceBatch(b) {
+  if (!b || typeof b !== 'object') return b;
+  b.additions = asArray(b.additions);
+  b.checkIns = asArray(b.checkIns);
+  b.photos = asArray(b.photos);
+  return b;
+}
+export function coerceBake(bk) {
+  if (!bk || typeof bk !== 'object') return bk;
+  bk.problems = asArray(bk.problems);
+  bk.photos = asArray(bk.photos);
+  bk.ratings = bk.ratings && typeof bk.ratings === 'object' ? bk.ratings : {};
+  return bk;
+}
+export function coerceRecipe(r) {
+  if (!r || typeof r !== 'object') return r;
+  r.ingredients = asArray(r.ingredients);
+  r.equipment = asArray(r.equipment);
+  r.steps = asArray(r.steps);
+  r.photos = asArray(r.photos);
+  return r;
+}
+
 /** Vegetables seen in past batches that aren't built-in — sorted, de-duplicated. */
 export function usedVegetables(batches) {
   const builtin = new Set(VEGETABLES);

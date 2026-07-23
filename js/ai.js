@@ -27,6 +27,8 @@ async function callStructured(system, schema, userText) {
   };
 
   let res;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 45000);
   try {
     res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -37,9 +39,13 @@ async function callStructured(system, schema, userText) {
         'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
-  } catch {
-    throw new Error('Could not reach the AI service. Check your internet connection.');
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new Error('The AI request timed out. Please try again.', { cause: e });
+    throw new Error('Could not reach the AI service. Check your internet connection.', { cause: e });
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!res.ok) {

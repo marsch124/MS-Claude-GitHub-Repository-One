@@ -1,6 +1,7 @@
 // db.js — on-device persistence via IndexedDB.
 // One object store keyed by batch id. Photos are kept inline as data URLs so a
 // batch is a single self-contained record (simple to export/import as JSON).
+import { coerceBatch, coerceBake, coerceRecipe } from './model.js';
 
 const DB_NAME = 'fermentlog';
 const DB_VERSION = 5;
@@ -36,7 +37,7 @@ export async function getAllBatches() {
   return new Promise((resolve, reject) => {
     const req = tx(db, 'readonly').getAll();
     req.onsuccess = () => {
-      const list = req.result || [];
+      const list = (req.result || []).map(coerceBatch);
       list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
       resolve(list);
     };
@@ -48,7 +49,7 @@ export async function getBatch(id) {
   const db = await open();
   return new Promise((resolve, reject) => {
     const req = tx(db, 'readonly').get(id);
-    req.onsuccess = () => resolve(req.result || null);
+    req.onsuccess = () => resolve(req.result ? coerceBatch(req.result) : null);
     req.onerror = () => reject(req.error);
   });
 }
@@ -117,7 +118,7 @@ export async function getRecipes() {
   const db = await open();
   return new Promise((resolve, reject) => {
     const req = tx(db, 'readonly', RECIPES).getAll();
-    req.onsuccess = () => resolve((req.result || []).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')));
+    req.onsuccess = () => resolve((req.result || []).map(coerceRecipe).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')));
     req.onerror = () => reject(req.error);
   });
 }
@@ -126,7 +127,7 @@ export async function getRecipe(id) {
   const db = await open();
   return new Promise((resolve, reject) => {
     const req = tx(db, 'readonly', RECIPES).get(id);
-    req.onsuccess = () => resolve(req.result || null);
+    req.onsuccess = () => resolve(req.result ? coerceRecipe(req.result) : null);
     req.onerror = () => reject(req.error);
   });
 }
@@ -155,7 +156,7 @@ export async function getBakes() {
   const db = await open();
   return new Promise((resolve, reject) => {
     const req = tx(db, 'readonly', BAKES).getAll();
-    req.onsuccess = () => resolve((req.result || []).sort((a, b) => (b.bakeDate || '').localeCompare(a.bakeDate || '')));
+    req.onsuccess = () => resolve((req.result || []).map(coerceBake).sort((a, b) => (b.bakeDate || '').localeCompare(a.bakeDate || '')));
     req.onerror = () => reject(req.error);
   });
 }
@@ -164,7 +165,7 @@ export async function getBake(id) {
   const db = await open();
   return new Promise((resolve, reject) => {
     const req = tx(db, 'readonly', BAKES).get(id);
-    req.onsuccess = () => resolve(req.result || null);
+    req.onsuccess = () => resolve(req.result ? coerceBake(req.result) : null);
     req.onerror = () => reject(req.error);
   });
 }

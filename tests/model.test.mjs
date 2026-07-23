@@ -10,6 +10,7 @@ import {
   COMMON_SPICES, usedSpices, mergeSpices, renamedList, withoutItem,
   newRecipe, duplicateRecipe, sampleSourdoughRecipe, RECIPE_CATEGORIES,
   newBake, overallBakeRating, duplicateBake, BAKE_CATEGORIES, summarizeBakes,
+  coerceBatch, coerceBake, coerceRecipe,
   searchAll,
 } from '../js/model.js';
 import { APP_VERSION, CHANGELOG } from '../js/changelog.js';
@@ -528,4 +529,17 @@ test('splitVegForm: separates a known form suffix, leaves others intact', () => 
   assert.deepEqual(splitVegForm('Green beans'), { vegetable: 'Green beans', form: '' }); // "beans" isn't a form
   assert.deepEqual(splitVegForm(''), { vegetable: '', form: '' });
   assert.ok(FORMS.includes('Sticks'));
+});
+
+test('coerceBatch/coerceBake/coerceRecipe: guarantee array/object shapes', () => {
+  const b = coerceBatch({ id: 'x' });
+  assert.deepEqual(b.additions, []); assert.deepEqual(b.checkIns, []); assert.deepEqual(b.photos, []);
+  const bk = coerceBake({ id: 'k' });
+  assert.deepEqual(bk.problems, []); assert.deepEqual(bk.photos, []); assert.deepEqual(bk.ratings, {});
+  const r = coerceRecipe({ id: 'r' });
+  assert.deepEqual(r.ingredients, []); assert.deepEqual(r.equipment, []); assert.deepEqual(r.steps, []); assert.deepEqual(r.photos, []);
+  // existing arrays are preserved
+  assert.deepEqual(coerceBatch({ additions: ['garlic'] }).additions, ['garlic']);
+  // non-objects pass through untouched
+  assert.equal(coerceBatch(null), null);
 });

@@ -4,9 +4,19 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.19';
+export const APP_VERSION = '5.20';
 
 export const CHANGELOG = [
+  {
+    version: '5.20',
+    date: '2026-07-23 · 16:05 CEST',
+    title: 'More robust under the hood 🔩',
+    changes: [
+      'If a save ever fails — for example the device is out of storage — you now get a clear message (and a nudge to back up and free space) instead of the entry silently vanishing.',
+      'A low-storage heads-up appears if the device is nearly full, so you can export a backup before it becomes a problem.',
+      'Older or imported records are tidied up as they load, so a stray entry can never blank out a list, and the AI assistant now times out gracefully instead of hanging.',
+    ],
+  },
   {
     version: '5.19',
     date: '2026-07-23 · 15:20 CEST',
