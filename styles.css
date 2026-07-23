@@ -322,6 +322,7 @@ svg.gfx { color: var(--brand); display: block; }
   padding: 16px; margin-bottom: 14px; box-shadow: var(--shadow); }
 .guide-sec h3 { color: var(--brand-ink); margin: 0 0 8px; }
 .guide-sec p { margin: 0 0 8px; line-height: 1.55; }
+.guide-sec h4 { margin: 12px 0 6px; color: var(--brand-ink); font-size: .95rem; }
 .guide-sec ul { margin: 0 0 4px; padding-left: 20px; }
 .guide-sec li { margin-bottom: 7px; line-height: 1.5; }
 .guide-sec a { color: var(--brand-ink); font-weight: 600; }

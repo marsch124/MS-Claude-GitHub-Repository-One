@@ -1115,18 +1115,7 @@ async function renderSettings() {
             </select>
           </label>
           <p class="muted small-note" id="lastBackupNote"></p>
-          <details class="disclosure">
-            <summary>How the backup reminder works</summary>
-            <div class="ai-about">
-              <ul>
-                <li>Everything you log is stored <strong>only on this device</strong>. A <strong>backup</strong> is a single <code>.json</code> file you can save to Files, iCloud Drive or email — your safety net if the phone is lost, or the app's storage gets cleared.</li>
-                <li>When it's been longer than your chosen interval since your last export, a gentle <strong>“Time for a backup”</strong> note appears at the top of the <strong>Home</strong> screen. Tap <strong>Export now</strong> and save the file somewhere safe.</li>
-                <li>The timer <strong>resets each time you export</strong> a backup here or from that note. <strong>Later</strong> hides the note for a week.</li>
-                <li>Pick your interval above — the default is <strong>Monthly</strong>. Choose <strong>Off</strong> to stop the reminders entirely.</li>
-                <li>To restore on this or a new device, use <strong>Import backup</strong> above and choose a saved <code>.json</code> file.</li>
-              </ul>
-            </div>
-          </details>
+          <p class="muted small-note">How backups and reminders work is explained in <strong>How FermentLog works</strong> below.</p>
         </div>
       </div>
 
@@ -1938,12 +1927,18 @@ function guideBodyHTML() {
         </ul>`)}
 
       ${sec('Your data, backups & privacy', `
+        <p>Everything you log is stored <strong>only on this device</strong> (in the browser's local database) and works <strong>fully offline</strong>. Nothing is uploaded anywhere — the only time data leaves your phone is the optional AI feature, and then only the text you describe.</p>
         <ul>
-          <li>Everything is stored <strong>on your device</strong> (in the browser's local database) and works <strong>fully offline</strong>.</li>
-          <li><strong>Export a backup</strong> (JSON) any time and <strong>Import</strong> it on a new phone — it includes batches, recipes and templates.</li>
-          <li>A gentle <strong>backup reminder</strong> appears on the Home screen once it's been longer than your chosen interval (default monthly) — adjust or turn it off under Settings → Backup &amp; export.</li>
-          <li><strong>Export CSV</strong> to open everything in a spreadsheet — ferments, bakes, recipes and your lessons-learned notebook, as labelled sections in one file.</li>
-          <li>Nothing is uploaded anywhere — the only time data leaves your phone is the optional AI feature, and then only the text you describe.</li>
+          <li>A <strong>backup</strong> is a single <code>.json</code> file — tap <strong>Export backup</strong> under Settings → Backup &amp; export and save it to Files, iCloud Drive or email. It's your safety net if the phone is lost or the app's storage gets cleared, and it includes your batches, bakes, recipes, templates and lessons.</li>
+          <li><strong>Restore</strong> on this or a new phone with <strong>Import backup</strong> — just choose a saved <code>.json</code> file.</li>
+          <li><strong>Export CSV</strong> opens everything in a spreadsheet — ferments, bakes, recipes and your lessons-learned notebook, as labelled sections in one file.</li>
+        </ul>
+        <h4>Backup reminders</h4>
+        <ul>
+          <li>Once it's been longer than your chosen interval since your last export, a gentle <strong>“Time for a backup”</strong> note appears at the top of the <strong>Home</strong> screen. Tap <strong>Export now</strong> to save a copy, or <strong>Later</strong> to hide it for a week.</li>
+          <li>The timer <strong>resets every time you export</strong> a backup (from that note or from Settings).</li>
+          <li>Pick the interval under <strong>Settings → Backup &amp; export</strong> — <strong>Weekly</strong>, <strong>Every 2 weeks</strong>, <strong>Monthly</strong> (the default), <strong>Every 3 months</strong>, or <strong>Off</strong>. That screen also shows when you last backed up.</li>
+          <li>It only nudges once you have data, and never on day one — the clock starts from first use, so the first reminder comes one interval later.</li>
         </ul>`)}
 
       ${sec('Appearance & install', `

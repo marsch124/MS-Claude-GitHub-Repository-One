@@ -4,9 +4,18 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.12';
+export const APP_VERSION = '5.13';
 
 export const CHANGELOG = [
+  {
+    version: '5.13',
+    date: '2026-07-23 · 11:24 CEST',
+    title: 'Backup help, all in one place',
+    changes: [
+      'Folded the "How the backup reminder works" details into the main "How FermentLog works" guide, under Your data, backups & privacy — so all the how-to lives in one place.',
+      'Settings → Backup & export now keeps just the controls (interval and last-backup date) with a pointer to the guide.',
+    ],
+  },
   {
     version: '5.12',
     date: '2026-07-23 · 11:02 CEST',

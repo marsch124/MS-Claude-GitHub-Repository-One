@@ -1,6 +1,6 @@
 // service-worker.js — offline app shell caching.
 // Bump CACHE when you change any of the cached files to force an update.
-const CACHE = 'fermentlog-v23';
+const CACHE = 'fermentlog-v24';
 const ASSETS = [
   './',
   './index.html',
