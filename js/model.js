@@ -334,6 +334,7 @@ export function toCSV(batches) {
     ['Overall', (b) => (b.outcome && b.outcome.overall) ?? ''],
     ['Problems', (b) => ((b.outcome && b.outcome.problems) || []).join('; ')],
     ['Notes', (b) => b.notes],
+    ['Logged by', (b) => b.loggedBy],
   ];
   const header = cols.map((c) => c[0]).join(',');
   const rows = (Array.isArray(batches) ? batches : []).map((b) => cols.map((c) => csvCell(c[1](b))).join(','));
@@ -358,6 +359,7 @@ export function toFullCSV({ batches = [], bakes = [], recipes = [], lessons = []
     ['Overall', (b) => { const o = overallBakeRating(b); return o == null ? '' : (Number.isInteger(o) ? o : o.toFixed(1)); }],
     ['Problems', (b) => (b.problems || []).join('; ')],
     ['Notes', (b) => b.notes],
+    ['Logged by', (b) => b.loggedBy],
   ];
   const recipeCols = [
     ['Title', (r) => r.title],
@@ -372,7 +374,10 @@ export function toFullCSV({ batches = [], bakes = [], recipes = [], lessons = []
   ];
   const lessonCols = [
     ['Lesson / improvement', (l) => l.text],
-    ['Added', (l) => (l.createdAt ? String(l.createdAt).slice(0, 10) : '')],
+    ['Logged by', (l) => l.loggedBy],
+    ['Recipe', (l) => l.recipeTitle],
+    ['From (batch/bake)', (l) => l.linkLabel],
+    ['Added', (l) => (l.createdAt ? String(l.createdAt).replace('T', ' ').slice(0, 16) : '')],
   ];
   return [
     `# Ferments (batches)\n${toCSV(batches)}`,
@@ -396,7 +401,7 @@ export function exportSheets({ batches = [], bakes = [], recipes = [], lessons =
         { header: 'Weight', width: 16 }, { header: 'Lid', width: 20 }, { header: 'Spices', width: 22 },
         { header: 'Status', width: 12 }, { header: 'Success', width: 9 }, { header: 'Taste', width: 7 },
         { header: 'Sourness', width: 9 }, { header: 'Crunch', width: 8 }, { header: 'Overall', width: 12 },
-        { header: 'Problems', width: 24 }, { header: 'Notes', width: 40 },
+        { header: 'Problems', width: 24 }, { header: 'Notes', width: 40 }, { header: 'Logged by', width: 14 },
       ],
       rows: batches.map((b) => {
         const brine = computeBrinePercent(b.saltGrams, b.waterMl);
@@ -407,7 +412,7 @@ export function exportSheets({ batches = [], bakes = [], recipes = [], lessons =
           b.vesselType || '', b.weightType || '', b.lidType || '', (b.additions || []).join('\n'),
           statusLabel(batchStatus(b)), o.recorded ? (o.success ? 'Yes' : 'No') : '',
           num(o.taste), num(o.sourness), num(o.crunch), stars(o.overall),
-          (o.problems || []).join('\n'), b.notes || '',
+          (o.problems || []).join('\n'), b.notes || '', b.loggedBy || '',
         ];
       }),
     },
@@ -417,14 +422,14 @@ export function exportSheets({ batches = [], bakes = [], recipes = [], lessons =
         { header: 'Name', width: 22 }, { header: 'Category', width: 12 }, { header: 'Date', width: 12 },
         { header: 'Recipe', width: 20 }, { header: 'Crust', width: 7 }, { header: 'Crumb', width: 7 },
         { header: 'Flavour', width: 8 }, { header: 'Overall', width: 12 }, { header: 'Problems', width: 24 },
-        { header: 'Notes', width: 40 },
+        { header: 'Notes', width: 40 }, { header: 'Logged by', width: 14 },
       ],
       rows: bakes.map((b) => {
         const r = b.ratings || {};
         return [
           b.name || '', b.category || '', b.bakeDate || '', b.recipeTitle || '',
           num(r.crust), num(r.crumb), num(r.flavour), stars(overallBakeRating(b)),
-          (b.problems || []).join('\n'), b.notes || '',
+          (b.problems || []).join('\n'), b.notes || '', b.loggedBy || '',
         ];
       }),
     },
@@ -445,8 +450,14 @@ export function exportSheets({ batches = [], bakes = [], recipes = [], lessons =
     },
     {
       name: 'Lessons',
-      columns: [{ header: 'Lesson / improvement', width: 60 }, { header: 'Added', width: 14 }],
-      rows: lessons.map((l) => [l.text || '', l.createdAt ? String(l.createdAt).slice(0, 10) : '']),
+      columns: [
+        { header: 'Lesson / improvement', width: 50 }, { header: 'Logged by', width: 14 },
+        { header: 'Recipe', width: 22 }, { header: 'From (batch/bake)', width: 22 }, { header: 'Added', width: 20 },
+      ],
+      rows: lessons.map((l) => [
+        l.text || '', l.loggedBy || '', l.recipeTitle || '', l.linkLabel || '',
+        l.createdAt ? String(l.createdAt).replace('T', ' ').slice(0, 16) : '',
+      ]),
     },
   ];
 }

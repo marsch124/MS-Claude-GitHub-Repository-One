@@ -484,7 +484,7 @@ test('toFullCSV: includes ferments, bakes, recipes and lessons as sections', () 
   assert.match(csv, /Everyday sourdough/);
   assert.match(csv, /1\. Bulk \(4h\): warm/);
   assert.match(csv, /# Lessons learned & improvements/);
-  assert.match(csv, /Longer cold proof = tangier,2026-07-21/);
+  assert.match(csv, /Longer cold proof = tangier,,,,2026-07-21/);
 });
 
 test('toFullCSV: empty data still yields all four labelled sections', () => {
@@ -509,7 +509,8 @@ test('exportSheets: four tabs with headers and typed cells', () => {
   assert.equal(fer.rows[0][17], '★★★★☆');       // overall as stars
   // bake overall falls back to the average of parts (4+3+5)/3 = 4 → four stars
   assert.equal(sheets[1].rows[0][7], '★★★★☆');
-  assert.equal(sheets[3].rows[0][1], '2026-07-21'); // lesson date trimmed to day
+  assert.equal(sheets[3].columns.map((c) => c.header).join(','), 'Lesson / improvement,Logged by,Recipe,From (batch/bake),Added');
+  assert.equal(sheets[3].rows[0][4], '2026-07-21 10:00'); // lesson date & time
 });
 
 test('exportSheets: empty data still yields the four named tabs with no rows', () => {

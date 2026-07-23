@@ -4,9 +4,19 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.15';
+export const APP_VERSION = '5.16';
 
 export const CHANGELOG = [
+  {
+    version: '5.16',
+    date: '2026-07-23 · 13:20 CEST',
+    title: 'Who logged it — people & richer lessons 👥',
+    changes: [
+      'New People setting: add the members of your household and pick who\'s currently logging. That person is stamped as “Logged by” on new batches, bakes and lessons — and you can change it on any entry.',
+      'The Lessons learned notebook is now “Lessons learned & improvements”, and each entry can record who noticed it, the date & time, and an optional link to the recipe and the batch or bake it came from.',
+      'Batches and bakes now show “Logged by” on their detail pages, and all the new fields are included in the Excel export and JSON backups.',
+    ],
+  },
   {
     version: '5.15',
     date: '2026-07-23 · 12:20 CEST',

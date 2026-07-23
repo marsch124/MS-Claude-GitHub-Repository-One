@@ -84,6 +84,34 @@ async function exportBackup() {
   markBackedUp();
 }
 
+// ---------- People (who's logging) ----------
+const PEOPLE_KEY = 'fermentlog-people';
+const ACTIVE_PERSON_KEY = 'fermentlog-active-person';
+function getPeople() { try { return JSON.parse(localStorage.getItem(PEOPLE_KEY)) || []; } catch { return []; } }
+function setPeople(list) { try { localStorage.setItem(PEOPLE_KEY, JSON.stringify(list)); } catch {} }
+function activePerson() { try { return localStorage.getItem(ACTIVE_PERSON_KEY) || getPeople()[0] || ''; } catch { return ''; } }
+function setActivePerson(name) { try { localStorage.setItem(ACTIVE_PERSON_KEY, name || ''); } catch {} }
+function addPerson(name) {
+  const n = (name || '').trim();
+  if (!n) return;
+  const list = getPeople();
+  if (!list.some((p) => p.toLowerCase() === n.toLowerCase())) { list.push(n); setPeople(list); }
+  if (!activePerson()) setActivePerson(n);
+}
+function removePerson(name) {
+  setPeople(getPeople().filter((p) => p !== name));
+  if (activePerson() === name) setActivePerson(getPeople()[0] || '');
+}
+// A <select name="loggedBy"> defaulting to the active person, always able to show `current`.
+function loggedBySelect(current) {
+  const people = getPeople();
+  const cur = current || activePerson();
+  const opts = ['<option value="">— not set —</option>'];
+  for (const p of people) opts.push(`<option ${p === cur ? 'selected' : ''}>${esc(p)}</option>`);
+  if (cur && !people.includes(cur)) opts.push(`<option selected>${esc(cur)}</option>`);
+  return `<select name="loggedBy">${opts.join('')}</select>`;
+}
+
 // ---------- Theme ----------
 const THEME_KEY = 'fermentlog-theme';
 function applyTheme(mode) {
@@ -323,7 +351,7 @@ async function fillBakes(wrap, bakes) {
 }
 
 async function renderBakeInsights() {
-  const [bakes, lessons] = await Promise.all([db.getBakes(), db.getBakeLessons()]);
+  const [bakes, lessons, batches, recipes] = await Promise.all([db.getBakes(), db.getBakeLessons(), db.getAllBatches(), db.getRecipes()]);
   const s = summarizeBakes(bakes);
   const screen = h(`<section class="screen">
     <header class="topbar"><h1>Insights</h1></header>
@@ -354,17 +382,33 @@ async function renderBakeInsights() {
   screen.appendChild(chartCard('Average rating by category', barChart(s.byCategory, { unit: '★', max: 5 })));
   screen.appendChild(chartCard('Problems encountered', barChart(s.problems, { unit: '' })));
 
-  // Lessons learned notebook
+  // Lessons learned & improvements notebook (with metadata)
+  const lessonMeta = (l) => {
+    const bits = [];
+    if (l.loggedBy) bits.push(esc(l.loggedBy));
+    if (l.createdAt) bits.push(new Date(l.createdAt).toLocaleString());
+    if (l.recipeTitle) bits.push(`Recipe: ${esc(l.recipeTitle)}`);
+    if (l.linkLabel) bits.push(`From: ${esc(l.linkLabel)}`);
+    return bits.join(' · ');
+  };
   const lessonList = lessons.length
-    ? lessons.map((l) => `<li><span>${esc(l.text)}</span><button class="link-del" data-id="${l.id}" aria-label="Delete">✕</button></li>`).join('')
+    ? lessons.map((l) => `<li><div class="lesson-body"><span class="lesson-text">${esc(l.text)}</span>${lessonMeta(l) ? `<div class="lesson-meta">${lessonMeta(l)}</div>` : ''}</div><button class="link-del" data-id="${l.id}" aria-label="Delete">✕</button></li>`).join('')
     : '<li class="muted">No lessons yet — add what you learn as you bake.</li>';
+  const recipeOpts = recipes.map((r) => `<option value="${r.id}">${esc(r.title || 'Untitled')}</option>`).join('');
+  const linkOpts = `<optgroup label="Ferments (jars)">${batches.map((b) => `<option value="batch:${b.id}">${esc(b.name || b.vegetable || 'Untitled batch')}</option>`).join('')}</optgroup>`
+    + `<optgroup label="Bakes">${bakes.map((b) => `<option value="bake:${b.id}">${esc(b.name || b.category || 'Untitled bake')}</option>`).join('')}</optgroup>`;
   const block = h(`<div class="setting-block">
-    <h3>📓 Lessons learned</h3>
-    <p class="muted">Your running notebook of baking lessons — kept in your backups.</p>
+    <h3>📓 Lessons learned & improvements</h3>
+    <p class="muted">Your running notebook — jot what you learn, and tag who noticed it and which recipe, batch or bake it came from. Kept in your backups.</p>
     <ul class="lesson-list">${lessonList}</ul>
-    <form id="lessonForm" class="ci-form">
+    <form id="lessonForm" class="lesson-form">
       <input name="text" placeholder="e.g. Longer cold proof = tangier, more open crumb" required>
-      <button class="btn ghost small">Add</button>
+      <div class="lesson-fields">
+        <label>Logged by ${loggedBySelect('')}</label>
+        <label>Recipe <select name="recipeId"><option value="">— none —</option>${recipeOpts}</select></label>
+        <label>Batch or bake <select name="linkRef"><option value="">— none —</option>${linkOpts}</select></label>
+      </div>
+      <button class="btn ghost small">Add lesson</button>
     </form>
   </div>`);
   screen.appendChild(block);
@@ -372,9 +416,24 @@ async function renderBakeInsights() {
 
   $('#lessonForm', block).addEventListener('submit', async (e) => {
     e.preventDefault();
-    const text = new FormData(e.target).get('text').trim();
+    const fd = new FormData(e.target);
+    const text = (fd.get('text') || '').trim();
     if (!text) return;
-    await db.saveBakeLesson({ id: `l_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, text, createdAt: new Date().toISOString() });
+    const recipeId = fd.get('recipeId') || '';
+    const recipeTitle = (recipes.find((r) => r.id === recipeId) || {}).title || '';
+    let linkKind = '', linkId = '', linkLabel = '';
+    const ref = fd.get('linkRef') || '';
+    if (ref) {
+      [linkKind, linkId] = ref.split(':');
+      if (linkKind === 'batch') { const b = batches.find((x) => x.id === linkId); linkLabel = b ? (b.name || b.vegetable || 'Batch') : ''; }
+      else if (linkKind === 'bake') { const b = bakes.find((x) => x.id === linkId); linkLabel = b ? (b.name || b.category || 'Bake') : ''; }
+    }
+    await db.saveBakeLesson({
+      id: `l_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      text, createdAt: new Date().toISOString(),
+      loggedBy: fd.get('loggedBy') || '',
+      recipeId, recipeTitle, linkKind, linkId, linkLabel,
+    });
     renderBakeInsights();
   });
   block.querySelectorAll('.link-del').forEach((btn) => btn.addEventListener('click', async () => {
@@ -474,6 +533,7 @@ function renderForm(batch, isEdit, presets, vegOptions, spiceOptions) {
           <input name="customVeg" placeholder="e.g. Kohlrabi" autocomplete="off">
         </label>
         <label>Start date <input type="date" name="startDate" value="${batch.startDate}"></label>
+        <label>Logged by ${loggedBySelect(batch.loggedBy)}</label>
       </fieldset>
 
       <fieldset><legend>Conditions</legend>
@@ -643,6 +703,7 @@ function syncFormInto(target, f) {
     lidType: fd.get('lidType'),
     notes: fd.get('notes').trim(),
     additions: [...f.querySelectorAll('.chips input:checked')].map((c) => c.value),
+    loggedBy: fd.get('loggedBy') || '',
   });
 }
 
@@ -736,6 +797,7 @@ async function renderDetail(id) {
         <div class="stat"><span>Started</span><strong>${b.startDate}</strong></div>
         <div class="stat"><span>Lid</span><strong>${esc(b.lidType || '—')}</strong></div>
         <div class="stat"><span>Weight</span><strong>${esc(b.weightType || '—')}</strong></div>
+        ${b.loggedBy ? `<div class="stat"><span>Logged by</span><strong>${esc(b.loggedBy)}</strong></div>` : ''}
       </div>
 
       <div class="detail-block"><h3>Spices</h3><div class="tags">${additions}</div></div>
@@ -1026,6 +1088,11 @@ async function renderSettings() {
   const presetList = presets.length
     ? presets.map((p) => `<li><span>${esc(p.name)}</span><button class="link-del" data-id="${p.id}">Delete</button></li>`).join('')
     : '<li class="muted">No batch templates yet.</li>';
+  const people = getPeople();
+  const active = activePerson();
+  const peopleList = people.length
+    ? people.map((p) => `<li><label class="person-pick"><input type="radio" name="activePerson" value="${esc(p)}" ${p === active ? 'checked' : ''}> ${esc(p)}</label><button class="link-del" data-person="${esc(p)}">Delete</button></li>`).join('')
+    : '<li class="muted">No people yet — add whoever logs batches and bakes.</li>';
 
   const screen = h(`<section class="screen">
     <header class="topbar"><h1>Settings</h1></header>
@@ -1033,6 +1100,16 @@ async function renderSettings() {
       <div class="setting-block">
         <h3>Appearance</h3>
         <div class="segmented">${seg('system', 'System')}${seg('light', 'Light')}${seg('dark', 'Dark')}</div>
+      </div>
+
+      <div class="setting-block">
+        <h3>People</h3>
+        <p class="muted">Add whoever logs batches, bakes and lessons. The one selected here is stamped on new entries as “Logged by”, and you can change it on any entry.</p>
+        <ul class="preset-list people-list">${peopleList}</ul>
+        <form id="addPersonForm" class="add-spice">
+          <input id="newPerson" placeholder="Add a person…" autocomplete="off">
+          <button class="btn ghost small">＋ Add</button>
+        </form>
       </div>
 
       <div class="setting-block">
@@ -1144,6 +1221,16 @@ async function renderSettings() {
     applyTheme(mode);
     renderSettings();
   }));
+
+  // People: pick the active logger, add, or remove.
+  screen.querySelectorAll('input[name=activePerson]').forEach((r) => r.addEventListener('change', () => setActivePerson(r.value)));
+  screen.querySelectorAll('.people-list .link-del').forEach((btn) => btn.addEventListener('click', () => { removePerson(btn.dataset.person); renderSettings(); }));
+  const addPersonForm = $('#addPersonForm', screen);
+  if (addPersonForm) addPersonForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    addPerson($('#newPerson', screen).value);
+    renderSettings();
+  });
 
   const notifyState = $('#notifyState', screen);
   const showNotifyState = () => {
@@ -1680,6 +1767,7 @@ async function renderBakeDetail(id) {
       <div class="pill pill-recipe big">${esc(bk.category || '')} · ${esc(bk.bakeDate || '')}</div>
       ${photos ? `<div class="detail-photos">${photos}</div>` : ''}
       ${rec ? `<div class="detail-block"><h3>From recipe</h3>${rec}</div>` : ''}
+      ${bk.loggedBy ? `<div class="detail-block"><h3>Logged by</h3><p>${esc(bk.loggedBy)}</p></div>` : ''}
       <div class="detail-block"><h3>How it turned out ${rating != null ? `<span class="head-rating">${ratingStars(rating)}</span>` : ''}</h3>
         <div class="stat-grid small">
           <div class="stat"><span>Crust</span><strong>${ratingStars(bk.ratings && bk.ratings.crust)}</strong></div>
@@ -1747,6 +1835,7 @@ async function renderBakeForm(bake, isEdit = false) {
         <label>Category <select name="category">${cats}</select></label>
         <label>Bake date <input type="date" name="bakeDate" value="${bake.bakeDate}"></label>
         <label>From recipe (optional) <select name="recipeId">${recOpts}</select></label>
+        <label>Logged by ${loggedBySelect(bake.loggedBy)}</label>
       </fieldset>
       <fieldset><legend>How did it turn out?</legend>
         ${starRow('Crust', 'crust')}${starRow('Crumb', 'crumb')}${starRow('Flavour', 'flavour')}${starRow('Overall', 'overall')}
@@ -1812,6 +1901,7 @@ async function renderBakeForm(bake, isEdit = false) {
       problems: [...form.querySelectorAll('.chips input:checked')].map((c) => c.value),
       notes: fd.get('notes').trim(),
       ratings: { crust: values.crust, crumb: values.crumb, flavour: values.flavour, overall: values.overall },
+      loggedBy: fd.get('loggedBy') || '',
     });
     if (!editingBake.name) { alert('Please give the bake a name.'); return; }
     await db.saveBake(editingBake);
@@ -1920,6 +2010,10 @@ function guideBodyHTML() {
 
       ${sec('The AI assistant', `
         <p>Optional, and fully explained under <a href="#/settings">Settings → AI assistant</a>. In short: describe or dictate a recipe or batch and it fills in the fields; you always review before saving. It uses <strong>your own Anthropic API key</strong>, stored only on this device — only the text you describe is ever sent, and everything else stays offline. It costs a fraction of a cent per use on your own account.</p>`)}
+
+      ${sec('People — who logged what', `
+        <p>Add the people in your household under <strong>Settings → People</strong> and pick who's currently logging. That person is stamped as <strong>Logged by</strong> on new batches, bakes and lessons, and you can change it on any entry.</p>
+        <p>The <strong>Lessons learned &amp; improvements</strong> notebook (Insights → Bakes) records, for each note, <strong>who</strong> logged it, the <strong>date &amp; time</strong>, and an optional link to the <strong>recipe</strong> and the <strong>batch or bake</strong> it came from. All of it is included in your Excel export and backups.</p>`)}
 
       ${sec('Managing your lists', `
         <p>In Settings you can:</p>
