@@ -4,9 +4,18 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.8';
+export const APP_VERSION = '5.9';
 
 export const CHANGELOG = [
+  {
+    version: '5.9',
+    date: '2026-07-23 · 09:26 CEST',
+    title: 'Livelier carrots 🥕',
+    changes: [
+      'Redrew the app icon: the three carrots in the jar are now wavy and lively rather than straight sticks.',
+      'The Home tab icon matches — a jar with three little squiggly carrots, in the same style as the other tabs.',
+    ],
+  },
   {
     version: '5.8',
     date: '2026-07-22 · 23:36 CEST',
