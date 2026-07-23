@@ -382,6 +382,75 @@ export function toFullCSV({ batches = [], bakes = [], recipes = [], lessons = []
   ].join('\n\n') + '\n';
 }
 
+/** Structured spreadsheet data (one entry per tab) for the .xlsx export. */
+export function exportSheets({ batches = [], bakes = [], recipes = [], lessons = [] } = {}) {
+  const num = (v) => (Number.isFinite(v) ? v : null);
+  const stars = (v) => (Number.isFinite(v) ? ratingStars(Math.round(v)) : '');
+  return [
+    {
+      name: 'Ferments',
+      columns: [
+        { header: 'Name', width: 22 }, { header: 'Vegetable', width: 16 }, { header: 'Start date', width: 12 },
+        { header: 'Days fermented', width: 10 }, { header: 'Brine %', width: 8 }, { header: 'Salt (g)', width: 8 },
+        { header: 'Water (ml)', width: 10 }, { header: 'Room temp (°C)', width: 12 }, { header: 'Vessel', width: 16 },
+        { header: 'Weight', width: 16 }, { header: 'Lid', width: 20 }, { header: 'Spices', width: 22 },
+        { header: 'Status', width: 12 }, { header: 'Success', width: 9 }, { header: 'Taste', width: 7 },
+        { header: 'Sourness', width: 9 }, { header: 'Crunch', width: 8 }, { header: 'Overall', width: 12 },
+        { header: 'Problems', width: 24 }, { header: 'Notes', width: 40 },
+      ],
+      rows: batches.map((b) => {
+        const brine = computeBrinePercent(b.saltGrams, b.waterMl);
+        const o = b.outcome || {};
+        return [
+          b.name || '', b.vegetable || '', b.startDate || '', num(fermentDays(b)),
+          brine == null ? null : Number(brine.toFixed(1)), num(b.saltGrams), num(b.waterMl), num(b.roomTempC),
+          b.vesselType || '', b.weightType || '', b.lidType || '', (b.additions || []).join('\n'),
+          statusLabel(batchStatus(b)), o.recorded ? (o.success ? 'Yes' : 'No') : '',
+          num(o.taste), num(o.sourness), num(o.crunch), stars(o.overall),
+          (o.problems || []).join('\n'), b.notes || '',
+        ];
+      }),
+    },
+    {
+      name: 'Bakes',
+      columns: [
+        { header: 'Name', width: 22 }, { header: 'Category', width: 12 }, { header: 'Date', width: 12 },
+        { header: 'Recipe', width: 20 }, { header: 'Crust', width: 7 }, { header: 'Crumb', width: 7 },
+        { header: 'Flavour', width: 8 }, { header: 'Overall', width: 12 }, { header: 'Problems', width: 24 },
+        { header: 'Notes', width: 40 },
+      ],
+      rows: bakes.map((b) => {
+        const r = b.ratings || {};
+        return [
+          b.name || '', b.category || '', b.bakeDate || '', b.recipeTitle || '',
+          num(r.crust), num(r.crumb), num(r.flavour), stars(overallBakeRating(b)),
+          (b.problems || []).join('\n'), b.notes || '',
+        ];
+      }),
+    },
+    {
+      name: 'Recipes',
+      columns: [
+        { header: 'Title', width: 24 }, { header: 'Category', width: 14 }, { header: 'Description', width: 40 },
+        { header: 'Ingredients', width: 34 }, { header: 'Equipment', width: 28 }, { header: 'Hands-on time', width: 14 },
+        { header: 'Total time', width: 14 }, { header: 'Steps', width: 50 }, { header: 'Storage', width: 30 },
+      ],
+      rows: recipes.map((r) => [
+        r.title || '', r.category || '', r.description || '',
+        (r.ingredients || []).join('\n'), (r.equipment || []).join('\n'),
+        r.activeTime || '', r.totalTime || '',
+        (r.steps || []).map((s, i) => `${i + 1}. ${s.title || ''}${s.time ? ` (${s.time})` : ''}${s.detail ? `: ${s.detail}` : ''}`).join('\n'),
+        r.storage || '',
+      ]),
+    },
+    {
+      name: 'Lessons',
+      columns: [{ header: 'Lesson / improvement', width: 60 }, { header: 'Added', width: 14 }],
+      rows: lessons.map((l) => [l.text || '', l.createdAt ? String(l.createdAt).slice(0, 10) : '']),
+    },
+  ];
+}
+
 // ---------- Creation / presets / duplication ----------
 
 /** Minimal empty batch with sensible Swedish-kitchen defaults. */

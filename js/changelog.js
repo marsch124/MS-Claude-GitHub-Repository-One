@@ -4,9 +4,19 @@
 // Dates/times are the release moment in the user's local zone (Europe/Stockholm —
 // CEST in summer, CET in winter).
 
-export const APP_VERSION = '5.13';
+export const APP_VERSION = '5.14';
 
 export const CHANGELOG = [
+  {
+    version: '5.14',
+    date: '2026-07-23 · 12:06 CEST',
+    title: 'A proper Excel spreadsheet export 📗',
+    changes: [
+      'The spreadsheet export is now a real Excel workbook (.xlsx) instead of a plain CSV — much nicer to read. It opens in Numbers, Excel or Google Sheets.',
+      'It has a separate tab for Ferments, Bakes, Recipes and Lessons, each with a bold carrot-orange header row that stays frozen as you scroll, and sensibly sized columns.',
+      'Ratings show as ★ stars, numbers stay numbers (so you can sort and total them), and longer notes wrap neatly. Find it under Settings → Backup & export → “Export spreadsheet (Excel)”.',
+    ],
+  },
   {
     version: '5.13',
     date: '2026-07-23 · 11:24 CEST',

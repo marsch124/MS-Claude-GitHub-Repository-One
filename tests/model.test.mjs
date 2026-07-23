@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   computeBrinePercent, isBrineInRange, daysBetween, fermentDays, batchStatus,
   overallRating, summarizeStats, newBatch, ratingStars,
-  nextCheckDue, isCheckDue, dueBatches, recommendation, toCSV, toFullCSV,
+  nextCheckDue, isCheckDue, dueBatches, recommendation, toCSV, toFullCSV, exportSheets,
   presetFromBatch, batchFromPreset, duplicateBatch, DEFAULT_REMIND_DAYS,
   VEGETABLES, usedVegetables, mergeVegetables,
   COMMON_SPICES, usedSpices, mergeSpices, renamedList, withoutItem,
@@ -492,4 +492,28 @@ test('toFullCSV: empty data still yields all four labelled sections', () => {
   for (const label of ['# Ferments (batches)', '# Bakes', '# Recipes', '# Lessons learned & improvements']) {
     assert.ok(csv.includes(label), `missing section ${label}`);
   }
+});
+
+test('exportSheets: four tabs with headers and typed cells', () => {
+  const batches = [{ ...newBatch(), name: 'Garlic carrots', saltGrams: 25, waterMl: 975, roomTempC: 20, outcome: { recorded: true, success: true, overall: 4, problems: [] } }];
+  const bakes = [{ ...newBake(), name: 'Loaf', ratings: { crust: 4, crumb: 3, flavour: 5, overall: undefined } }];
+  const recipes = [{ ...newRecipe(), title: 'Sourdough', ingredients: ['flour'], steps: [{ title: 'Bulk', detail: 'warm', time: '4h' }] }];
+  const lessons = [{ id: 'l1', text: 'cold proof', createdAt: '2026-07-21T10:00:00Z' }];
+  const sheets = exportSheets({ batches, bakes, recipes, lessons });
+  assert.deepEqual(sheets.map((s) => s.name), ['Ferments', 'Bakes', 'Recipes', 'Lessons']);
+  const fer = sheets[0];
+  assert.equal(fer.columns[0].header, 'Name');
+  assert.equal(fer.rows[0][0], 'Garlic carrots');
+  assert.equal(fer.rows[0][4], 2.5);            // brine % as a number
+  assert.equal(typeof fer.rows[0][4], 'number');
+  assert.equal(fer.rows[0][17], '★★★★☆');       // overall as stars
+  // bake overall falls back to the average of parts (4+3+5)/3 = 4 → four stars
+  assert.equal(sheets[1].rows[0][7], '★★★★☆');
+  assert.equal(sheets[3].rows[0][1], '2026-07-21'); // lesson date trimmed to day
+});
+
+test('exportSheets: empty data still yields the four named tabs with no rows', () => {
+  const sheets = exportSheets({});
+  assert.deepEqual(sheets.map((s) => s.name), ['Ferments', 'Bakes', 'Recipes', 'Lessons']);
+  assert.ok(sheets.every((s) => s.rows.length === 0 && s.columns.length > 0));
 });

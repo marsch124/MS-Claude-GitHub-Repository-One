@@ -3,7 +3,7 @@ import {
   VEGETABLES, LID_TYPES, WEIGHT_TYPES, PROBLEMS, COMMON_SPICES, DEFAULT_REMIND_DAYS,
   computeBrinePercent, isBrineInRange, daysBetween, fermentDays, batchStatus, statusLabel,
   overallRating, summarizeStats, recommendation, newBatch, ratingStars,
-  nextCheckDue, dueBatches, toCSV, toFullCSV, presetFromBatch, batchFromPreset, duplicateBatch,
+  nextCheckDue, dueBatches, toCSV, toFullCSV, exportSheets, presetFromBatch, batchFromPreset, duplicateBatch,
   usedVegetables, mergeVegetables, usedSpices, mergeSpices, renamedList, withoutItem,
   RECIPE_CATEGORIES, newRecipe, duplicateRecipe, sampleSourdoughRecipe,
   BAKE_CATEGORIES, BAKE_PROBLEMS, newBake, overallBakeRating, duplicateBake, summarizeBakes,
@@ -16,6 +16,7 @@ import {
 } from './ai.js';
 import * as db from './db.js';
 import { barChart, scatterChart } from './charts.js';
+import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 
 const app = document.getElementById('app');
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -1102,7 +1103,7 @@ async function renderSettings() {
         <p class="muted">Your data lives only on this device. Keep a backup, or export a spreadsheet.</p>
         <button class="btn ghost" id="exportBtn">${IC.up} Export backup (JSON)</button>
         <label class="btn ghost file">${IC.down} Import backup<input type="file" accept="application/json,.json" id="importInput" hidden></label>
-        <button class="btn ghost" id="csvBtn">${IC.chart} Export CSV</button>
+        <button class="btn ghost" id="xlsxBtn">${IC.chart} Export spreadsheet (Excel)</button>
 
         <div class="backup-reminder">
           <label class="cadence-row">Remind me to back up
@@ -1192,11 +1193,12 @@ async function renderSettings() {
     await exportBackup();
     refreshLastBackup();
   });
-  $('#csvBtn', screen).addEventListener('click', async () => {
+  $('#xlsxBtn', screen).addEventListener('click', async () => {
     const [batches, bakes, recipes, lessons] = await Promise.all([
       db.getAllBatches(), db.getBakes(), db.getRecipes(), db.getBakeLessons(),
     ]);
-    downloadFile(toFullCSV({ batches, bakes, recipes, lessons }), `fermentlog-${todayISO()}.csv`, 'text/csv');
+    const wb = buildWorkbook(exportSheets({ batches, bakes, recipes, lessons }));
+    downloadFile(wb, `fermentlog-${todayISO()}.xlsx`, XLSX_MIME);
   });
   $('#importInput', screen).addEventListener('change', async (e) => {
     const file = e.target.files[0]; if (!file) return;
@@ -1931,7 +1933,7 @@ function guideBodyHTML() {
         <ul>
           <li>A <strong>backup</strong> is a single <code>.json</code> file — tap <strong>Export backup</strong> under Settings → Backup &amp; export and save it to Files, iCloud Drive or email. It's your safety net if the phone is lost or the app's storage gets cleared, and it includes your batches, bakes, recipes, templates and lessons.</li>
           <li><strong>Restore</strong> on this or a new phone with <strong>Import backup</strong> — just choose a saved <code>.json</code> file.</li>
-          <li><strong>Export CSV</strong> opens everything in a spreadsheet — ferments, bakes, recipes and your lessons-learned notebook, as labelled sections in one file.</li>
+          <li><strong>Export spreadsheet (Excel)</strong> saves a tidy <code>.xlsx</code> workbook — a separate tab for ferments, bakes, recipes and lessons, with headers styled and columns sized — ready to open in Numbers, Excel or Google Sheets.</li>
         </ul>
         <h4>Backup reminders</h4>
         <ul>
