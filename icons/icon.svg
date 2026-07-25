@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b7285"/>
+      <stop offset="1" stop-color="#053640"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <!-- three discipline rings: swim / bike / run -->
+  <g fill="none" stroke="#7fe1ef" stroke-width="26" stroke-linecap="round">
+    <path d="M96 300 q40 -34 80 0 t80 0 t80 0 t80 0"/>
+  </g>
+  <g fill="#ffffff">
+    <!-- letters TRI -->
+    <text x="256" y="210" font-family="Helvetica, Arial, sans-serif" font-size="150" font-weight="700" text-anchor="middle">TRI</text>
+  </g>
+  <g fill="none" stroke="#7fe1ef" stroke-width="26" stroke-linecap="round">
+    <path d="M96 372 q40 -34 80 0 t80 0 t80 0 t80 0"/>
+  </g>
+</svg>

@@ -1,18 +1,10 @@
 {
-  "name": "fermentlog",
+  "name": "triathlon-glossary",
   "version": "1.0.0",
-  "description": "A phone-friendly PWA for logging home fermentation batches and learning what makes the best result.",
-  "type": "module",
+  "description": "A simple, phone-friendly offline glossary of triathlon acronyms and terms — add your own too.",
   "scripts": {
-    "test": "node --test",
-    "lint": "eslint .",
-    "smoke": "node tests/smoke.mjs",
-    "start": "python3 -m http.server 8080"
-  },
-  "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "eslint": "^10.7.0",
-    "playwright": "^1.48.0"
+    "start": "python3 -m http.server 8080",
+    "test": "node --test"
   },
   "license": "MIT"
 }

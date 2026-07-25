@@ -1,49 +1,52 @@
-// service-worker.js — offline app shell caching.
-// Bump CACHE when you change any of the cached files to force an update.
-const CACHE = 'fermentlog-v31';
-const ASSETS = [
-  './',
-  './index.html',
-  './styles.css',
-  './manifest.webmanifest',
-  './js/app.js',
-  './js/model.js',
-  './js/db.js',
-  './js/charts.js',
-  './js/changelog.js',
-  './js/ai.js',
-  './js/xlsx.js',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
+/* Triathlon Glossary — offline cache.
+ * Bump CACHE when you change any cached file so phones pick up the update. */
+var CACHE = 'tri-glossary-v1';
+var ASSETS = [
+  '.',
+  'index.html',
+  'styles.css',
+  'js/terms.js',
+  'js/app.js',
+  'manifest.webmanifest',
+  'icons/icon.svg',
+  'icons/icon-192.png',
+  'icons/icon-512.png',
 ];
 
-self.addEventListener('install', (e) => {
-  // Don't auto-skip: a new version waits until the page tells it to activate,
-  // so we can show an "update ready" prompt instead of swapping under the user.
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
-});
-
-// The page posts 'SKIP_WAITING' when the user taps "Refresh".
-self.addEventListener('message', (e) => { if (e.data === 'SKIP_WAITING') self.skipWaiting(); });
-
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim())
+self.addEventListener('install', function (event) {
+  event.waitUntil(
+    caches.open(CACHE).then(function (cache) {
+      return cache.addAll(ASSETS);
+    }).then(function () { return self.skipWaiting(); })
   );
 });
 
-// Cache-first for our own assets; network fallback for everything else.
-self.addEventListener('fetch', (e) => {
-  const { request } = e;
-  if (request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(request).then((hit) => hit || fetch(request).then((res) => {
-      const copy = res.clone();
-      if (res.ok && new URL(request.url).origin === location.origin) {
-        caches.open(CACHE).then((c) => c.put(request, copy));
-      }
-      return res;
-    }).catch(() => caches.match('./index.html')))
+self.addEventListener('activate', function (event) {
+  event.waitUntil(
+    caches.keys().then(function (keys) {
+      return Promise.all(keys.map(function (k) {
+        if (k !== CACHE) return caches.delete(k);
+      }));
+    }).then(function () { return self.clients.claim(); })
+  );
+});
+
+self.addEventListener('fetch', function (event) {
+  if (event.request.method !== 'GET') return;
+  event.respondWith(
+    caches.match(event.request).then(function (cached) {
+      if (cached) return cached;
+      return fetch(event.request).then(function (resp) {
+        // Cache same-origin GETs as we go, so new assets get stored too.
+        if (resp && resp.status === 200 && resp.type === 'basic') {
+          var copy = resp.clone();
+          caches.open(CACHE).then(function (cache) { cache.put(event.request, copy); });
+        }
+        return resp;
+      }).catch(function () {
+        // Offline and not cached: fall back to the app shell for navigations.
+        if (event.request.mode === 'navigate') return caches.match('index.html');
+      });
+    })
   );
 });

@@ -16,29 +16,3 @@ jobs:
           node-version: "22"
       - name: Run unit tests
         run: node --test
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - name: Install dev dependencies
-        run: npm install --no-audit --no-fund
-      - name: Lint
-        run: npm run lint
-
-  smoke:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - name: Install dev dependencies
-        run: npm install --no-audit --no-fund
-      - name: Install Chromium for Playwright
-        run: npx playwright install --with-deps chromium
-      - name: Headless smoke test
-        run: npm run smoke

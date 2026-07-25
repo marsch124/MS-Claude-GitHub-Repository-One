@@ -1,14 +1,15 @@
 {
-  "name": "FermentLog",
-  "short_name": "FermentLog",
-  "description": "Log your home fermentation batches and learn what makes the best result.",
-  "start_url": "./",
-  "scope": "./",
+  "name": "Triathlon Glossary",
+  "short_name": "Tri Glossary",
+  "description": "An offline glossary of triathlon acronyms, abbreviations and terms — add your own too.",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#faf6f0",
-  "theme_color": "#e8722c",
+  "background_color": "#0e1418",
+  "theme_color": "#0b7285",
   "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
