@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Wim Hof Breathing</title>
-  <meta name="description" content="Guided Wim Hof breathing sessions with breath-hold timing and statistics." />
+  <title>AMS Breathing</title>
+  <meta name="description" content="AMS Breathing — guided breathing sessions with breath-hold timing and statistics." />
   <meta name="theme-color" content="#0e1a2b" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Wim Hof" />
+  <meta name="apple-mobile-web-app-title" content="AMS Breathing" />
   <meta name="format-detection" content="telephone=no" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon-192.png" type="image/png" />
@@ -28,12 +28,22 @@
         </svg>
         <div class="brand-txt">
           <span class="brand-ams">AMS</span>
-          <span class="brand-sub">Wim Hof Breathing</span>
+          <span class="brand-sub">Breathing</span>
         </div>
       </div>
       <div class="topbar-actions">
-        <button class="icon-btn" data-goto="stats" aria-label="Statistics" title="Statistics">📊</button>
-        <button class="icon-btn" data-goto="settings" aria-label="Settings" title="Settings">⚙️</button>
+        <button class="icon-btn brand-tint" data-goto="stats" aria-label="Statistics" title="Statistics">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3.5 20.5h17" /><path d="M6.5 20.5v-6" /><path d="M12 20.5V5.5" /><path d="M17.5 20.5v-9" />
+          </svg>
+        </button>
+        <button class="icon-btn brand-tint" data-goto="settings" aria-label="Settings" title="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 7h9" /><circle cx="15.5" cy="7" r="2.4" /><path d="M19 7h2" />
+            <path d="M3 17h9" /><circle cx="15.5" cy="17" r="2.4" /><path d="M19 17h2" />
+            <path d="M3 12h4" /><circle cx="9.5" cy="12" r="2.4" /><path d="M13 12h8" />
+          </svg>
+        </button>
       </div>
     </header>
 
@@ -59,7 +69,7 @@
         <div class="seg" id="seg-tempo" role="group" aria-label="Breathing tempo">
           <button data-val="slow">Slow</button>
           <button data-val="normal">Normal</button>
-          <button data-val="quick">Quick</button>
+          <button data-val="quick">Fast</button>
         </div>
       </div>
 
@@ -168,10 +178,28 @@
       </div>
 
       <div class="setting-group">
+        <label class="setting-label">Data</label>
+        <div class="data-actions">
+          <button class="btn small" id="btn-export-backup">⬇︎ Backup (file)</button>
+          <button class="btn small" id="btn-import-backup">⬆︎ Import backup</button>
+          <button class="btn small" id="btn-export-excel">⬇︎ Export to Excel</button>
+        </div>
+        <p class="hint-note">Backup saves everyone’s settings &amp; sessions to a file you can keep or move to a new phone. Excel export lists the selected person’s sessions.</p>
+        <input type="file" id="import-file" accept="application/json,.json" hidden />
+      </div>
+
+      <div class="setting-group">
         <button class="disclosure" id="btn-how" aria-expanded="false">
           <span>How this works</span><span class="chev">▾</span>
         </button>
         <div id="how-body" class="disclosure-body" hidden></div>
+      </div>
+
+      <div class="setting-group">
+        <button class="disclosure" id="btn-dedication" aria-expanded="false">
+          <span>Dedication &amp; thanks</span><span class="chev">▾</span>
+        </button>
+        <div id="dedication-body" class="disclosure-body" hidden></div>
       </div>
 
       <div class="setting-group">
@@ -191,6 +219,14 @@
     </main>
   </section>
 
+  <!-- Hidden inputs / overlay used by Statistics -->
+  <input type="file" id="photo-file" accept="image/*" hidden />
+  <div id="photo-view" class="photo-view" hidden>
+    <img id="photo-view-img" alt="Session photo" />
+    <button class="photo-view-close" id="photo-view-close" aria-label="Close">✕</button>
+  </div>
+
+  <script src="js/xlsx.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

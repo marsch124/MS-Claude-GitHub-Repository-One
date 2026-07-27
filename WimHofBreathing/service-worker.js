@@ -10,6 +10,7 @@ const ASSETS = [
   './index.html',
   './styles.css',
   './js/app.js',
+  './js/xlsx.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',

@@ -1,10 +1,23 @@
-/* Wim Hof Breathing — app logic (vanilla JS, no build) */
+/* AMS Breathing — app logic (vanilla JS, no build) */
 'use strict';
 
-const APP_VERSION = '1.2.2';
+const APP_VERSION = '1.3.0';
 
 /* ---------- Version history (newest first) ---------- */
 const CHANGELOG = [
+  {
+    version: '1.3.0',
+    date: '2026-07-27 17:58',
+    changes: [
+      'Renamed the app to AMS Breathing.',
+      'Added a Dedication & thanks section in Settings crediting the Wim Hof Method, Kitaro Waga and the wider wellness community for the practice.',
+      'The breathing ball is now much larger and more dynamic, with a bigger breath-count number.',
+      'New custom icons throughout (statistics, settings, delete, note) matching the app’s look.',
+      '“Quick” tempo is now labelled “Fast”.',
+      'Added Data tools in Settings: back up everything to a file, import a backup, and export your sessions to an Excel (.xlsx) file.',
+      'You can now attach a photo to a saved session from the Statistics page.',
+    ],
+  },
   {
     version: '1.2.2',
     date: '2026-07-27 17:47',
@@ -54,7 +67,7 @@ const CHANGELOG = [
     version: '1.0.0',
     date: '2026-07-26 11:45',
     changes: [
-      'Initial release of Wim Hof Breathing.',
+      'Initial release (then named Wim Hof Breathing; renamed to AMS Breathing in v1.3.0).',
       'Home page with three pre-session settings: breaths per cycle (25 / 30 / 35), breathing tempo (slow / normal / quick) and number of cycles (3 / 4). Defaults: 30 breaths, normal tempo, 3 cycles. Choices are remembered between sessions.',
       'Start a session by double-tapping anywhere on the home screen.',
       'Guided breathing: an animated orb plus on-screen text and spoken cues say "Breathe in" / "Breathe out" for every breath of the cycle, with a live breath counter.',
@@ -70,7 +83,7 @@ const CHANGELOG = [
 const TEMPO = {
   slow:   { inhale: 3.2, exhale: 2.6, label: 'Slow' },
   normal: { inhale: 2.2, exhale: 1.7, label: 'Normal' },
-  quick:  { inhale: 1.6, exhale: 1.2, label: 'Quick' },
+  quick:  { inhale: 1.6, exhale: 1.2, label: 'Fast' },
 };
 
 const DEFAULTS = { breaths: 30, tempo: 'normal', cycles: 3, theme: 'system', voiceURI: '', voiceOn: true };
@@ -143,7 +156,7 @@ function loadSessions() {
   try { return JSON.parse(localStorage.getItem(sessionsKey()) || '[]'); }
   catch { return []; }
 }
-function saveSessions(list) { lsSet(sessionsKey(), JSON.stringify(list)); }
+function saveSessions(list) { return lsSet(sessionsKey(), JSON.stringify(list)); }
 
 /* ---------- Helpers ---------- */
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -169,6 +182,25 @@ function spokenMinutes(sec) {
   if (s > 0) parts.push(s + (s === 1 ? ' second' : ' seconds'));
   return parts.join(' ') || '0 seconds';
 }
+
+/* ---------- Inline SVG icons (match the app's line style) ---------- */
+const ICON = {
+  note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19h3l9.5-9.5a1.8 1.8 0 0 0-2.5-2.5L5.5 16.5 5 19z"/><path d="M14 7.5l2.5 2.5"/></svg>',
+  photo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 0 1 2-2h1.5l1-1.6a1 1 0 0 1 .85-.4h5.3a1 1 0 0 1 .85.4L17.5 7H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.2"/></svg>',
+  del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M10 4h4a1 1 0 0 1 1 1v2H9V5a1 1 0 0 1 1-1z"/><path d="M6.5 7l1 12a2 2 0 0 0 2 2h5a2 2 0 0 0 2-2l1-12"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>',
+};
+
+/* ---------- Generic download / file helpers ---------- */
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1500);
+}
+function dateStamp() { return new Date().toISOString().slice(0, 10); }
+function slug(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'user'; }
+function safeParse(s) { try { return JSON.parse(s); } catch { return null; } }
 
 /* ---------- Colour interpolation for the breathing ball ---------- */
 /* blue (start) -> yellow (1 min) -> orange (2 min) -> red (3 min+) */
@@ -561,8 +593,12 @@ function renderStats() {
     ).join('') || '<span class="si-meta">No completed holds</span>';
     const tempoLabel = (TEMPO[s.tempo] || { label: s.tempo }).label;
     const badge = s.interrupted ? '<span class="badge-int">Interrupted</span>' : '';
-    const note = s.comment
-      ? `<p class="note-text">${esc(s.comment)}</p>`
+    const note = s.comment ? `<p class="note-text">${esc(s.comment)}</p>` : '';
+    const photo = s.photo
+      ? `<div class="si-photo-wrap">
+           <img class="si-photo" src="${s.photo}" data-view="${s.id}" alt="Session photo" />
+           <button class="btn small photo-remove" data-photo-remove="${s.id}">Remove photo</button>
+         </div>`
       : '';
     return `<div class="session-item" data-id="${s.id}">
       <div class="si-head">
@@ -570,10 +606,15 @@ function renderStats() {
           <div class="si-date">${dateStr} · ${timeStr} ${badge}</div>
           <div class="si-meta">${s.breaths} breaths · ${tempoLabel} tempo · ${s.cycles} cycles</div>
         </div>
-        <button class="si-del" data-del="${s.id}" aria-label="Delete session">🗑️</button>
+        <div class="si-actions">
+          <button class="si-icon note-toggle" data-note="${s.id}" aria-label="${s.comment ? 'Edit note' : 'Add note'}" title="${s.comment ? 'Edit note' : 'Add note'}">${ICON.note}</button>
+          <button class="si-icon photo-add" data-photo="${s.id}" aria-label="${s.photo ? 'Replace photo' : 'Add photo'}" title="${s.photo ? 'Replace photo' : 'Add photo'}">${ICON.photo}</button>
+          <button class="si-icon danger si-del" data-del="${s.id}" aria-label="Delete session" title="Delete session">${ICON.del}</button>
+        </div>
       </div>
       <div class="holds">${chips}</div>
       ${note}
+      ${photo}
       <div class="note-edit" hidden>
         <textarea class="note-input" rows="2" placeholder="Add a note about this session…">${esc(s.comment || '')}</textarea>
         <div class="note-actions">
@@ -581,7 +622,6 @@ function renderStats() {
           <button class="btn small" data-note-cancel="${s.id}">Cancel</button>
         </div>
       </div>
-      <button class="btn small note-toggle" data-note="${s.id}">${s.comment ? 'Edit note' : 'Add note'}</button>
     </div>`;
   }).join('');
 
@@ -595,10 +635,8 @@ function renderStats() {
   $$('.note-toggle', listEl).forEach((btn) => btn.addEventListener('click', () => {
     const item = btn.closest('.session-item');
     const editor = $('.note-edit', item);
-    const open = !editor.hidden;
-    editor.hidden = open;
-    btn.hidden = !open ? true : false;
-    if (!open) $('.note-input', item).focus();
+    editor.hidden = !editor.hidden;
+    if (!editor.hidden) $('.note-input', item).focus();
   }));
   $$('[data-note-cancel]', listEl).forEach((btn) => btn.addEventListener('click', () => renderStats()));
   $$('[data-note-save]', listEl).forEach((btn) => btn.addEventListener('click', () => {
@@ -610,7 +648,126 @@ function renderStats() {
     if (rec) { rec.comment = val; saveSessions(all); }
     renderStats();
   }));
+  // Photo add / view / remove
+  $$('.photo-add', listEl).forEach((btn) => btn.addEventListener('click', () => pickPhotoFor(btn.dataset.photo)));
+  $$('.si-photo', listEl).forEach((img) => img.addEventListener('click', () => openPhoto(img.src)));
+  $$('[data-photo-remove]', listEl).forEach((btn) => btn.addEventListener('click', () => removePhoto(btn.dataset.photoRemove)));
 }
+
+/* ---------- Backup / Import / Excel ---------- */
+function exportBackup() {
+  const payload = { app: 'AMS Breathing', version: APP_VERSION, exportedAt: new Date().toISOString(), current: currentUserId, users, data: {} };
+  users.forEach((u) => {
+    payload.data[u.id] = {
+      settings: safeParse(localStorage.getItem('whb.settings.' + u.id)) || {},
+      sessions: safeParse(localStorage.getItem('whb.sessions.' + u.id)) || [],
+    };
+  });
+  downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }), 'ams-breathing-backup-' + dateStamp() + '.json');
+}
+
+function importBackup(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const data = safeParse(reader.result);
+    if (!data || data.app !== 'AMS Breathing' || !Array.isArray(data.users) || !data.data) {
+      alert('That file is not an AMS Breathing backup.');
+      return;
+    }
+    if (!confirm('Import this backup? It REPLACES all people, settings and sessions currently on this device.')) return;
+    users.forEach((u) => { lsRemove('whb.settings.' + u.id); lsRemove('whb.sessions.' + u.id); });
+    users = data.users; saveUsers();
+    Object.keys(data.data).forEach((id) => {
+      const d = data.data[id] || {};
+      if (d.settings) lsSet('whb.settings.' + id, JSON.stringify(d.settings));
+      if (d.sessions) lsSet('whb.sessions.' + id, JSON.stringify(d.sessions));
+    });
+    currentUserId = (data.current && users.find((u) => u.id === data.current)) ? data.current : (users[0] && users[0].id);
+    lsSet(LS_CURRENT, currentUserId);
+    alert('Backup imported.');
+    location.reload();
+  };
+  reader.onerror = () => alert('Could not read that file.');
+  reader.readAsText(file);
+}
+
+function exportExcel() {
+  const list = loadSessions();
+  if (!list.length) { alert('No sessions to export for ' + currentUser().name + '.'); return; }
+  const maxHolds = list.reduce((m, s) => Math.max(m, (s.holds || []).length), 0);
+  const header = ['Date', 'Time', 'Person', 'Breaths', 'Tempo', 'Cycles', 'Completed cycles', 'Interrupted'];
+  for (let i = 1; i <= maxHolds; i++) header.push('Hold ' + i + ' (s)');
+  header.push('Best (s)', 'Total (s)', 'Has photo', 'Note');
+  const rows = [header];
+  list.forEach((s) => {
+    const d = new Date(s.date);
+    const holds = s.holds || [];
+    const best = holds.length ? Math.max(...holds) : 0;
+    const total = holds.reduce((a, b) => a + b, 0);
+    const row = [
+      d.toLocaleDateString(), d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      currentUser().name, s.breaths, (TEMPO[s.tempo] || { label: s.tempo }).label, s.cycles,
+      (s.completedCycles != null ? s.completedCycles : holds.length), s.interrupted ? 'Yes' : 'No',
+    ];
+    for (let i = 0; i < maxHolds; i++) row.push(holds[i] != null ? holds[i] : '');
+    row.push(best, total, s.photo ? 'Yes' : 'No', s.comment || '');
+    rows.push(row);
+  });
+  const blob = WHBXlsx.build('Sessions', rows);
+  downloadBlob(blob, 'ams-breathing-' + slug(currentUser().name) + '-' + dateStamp() + '.xlsx');
+}
+
+/* ---------- Session photo ---------- */
+let pendingPhotoId = null;
+function pickPhotoFor(id) { pendingPhotoId = id; const inp = $('#photo-file'); if (inp) { inp.value = ''; inp.click(); } }
+function fileToDataURL(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      try { resolve(canvas.toDataURL('image/jpeg', quality)); } catch (e) { reject(e); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image load failed')); };
+    img.src = url;
+  });
+}
+async function handlePhotoFile(file) {
+  if (!file || !pendingPhotoId) return;
+  const id = pendingPhotoId; pendingPhotoId = null;
+  let dataUrl;
+  try { dataUrl = await fileToDataURL(file, 1000, 0.6); } catch { alert('Sorry, that photo could not be processed.'); return; }
+  const all = loadSessions();
+  const rec = all.find((s) => String(s.id) === String(id));
+  if (!rec) return;
+  const prev = rec.photo;
+  rec.photo = dataUrl;
+  if (!saveSessions(all)) {
+    rec.photo = prev;
+    alert('Not enough storage on this device to save the photo. Try a smaller photo, or remove old photos/sessions.');
+    return;
+  }
+  renderStats();
+}
+function removePhoto(id) {
+  if (!confirm('Remove the photo from this session?')) return;
+  const all = loadSessions();
+  const rec = all.find((s) => String(s.id) === String(id));
+  if (rec) { delete rec.photo; saveSessions(all); }
+  renderStats();
+}
+function openPhoto(src) {
+  const v = $('#photo-view'); const img = $('#photo-view-img');
+  if (!v || !img) return;
+  img.src = src; v.hidden = false;
+}
+function closePhoto() { const v = $('#photo-view'); if (v) { v.hidden = true; $('#photo-view-img').src = ''; } }
 
 /* ---------- Theme ---------- */
 function applyTheme() {
@@ -731,7 +888,7 @@ function populateVoiceSelect() {
 
 /* ---------- How this works content ---------- */
 const HOW_HTML = `
-  <p><strong>Wim Hof breathing</strong> alternates rounds of controlled hyperventilation with breath retention. This app guides you hands-free with an animated ball, on-screen text and spoken cues.</p>
+  <p>This breathing practice alternates rounds of controlled deep breathing with breath retention. AMS Breathing guides you hands-free with an animated ball, on-screen text and spoken cues. (See <em>Dedication &amp; thanks</em> for where the practice comes from.)</p>
   <h3>One cycle</h3>
   <ul>
     <li><strong>Breathe</strong> — take your chosen number of full breaths (25 / 30 / 35), following the ball: expand = breathe in, shrink = breathe out. The final breath is announced.</li>
@@ -750,6 +907,20 @@ const HOW_HTML = `
     <dt>Breath hold on inhale (full lungs)</dt><dd>The fixed 15-second recovery retention with full lungs after a deep breath in.</dd>
   </dl>
   <p style="margin-top:14px;color:var(--danger)"><strong>Safety:</strong> Never practise in or near water, while driving, or standing up. Sit or lie down. Stop if you feel unwell. Not for use during pregnancy or with heart/respiratory conditions without medical advice.</p>
+`;
+
+/* ---------- Dedication content ---------- */
+const DEDICATION_HTML = `
+  <p>This is a small personal app. I’m not an expert in breathing, wellness or meditation — the breathing sequence and the practice itself come entirely from others, who deserve all the credit.</p>
+  <h3>Inspiration &amp; thanks</h3>
+  <ul>
+    <li>The <strong>Wim Hof Method</strong> — the breathing technique this app is based on.</li>
+    <li><strong>Kitaro Waga</strong> on YouTube.</li>
+    <li>The wider <strong>wellness &amp; meditation community</strong>, and the many others who share this practice so generously.</li>
+  </ul>
+  <p>The only thing I added is this very simple app, built with <strong>Anthropic Claude Code</strong> from my prompts and input.</p>
+  <p>Learning to work with Claude has been a wonderful endeavour, guided by the <strong>MacSparky Field Guide</strong> “AI Robot Assistant” community at <span class="mono">circle.com/macsparky</span>. Thank you.</p>
+  <p class="hint-note" style="margin-top:14px">Please follow the guidance of qualified sources, and always listen to your body.</p>
 `;
 
 /* ---------- Version history content ---------- */
@@ -816,9 +987,21 @@ function init() {
   $('#btn-test-voice').addEventListener('click', () => speak('Breathe in. Breathe out.', { force: true }));
 
   initDisclosure('btn-how', 'how-body', () => { $('#how-body').innerHTML = HOW_HTML; });
+  initDisclosure('btn-dedication', 'dedication-body', () => { $('#dedication-body').innerHTML = DEDICATION_HTML; });
   initDisclosure('btn-version', 'version-body', renderVersionHistory);
 
-  $('#app-version').textContent = 'Wim Hof Breathing · v' + APP_VERSION;
+  // Data: backup / import / Excel
+  $('#btn-export-backup').addEventListener('click', exportBackup);
+  $('#btn-export-excel').addEventListener('click', exportExcel);
+  $('#btn-import-backup').addEventListener('click', () => { const f = $('#import-file'); f.value = ''; f.click(); });
+  $('#import-file').addEventListener('change', (e) => { if (e.target.files && e.target.files[0]) importBackup(e.target.files[0]); });
+
+  // Session photo
+  $('#photo-file').addEventListener('change', (e) => { if (e.target.files && e.target.files[0]) handlePhotoFile(e.target.files[0]); });
+  $('#photo-view-close').addEventListener('click', closePhoto);
+  $('#photo-view').addEventListener('click', (e) => { if (e.target.id === 'photo-view') closePhoto(); });
+
+  $('#app-version').textContent = 'AMS Breathing · v' + APP_VERSION;
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js').catch(() => {});
