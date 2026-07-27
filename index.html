@@ -1,62 +1,1243 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b7285" />
-  <title>Triathlon Glossary</title>
-  <meta name="description" content="A simple, offline glossary of triathlon acronyms, abbreviations and terms — with the ability to add your own." />
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b7285" />
+<title>AMS Triathlon Glossary</title>
+<meta name="description" content="Triathlon acronyms, abbreviations and terms — with deep dives, history, diagrams, favourites and your own additions." />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Tri Glossary" />
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJz4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSdnJyB4MT0nMCcgeTE9JzAnIHgyPScwJyB5Mj0nMSc+CjxzdG9wIG9mZnNldD0nMCcgc3RvcC1jb2xvcj0nIzBiNzI4NScvPjxzdG9wIG9mZnNldD0nMScgc3RvcC1jb2xvcj0nIzA1MzY0MCcvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPgo8cmVjdCB3aWR0aD0nNTEyJyBoZWlnaHQ9JzUxMicgcng9JzEwNCcgZmlsbD0ndXJsKCNnKScvPgo8dGV4dCB4PScyNTYnIHk9JzIxMCcgZm9udC1mYW1pbHk9J0hlbHZldGljYSxBcmlhbCxzYW5zLXNlcmlmJyBmb250LXNpemU9JzE1MCcgZm9udC13ZWlnaHQ9JzgwMCcgZmlsbD0nI2ZmZicgdGV4dC1hbmNob3I9J21pZGRsZScgbGV0dGVyLXNwYWNpbmc9JzYnPkFNUzwvdGV4dD4KPCEtLSB0cmlhdGhsb246IHRocmVlIHdhdmVzIChzd2ltIMK3IGJpa2UgwrcgcnVuKSAtLT4KPGcgZmlsbD0nbm9uZScgc3Ryb2tlPScjN2ZlMWVmJyBzdHJva2Utd2lkdGg9JzIyJyBzdHJva2UtbGluZWNhcD0ncm91bmQnPgo8cGF0aCBkPSdNOTIgMzA2IHE0MiAtMzQgODQgMCB0ODQgMCB0ODQgMCB0ODQgMCcvPgo8cGF0aCBkPSdNOTIgMzY2IHE0MiAtMzQgODQgMCB0ODQgMCB0ODQgMCB0ODQgMCcvPgo8cGF0aCBkPSdNOTIgNDI2IHE0MiAtMzQgODQgMCB0ODQgMCB0ODQgMCB0ODQgMCcvPgo8L2c+Cjwvc3ZnPg==" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJz4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSdnJyB4MT0nMCcgeTE9JzAnIHgyPScwJyB5Mj0nMSc+CjxzdG9wIG9mZnNldD0nMCcgc3RvcC1jb2xvcj0nIzBiNzI4NScvPjxzdG9wIG9mZnNldD0nMScgc3RvcC1jb2xvcj0nIzA1MzY0MCcvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPgo8cmVjdCB3aWR0aD0nNTEyJyBoZWlnaHQ9JzUxMicgcng9JzEwNCcgZmlsbD0ndXJsKCNnKScvPgo8dGV4dCB4PScyNTYnIHk9JzIxMCcgZm9udC1mYW1pbHk9J0hlbHZldGljYSxBcmlhbCxzYW5zLXNlcmlmJyBmb250LXNpemU9JzE1MCcgZm9udC13ZWlnaHQ9JzgwMCcgZmlsbD0nI2ZmZicgdGV4dC1hbmNob3I9J21pZGRsZScgbGV0dGVyLXNwYWNpbmc9JzYnPkFNUzwvdGV4dD4KPCEtLSB0cmlhdGhsb246IHRocmVlIHdhdmVzIChzd2ltIMK3IGJpa2UgwrcgcnVuKSAtLT4KPGcgZmlsbD0nbm9uZScgc3Ryb2tlPScjN2ZlMWVmJyBzdHJva2Utd2lkdGg9JzIyJyBzdHJva2UtbGluZWNhcD0ncm91bmQnPgo8cGF0aCBkPSdNOTIgMzA2IHE0MiAtMzQgODQgMCB0ODQgMCB0ODQgMCB0ODQgMCcvPgo8cGF0aCBkPSdNOTIgMzY2IHE0MiAtMzQgODQgMCB0ODQgMCB0ODQgMCB0ODQgMCcvPgo8cGF0aCBkPSdNOTIgNDI2IHE0MiAtMzQgODQgMCB0ODQgMCB0ODQgMCB0ODQgMCcvPgo8L2c+Cjwvc3ZnPg==" />
+<style>
+
+:root{
+  --bg:#f4f6f8;--surface:#fff;--text:#14202b;--muted:#5b6b78;--border:#e1e6ea;
+  --accent:#0b7285;--accent-ink:#fff;--chip-bg:#e6f4f6;--chip-ink:#0b7285;
+  --badge-bg:#fff3bf;--badge-ink:#7a5a00;--mark:#ffe08a;--star:#f2b705;--disc:#e6f4f6;--edited:#b4690a;
+  --shadow:0 1px 3px rgba(10,30,40,.08),0 4px 12px rgba(10,30,40,.05);
+}
+:root[data-theme="dark"]{
+  --bg:#0e1418;--surface:#171f26;--text:#e7edf1;--muted:#93a2ad;--border:#26313a;
+  --accent:#3bc9db;--accent-ink:#04222a;--chip-bg:#123038;--chip-ink:#7fe1ef;
+  --badge-bg:#3a2f00;--badge-ink:#ffe08a;--mark:#8a6d00;--star:#ffd43b;--disc:#123038;--edited:#ffc861;
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.3);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme]){
+  --bg:#0e1418;--surface:#171f26;--text:#e7edf1;--muted:#93a2ad;--border:#26313a;
+  --accent:#3bc9db;--accent-ink:#04222a;--chip-bg:#123038;--chip-ink:#7fe1ef;
+  --badge-bg:#3a2f00;--badge-ink:#ffe08a;--mark:#8a6d00;--star:#ffd43b;--disc:#123038;--edited:#ffc861;
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.3);
+}}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--text);line-height:1.5;padding-bottom:5rem;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.topbar{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--border);padding:env(safe-area-inset-top) 0 .5rem;box-shadow:var(--shadow)}
+.topbar-inner{display:flex;align-items:center;gap:.4rem;padding:.55rem 1rem .4rem;max-width:760px;margin:0 auto}
+.logo{width:2rem;height:2rem;border-radius:.5rem;flex:none}
+.topbar h1{font-size:1.08rem;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.icon-btn{background:transparent;border:1px solid var(--border);color:var(--text);border-radius:50%;width:2.15rem;height:2.15rem;font-size:1.02rem;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center}
+.icon-btn:active{transform:scale(.94)}
+.search-wrap{padding:0 1rem;max-width:760px;margin:0 auto}
+#search{width:100%;padding:.7rem .9rem;font-size:1rem;border:1px solid var(--border);border-radius:.7rem;background:var(--bg);color:var(--text)}
+#search:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.filters{display:flex;gap:.4rem;overflow-x:auto;padding:.6rem 1rem .2rem;max-width:760px;margin:0 auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.filter{flex:none;border:1px solid var(--border);background:var(--surface);color:var(--muted);padding:.35rem .75rem;border-radius:999px;font-size:.85rem;cursor:pointer;white-space:nowrap}
+.filter .n{opacity:.6;font-size:.78rem;margin-left:.15rem}
+.chip-ams{height:.9rem;width:.9rem;border-radius:.2rem;vertical-align:-2px;margin-right:.2rem}
+.filter .chip-edited{color:var(--edited)}
+.filter.active .chip-edited{color:inherit}
+.filter.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.filter.active .n{opacity:.85}
+main{max-width:760px;margin:0 auto;padding:.75rem 1rem 0}
+.count{color:var(--muted);font-size:.85rem;margin:.25rem 0 .75rem}
+.list{display:grid;gap:.7rem}
+.card{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:.85rem;padding:.85rem .95rem;box-shadow:var(--shadow);cursor:pointer}
+.card:hover{border-color:var(--accent)}
+.card-top{display:flex;gap:.7rem;align-items:flex-start}
+.avatar{flex:none;width:2.6rem;height:2.6rem;border-radius:.6rem;background:var(--disc);display:flex;align-items:center;justify-content:center;font-size:1.4rem;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.card-main{flex:1;min-width:0}
+.card-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:.35rem .5rem;padding-right:1.8rem}
+.term-name{font-size:1.06rem;font-weight:700}
+.term-full{font-size:.88rem;color:var(--muted);font-style:italic}
+.badge{font-size:.66rem;text-transform:uppercase;letter-spacing:.03em;font-weight:700;background:var(--badge-bg);color:var(--badge-ink);padding:.1rem .4rem;border-radius:.4rem}
+.edited-tag{font-size:.62rem;text-transform:uppercase;letter-spacing:.03em;font-weight:700;color:var(--edited);border:1px solid var(--edited);padding:.03rem .35rem;border-radius:.4rem}
+.ams-badge{height:1.15rem;width:1.15rem;border-radius:.3rem;vertical-align:-3px}
+.card.edited .term-name,.dterm.edited{color:var(--edited)}
+.chip{display:inline-block;font-size:.72rem;font-weight:600;background:var(--chip-bg);color:var(--chip-ink);padding:.15rem .5rem;border-radius:.4rem}
+.card-main>.chip{margin-top:.4rem}
+.def{margin:.5rem 0 0;font-size:.95rem}
+.example{margin:.4rem 0 0;font-size:.9rem;color:var(--muted);border-left:3px solid var(--border);padding-left:.6rem}
+mark{background:var(--mark);color:inherit;border-radius:.2rem;padding:0 .1rem}
+.card-foot{display:flex;align-items:center;gap:.6rem;margin-top:.6rem;flex-wrap:wrap}
+.reflink,.detail-link{font-size:.82rem;color:var(--accent);text-decoration:none;font-weight:600;background:none;border:none;cursor:pointer;padding:0}
+.reflink:hover,.detail-link:hover{text-decoration:underline}
+.act{margin-left:auto;display:flex;gap:.35rem}
+.act button{border:1px solid var(--border);background:var(--bg);color:var(--muted);border-radius:.5rem;padding:.25rem .5rem;font-size:.8rem;cursor:pointer;line-height:1}
+.act button:active{transform:scale(.93)}
+.star{position:absolute;top:.5rem;right:.5rem;border:none;background:transparent;cursor:pointer;font-size:1.2rem;line-height:1;color:var(--muted);padding:.1rem}
+.star.on{color:var(--star)}
+.star:active{transform:scale(.9)}
+.empty{color:var(--muted);text-align:center;padding:2rem 1rem}
+.fab{position:fixed;right:max(1rem,env(safe-area-inset-right));bottom:max(1.1rem,env(safe-area-inset-bottom));width:3.4rem;height:3.4rem;border-radius:50%;border:none;background:var(--accent);color:var(--accent-ink);font-size:2rem;line-height:1;box-shadow:0 6px 18px rgba(11,114,133,.4);cursor:pointer;z-index:20}
+.fab:active{transform:scale(.93)}
+.dialog{border:none;border-radius:1rem;padding:0;width:min(94vw,520px);background:var(--surface);color:var(--text);box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.dialog::backdrop{background:rgba(6,14,20,.55)}
+.dialog .body{padding:1.2rem 1.2rem 1.1rem;max-height:84vh;overflow:auto}
+.dialog h2{margin:0 0 .75rem;font-size:1.2rem}
+.dialog label{display:block;margin:.7rem 0 .25rem;font-size:.85rem;font-weight:600;color:var(--muted)}
+.req{color:#e03131}.opt{color:var(--muted);font-weight:400}
+.dialog input,.dialog textarea,.dialog select{width:100%;padding:.6rem .7rem;font-size:1rem;border:1px solid var(--border);border-radius:.6rem;background:var(--bg);color:var(--text);font-family:inherit}
+.dialog input:focus,.dialog textarea:focus,.dialog select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.dialog textarea{resize:vertical}
+.form-error{color:#e03131;font-size:.85rem;min-height:1.1rem;margin:.5rem 0 0}
+.dialog-actions{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.75rem}
+.btn{padding:.55rem 1.1rem;font-size:.95rem;border-radius:.6rem;border:1px solid var(--border);cursor:pointer;font-weight:600;background:var(--bg);color:var(--text)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.ghost{background:transparent}
+.btn:active{transform:scale(.97)}
+.settings-sec{border-top:1px solid var(--border);margin-top:1rem;padding-top:.9rem}
+.settings-sec h3{margin:0 0 .5rem;font-size:.95rem}
+.muted{color:var(--muted);font-size:.85rem}
+.theme-opts{display:flex;gap:.4rem;flex-wrap:wrap}
+.theme-opts label{display:inline-flex;align-items:center;gap:.35rem;margin:0;padding:.4rem .7rem;border:1px solid var(--border);border-radius:.6rem;cursor:pointer;font-weight:500;color:var(--text)}
+.theme-opts input{width:auto;margin:0}
+.row-btns{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.3rem}
+details{margin-top:.5rem;border:1px solid var(--border);border-radius:.6rem;padding:.2rem .7rem}
+details summary{cursor:pointer;font-weight:600;padding:.5rem 0;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"▸ ";color:var(--accent)}
+details[open] summary::before{content:"▾ "}
+details .content{padding:.2rem 0 .7rem;font-size:.9rem}
+details .content p{margin:.4rem 0}
+.changelog{margin:.3rem 0 0;padding:0;list-style:none}
+.changelog li{margin-bottom:.7rem}
+.changelog .v{font-weight:700}
+.changelog ul{margin:.3rem 0 0;padding-left:1.1rem}
+.changelog ul li{margin:.15rem 0;font-size:.88rem;color:var(--muted)}
+.build{margin-top:1rem;font-size:.8rem;color:var(--muted);text-align:center}
+/* detail dialog */
+.detail-banner{margin:-1.2rem -1.2rem 0;height:96px;display:flex;align-items:center;justify-content:center;border-radius:0}
+.detail-banner svg{height:96px;width:100%}
+.detail-head{display:flex;align-items:center;gap:.7rem;margin-top:.8rem}
+.detail-emoji{width:2.8rem;height:2.8rem;border-radius:.6rem;background:var(--disc);display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex:none;overflow:hidden}
+.detail-emoji img{width:100%;height:100%;object-fit:cover}
+.dterm{font-size:1.35rem;font-weight:800;line-height:1.1}
+.dfull{color:var(--muted);font-style:italic;font-size:.95rem}
+.detail-img{width:100%;max-height:220px;object-fit:cover;border-radius:.7rem;margin-top:.8rem;border:1px solid var(--border)}
+.detail h4{margin:1rem 0 .3rem;font-size:.95rem}
+.detail p{margin:.45rem 0;font-size:.95rem}
+.detail .example{font-size:.92rem}
+.scale{width:100%;border-collapse:collapse;margin:.5rem 0;font-size:.86rem}
+.scale caption{text-align:left;font-weight:700;margin-bottom:.3rem;font-size:.9rem}
+.scale th,.scale td{border:1px solid var(--border);padding:.35rem .5rem;text-align:left;vertical-align:top}
+.scale th{background:var(--chip-bg);color:var(--chip-ink)}
+.scale td:first-child{font-weight:700;white-space:nowrap;width:1%}
+.diagram{margin:.7rem 0;border:1px solid var(--border);border-radius:.7rem;padding:.6rem;background:var(--bg)}
+.diagram svg{width:100%;height:auto;display:block}
+.diagram .cap{font-size:.8rem;color:var(--muted);margin-top:.35rem;text-align:center}
+.rel-wrap{display:flex;flex-wrap:wrap;gap:.4rem;margin:.3rem 0 .2rem}
+.rel-chip{border:1px solid var(--border);background:var(--bg);color:var(--accent);border-radius:999px;padding:.3rem .6rem;font-size:.82rem;font-weight:600;cursor:pointer}
+.rel-chip:hover{border-color:var(--accent)}
+.quiz-scope{color:var(--muted);font-size:.85rem;margin:.2rem 0 .8rem}
+.quiz-progress{display:flex;justify-content:space-between;color:var(--muted);font-size:.82rem;margin-bottom:.6rem;font-weight:600}
+.quiz-q{font-size:1.35rem;font-weight:800;margin:.2rem 0}
+.quiz-full{color:var(--muted);font-style:italic;font-size:.95rem}
+.quiz-opt{display:block;width:100%;text-align:left;margin:.4rem 0;padding:.6rem .7rem;border:1px solid var(--border);border-radius:.6rem;background:var(--bg);color:var(--text);cursor:pointer;font-size:.94rem}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-opt.correct{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.quiz-opt.wrong{border-color:#e03131;background:color-mix(in srgb,#e03131 14%,transparent)}
+.quiz-opt:disabled{cursor:default}
+.quiz-reveal{margin:.4rem 0;padding:.7rem;border-radius:.6rem;background:var(--bg);border:1px solid var(--border)}
+.quiz-result{text-align:center;padding:1.2rem 0 .5rem}
+.quiz-score{font-size:2.2rem;font-weight:800;color:var(--accent)}
+#rand .rterm{font-size:1.3rem;font-weight:700}
+#rand .rfull{color:var(--muted);font-style:italic;margin-left:.4rem;font-size:.95rem}
+#toast{position:fixed;left:50%;bottom:5.5rem;transform:translateX(-50%) translateY(1rem);background:#111a20;color:#fff;padding:.6rem 1rem;border-radius:.6rem;font-size:.9rem;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:60}
+#toast.show{opacity:.96;transform:translateX(-50%) translateY(0)}
+@media (min-width:620px){.list{grid-template-columns:1fr 1fr}.topbar h1{font-size:1.2rem}}
+
+</style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="topbar-inner">
-      <h1>🏊‍♂️🚴‍♀️🏃 Triathlon Glossary</h1>
-      <button id="themeBtn" class="icon-btn" title="Toggle light / dark" aria-label="Toggle light or dark theme">◐</button>
+<header class="topbar">
+  <div class="topbar-inner">
+    <img class="logo" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJz4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSdnJyB4MT0nMCcgeTE9JzAnIHgyPScwJyB5Mj0nMSc+CjxzdG9wIG9mZnNldD0nMCcgc3RvcC1jb2xvcj0nIzBiNzI4NScvPjxzdG9wIG9mZnNldD0nMScgc3RvcC1jb2xvcj0nIzA1MzY0MCcvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPgo8cmVjdCB3aWR0aD0nNTEyJyBoZWlnaHQ9JzUxMicgcng9JzEwNCcgZmlsbD0ndXJsKCNnKScvPgo8dGV4dCB4PScyNTYnIHk9JzIxMCcgZm9udC1mYW1pbHk9J0hlbHZldGljYSxBcmlhbCxzYW5zLXNlcmlmJyBmb250LXNpemU9JzE1MCcgZm9udC13ZWlnaHQ9JzgwMCcgZmlsbD0nI2ZmZicgdGV4dC1hbmNob3I9J21pZGRsZScgbGV0dGVyLXNwYWNpbmc9JzYnPkFNUzwvdGV4dD4KPCEtLSB0cmlhdGhsb246IHRocmVlIHdhdmVzIChzd2ltIMK3IGJpa2UgwrcgcnVuKSAtLT4KPGcgZmlsbD0nbm9uZScgc3Ryb2tlPScjN2ZlMWVmJyBzdHJva2Utd2lkdGg9JzIyJyBzdHJva2UtbGluZWNhcD0ncm91bmQnPgo8cGF0aCBkPSdNOTIgMzA2IHE0MiAtMzQgODQgMCB0ODQgMCB0ODQgMCB0ODQgMCcvPgo8cGF0aCBkPSdNOTIgMzY2IHE0MiAtMzQgODQgMCB0ODQgMCB0ODQgMCB0ODQgMCcvPgo8cGF0aCBkPSdNOTIgNDI2IHE0MiAtMzQgODQgMCB0ODQgMCB0ODQgMCB0ODQgMCcvPgo8L2c+Cjwvc3ZnPg==" alt="AMS logo" />
+    <h1>Triathlon Glossary</h1>
+    <button id="quizBtn" class="icon-btn" title="Quiz" aria-label="Open quiz">🎓</button>
+    <button id="randomBtn" class="icon-btn" title="Random term" aria-label="Show a random term">🎲</button>
+    <button id="themeBtn" class="icon-btn" title="Light / dark" aria-label="Toggle light or dark theme">◐</button>
+    <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Open settings">⚙︎</button>
+  </div>
+  <div class="search-wrap">
+    <input id="search" type="search" inputmode="search" autocomplete="off" placeholder="Search terms, acronyms or meanings…" aria-label="Search terms" />
+  </div>
+  <div id="filters" class="filters" role="group" aria-label="Filter by category"></div>
+</header>
+
+<main>
+  <p id="count" class="count" aria-live="polite"></p>
+  <div id="list" class="list"></div>
+</main>
+
+<button id="addBtn" class="fab" title="Add a term" aria-label="Add a new term">+</button>
+
+<dialog id="addDialog" class="dialog" aria-label="Add or edit a term">
+  <form id="addForm" method="dialog"><div class="body">
+    <h2 id="dlgTitle">Add a term</h2>
+    <label for="f-term">Term / acronym <span class="req">*</span></label>
+    <input id="f-term" type="text" required autocomplete="off" placeholder="e.g. BTA" />
+    <label for="f-full">Stands for / full name <span class="opt">(optional)</span></label>
+    <input id="f-full" type="text" autocomplete="off" placeholder="e.g. Between The Arms" />
+    <label for="f-def">Explanation <span class="req">*</span></label>
+    <textarea id="f-def" rows="3" required placeholder="What does it mean?"></textarea>
+    <label for="f-detail">Deeper detail / history <span class="opt">(optional)</span></label>
+    <textarea id="f-detail" rows="3" placeholder="Longer explanation, background, extra examples…"></textarea>
+    <label for="f-ex">Example <span class="opt">(optional)</span></label>
+    <input id="f-ex" type="text" autocomplete="off" placeholder="How it's used in a sentence" />
+    <label for="f-emoji">Emoji <span class="opt">(optional)</span></label>
+    <input id="f-emoji" type="text" autocomplete="off" maxlength="4" placeholder="e.g. 🏊" />
+    <label for="f-img">Image link <span class="opt">(optional)</span></label>
+    <input id="f-img" type="url" autocomplete="off" placeholder="https://…/photo.jpg" />
+    <label for="f-link">Reference link <span class="opt">(optional)</span></label>
+    <input id="f-link" type="url" autocomplete="off" placeholder="https://…" />
+    <label for="f-cat">Category</label>
+    <select id="f-cat"></select>
+    <p id="formError" class="form-error" role="alert"></p>
+    <div class="dialog-actions">
+      <button id="cancelBtn" class="btn ghost" type="button">Cancel</button>
+      <button class="btn primary" type="submit">Save term</button>
     </div>
-    <div class="search-wrap">
-      <input id="search" type="search" inputmode="search" autocomplete="off"
-             placeholder="Search terms, acronyms or meanings…" aria-label="Search terms" />
+  </div></form>
+</dialog>
+
+<dialog id="detail" class="dialog" aria-label="Term detail">
+  <div class="body">
+    <div id="detailBody"></div>
+    <div class="dialog-actions"><button id="detailClose" class="btn primary" type="button">Close</button></div>
+  </div>
+</dialog>
+
+<dialog id="quiz" class="dialog" aria-label="Quiz">
+  <div class="body"><div id="quizBody"></div></div>
+</dialog>
+
+<dialog id="rand" class="dialog" aria-label="Random term">
+  <div class="body">
+    <h2>🎲 Random term</h2>
+    <div id="randBody"></div>
+    <div class="dialog-actions">
+      <button id="randAnother" class="btn ghost" type="button">Show another</button>
+      <button id="randClose" class="btn primary" type="button">Close</button>
     </div>
-    <div id="filters" class="filters" role="group" aria-label="Filter by category"></div>
-  </header>
+  </div>
+</dialog>
 
-  <main>
-    <p id="count" class="count" aria-live="polite"></p>
-    <div id="list" class="list"></div>
-  </main>
-
-  <button id="addBtn" class="fab" title="Add a term" aria-label="Add a new term">+</button>
-
-  <dialog id="addDialog" class="dialog" aria-label="Add a new term">
-    <form id="addForm" method="dialog">
-      <h2>Add a term</h2>
-
-      <label for="f-term">Term / acronym <span class="req">*</span></label>
-      <input id="f-term" type="text" required autocomplete="off" placeholder="e.g. BTA" />
-
-      <label for="f-full">Stands for / full name <span class="opt">(optional)</span></label>
-      <input id="f-full" type="text" autocomplete="off" placeholder="e.g. Between The Arms" />
-
-      <label for="f-def">Explanation <span class="req">*</span></label>
-      <textarea id="f-def" rows="3" required placeholder="What does it mean?"></textarea>
-
-      <label for="f-cat">Category</label>
-      <select id="f-cat"></select>
-
-      <p id="formError" class="form-error" role="alert"></p>
-
-      <div class="dialog-actions">
-        <button id="cancelBtn" class="btn ghost" type="button">Cancel</button>
-        <button class="btn primary" type="submit">Save term</button>
+<dialog id="settings" class="dialog" aria-label="Settings">
+  <div class="body">
+    <h2>Settings</h2>
+    <div class="settings-sec">
+      <h3>Appearance</h3>
+      <div class="theme-opts">
+        <label><input type="radio" name="theme" value="system" /> System</label>
+        <label><input type="radio" name="theme" value="light" /> Light</label>
+        <label><input type="radio" name="theme" value="dark" /> Dark</label>
       </div>
-    </form>
-  </dialog>
+    </div>
+    <div class="settings-sec">
+      <h3>Your terms &amp; backup</h3>
+      <p class="muted">Terms you add are stored on this device only. Export them to keep a backup or move them to another phone/computer, then Import there.</p>
+      <div class="row-btns">
+        <button id="exportBtn" class="btn" type="button">⬇︎ Export my terms</button>
+        <label class="btn" for="importFile" style="margin:0">⬆︎ Import terms<input id="importFile" type="file" accept="application/json,.json" hidden /></label>
+      </div>
+    </div>
+    <div class="settings-sec">
+      <h3>Help &amp; info</h3>
+      <details>
+        <summary>How this app works</summary>
+        <div class="content">
+          <p><strong>Browse &amp; search.</strong> Scroll the list or type in the search box — it matches the term, full name, explanation and example.</p>
+          <p><strong>Tap a term.</strong> Tapping any card opens a detail view with a deeper explanation, history, examples, scale tables and diagrams where available.</p>
+          <p><strong>Filter.</strong> Tap a category chip (or ★ Favourites). The number shows how many terms it holds.</p>
+          <p><strong>Favourites.</strong> Tap the ☆ on any card to star it.</p>
+          <p><strong>Edit anything.</strong> Every term has ✎ Edit — built-in ones too. The editor opens pre-filled; just change what you like and Save. No duplicating.</p>
+          <p><strong>See your changes.</strong> A built-in term you’ve edited shows its name in an accent colour with an “edited” tag; tap ↺ Reset to restore the original.</p>
+          <p><strong>Add your own.</strong> Tap +. New terms you create are marked with the AMS badge and can be edited (✎) or deleted (×). You can include an emoji, image link and deeper-detail text.</p>
+          <p><strong>References.</strong> Every term has a link — “Learn more” for curated sources or “Look it up” for a web search.</p>
+          <p><strong>Related terms.</strong> A detail view lists related terms — tap one to jump straight to it.</p>
+          <p><strong>Quiz (🎓).</strong> Test yourself with flashcards or multiple-choice. It quizzes whatever filter is active — pick a category or ★ Favourites first to focus.</p>
+          <p><strong>Backup.</strong> Use Export/Import above to back up your terms or move them between devices.</p>
+        </div>
+      </details>
+      <details>
+        <summary>What’s new</summary>
+        <div class="content"><ul id="changelog" class="changelog"></ul></div>
+      </details>
+      <p id="build" class="build"></p>
+    </div>
+    <div class="dialog-actions"><button id="settingsClose" class="btn primary" type="button">Done</button></div>
+  </div>
+</dialog>
 
-  <script src="js/terms.js"></script>
-  <script src="js/app.js"></script>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/*
+ * Built-in triathlon glossary.
+ *
+ * Each entry:
+ *   term     - the acronym / abbreviation / word (required)
+ *   full     - what an acronym stands for (optional)
+ *   def      - plain-language explanation (required)
+ *   category - one of the CATEGORIES below
+ *
+ * This is the starter list that ships with the app. Anything the user adds
+ * themselves is stored separately on their device and merged in at runtime.
+ */
+window.TRIATHLON_CATEGORIES = [
+  'General',
+  'Racing',
+  'Swim',
+  'Bike',
+  'Run',
+  'Training',
+  'Physiology',
+  'Gear',
+  'Nutrition',
+  'Strength',
+  'Workout',
+  'Ultra',
+  'Longevity',
+];
+
+window.TRIATHLON_TERMS = [
+  // ---- General ----
+  { term: 'Tri', full: 'Triathlon', def: 'A multisport race made of a swim, a bike and a run, done back-to-back in that order.', category: 'General' },
+  { term: 'Multisport', def: 'Umbrella term for events combining two or more disciplines — triathlon, duathlon, aquathlon, aquabike, etc.', category: 'General' },
+  { term: 'Duathlon', def: 'A run–bike–run race. No swim. A common entry point and a winter option.', category: 'General' },
+  { term: 'Aquathlon', def: 'A swim followed by a run. No bike.', category: 'General' },
+  { term: 'Aquabike', def: 'A swim followed by a bike, with no run. Popular with people managing running injuries.', category: 'General' },
+  { term: 'Brick', def: 'A training session that stacks two disciplines back-to-back (usually bike-then-run) to teach the body to switch, especially the heavy "brick legs" feeling off the bike.', category: 'Training' },
+  { term: 'Leg', def: 'One of the three parts of the race (the swim leg, the bike leg, the run leg).', category: 'General' },
+  { term: 'Discipline', def: 'One of the sports within triathlon: swimming, cycling or running.', category: 'General' },
+  { term: 'AG', full: 'Age Grouper', def: 'A non-professional (amateur) athlete who races and is ranked within their age category.', category: 'Racing' },
+  { term: 'Age Group', def: 'The bracket you race and are ranked in, usually a 5-year band by sex (e.g. M40–44).', category: 'Racing' },
+  { term: 'Pro / Elite', def: 'Athletes racing for prize money and pro rankings, usually starting in their own wave ahead of age groupers.', category: 'Racing' },
+  { term: 'FOP / MOP / BOP', full: 'Front / Middle / Back Of Pack', def: 'Informal shorthand for roughly where you finish in the field.', category: 'Racing' },
+  { term: 'DNF', full: 'Did Not Finish', def: 'You started the race but did not complete it.', category: 'Racing' },
+  { term: 'DNS', full: 'Did Not Start', def: 'You were entered but did not start the race.', category: 'Racing' },
+  { term: 'DQ', full: 'Disqualified', def: 'Removed from the results for a rule breach (e.g. drafting, littering, missing equipment).', category: 'Racing' },
+  { term: 'PB / PR', full: 'Personal Best / Personal Record', def: 'Your fastest-ever time for a given distance or course.', category: 'General' },
+  { term: 'WTC', full: 'World Triathlon Corporation', def: 'The company behind the IRONMAN and 70.3 race brands.', category: 'Racing' },
+  { term: 'ITU / World Triathlon', def: 'World Triathlon (formerly the ITU, International Triathlon Union) is the sport’s global governing body, running the World Series and Olympic qualification.', category: 'Racing' },
+  { term: 'USAT', full: 'USA Triathlon', def: 'The national governing body for the sport in the United States.', category: 'Racing' },
+  { term: 'BTF', full: 'British Triathlon Federation', def: 'The national governing body for triathlon in Great Britain.', category: 'Racing' },
+
+  // ---- Racing / distances ----
+  { term: 'IM', full: 'IRONMAN', def: 'The full-distance triathlon: 2.4 mi (3.8 km) swim, 112 mi (180 km) bike, 26.2 mi (42.2 km) marathon run. Also a race brand.', category: 'Racing' },
+  { term: '70.3', full: 'IRONMAN 70.3 (Half)', def: 'Half the IRONMAN distance — 70.3 total miles: 1.2 mi swim, 56 mi bike, 13.1 mi run. Also called a "Half".', category: 'Racing' },
+  { term: '140.6', def: 'The total mileage of a full IRONMAN (2.4 + 112 + 26.2), used as shorthand for full-distance.', category: 'Racing' },
+  { term: 'Olympic / Standard', def: 'Standard-distance triathlon: 1.5 km swim, 40 km bike, 10 km run. The Olympic race format.', category: 'Racing' },
+  { term: 'Sprint', def: 'A short-course triathlon, typically ~750 m swim, 20 km bike, 5 km run. A popular first race.', category: 'Racing' },
+  { term: 'Super Sprint', def: 'An even shorter format (e.g. 400 m / 10 km / 2.5 km), great for beginners and kids.', category: 'Racing' },
+  { term: 'Middle Distance', def: 'Umbrella term for half-IRONMAN-length races (~113 km total).', category: 'Racing' },
+  { term: 'Long Course', def: 'Any long triathlon — middle and full distance events.', category: 'Racing' },
+  { term: 'Ultra Tri', def: 'Races beyond IRONMAN distance — double, triple or more (e.g. a "Deca").', category: 'Racing' },
+  { term: 'Kona', def: 'The IRONMAN World Championship held in Kailua-Kona, Hawaii — the sport’s most famous full-distance race.', category: 'Racing' },
+  { term: 'KQ', full: 'Kona Qualifier / Qualified', def: 'Earning (or the act of earning) a slot to the IRONMAN World Championship in Kona.', category: 'Racing' },
+  { term: 'Slot / Roll-down', def: 'A championship qualifying place. If a qualifier declines, the slot "rolls down" to the next finisher in that age group.', category: 'Racing' },
+  { term: 'M-dot', def: 'The IRONMAN logo (a dot over an M). "An M-dot race" means an official IRONMAN-branded event; "getting the M-dot tattoo" is a finisher tradition.', category: 'Racing' },
+  { term: 'WC', full: 'World Championship', def: 'The pinnacle event for a series (e.g. the 70.3 or IRONMAN World Championship).', category: 'Racing' },
+  { term: 'Draft-legal', def: 'A race format where riders are allowed to draft (ride in each other’s slipstream). Used in ITU/Olympic racing.', category: 'Racing' },
+  { term: 'Non-drafting', def: 'A race where drafting is banned; you must keep a set distance behind the rider ahead. Most age-group IRONMAN/70.3 racing is non-drafting.', category: 'Racing' },
+  { term: 'Wave', def: 'A group of athletes started together, usually by age group or sex, a few minutes apart to spread out the field.', category: 'Racing' },
+  { term: 'Wave Start', def: 'Starting the race in separate timed groups rather than all at once.', category: 'Racing' },
+  { term: 'Rolling Start', def: 'Athletes enter the swim continuously in a self-seeded line rather than in one mass. Your clock starts when you cross the mat.', category: 'Racing' },
+  { term: 'Mass Start', def: 'Everyone (or a whole wave) starts at the same instant — often a churning, physical swim.', category: 'Racing' },
+  { term: 'Time Trial Start', def: 'Athletes set off one or a few at a time at intervals.', category: 'Racing' },
+  { term: 'Cutoff', def: 'A time limit for reaching a checkpoint or finishing. Miss it and you’re pulled from the course.', category: 'Racing' },
+  { term: 'Chip Time', def: 'Your time measured from when you personally crossed the start mat to the finish (vs. gun time).', category: 'Racing' },
+  { term: 'Gun Time', def: 'Elapsed time from the official start signal, regardless of when you crossed the line.', category: 'Racing' },
+  { term: 'Split', def: 'The time for one segment — swim split, bike split, run split, or a per-mile/km split.', category: 'Racing' },
+  { term: 'Timing Mat', def: 'A pad on the course that reads your timing chip to record splits.', category: 'Gear' },
+  { term: 'Bib', def: 'Your race number, worn on the run (and sometimes the bike). Also identifies you in photos and results.', category: 'Gear' },
+  { term: 'Race Belt', def: 'An elastic belt that holds your bib so you can spin it to your back on the bike and front on the run without pinning your kit.', category: 'Gear' },
+  { term: 'Body Marking', def: 'Having your race number (and sometimes age) written on your arms and legs before the start.', category: 'Racing' },
+  { term: 'Aid Station', def: 'A stop on the bike or run course handing out water, sports drink, gels, food and sometimes ice or sponges.', category: 'Racing' },
+  { term: 'Penalty Box / Tent', def: 'Where you serve a time penalty (e.g. for drafting) before continuing.', category: 'Racing' },
+  { term: 'Sherpa', def: 'The friend or family member who carries your gear, cheers, and supports you on race day.', category: 'General' },
+
+  // ---- Transition ----
+  { term: 'T1', full: 'Transition 1', def: 'The swim-to-bike changeover: strip the wetsuit, helmet on, shoes on, grab the bike.', category: 'Racing' },
+  { term: 'T2', full: 'Transition 2', def: 'The bike-to-run changeover: rack the bike, helmet off, running shoes on.', category: 'Racing' },
+  { term: 'Transition', def: 'The staging area where you switch disciplines. Fast, tidy transitions save "free" time.', category: 'Racing' },
+  { term: 'Brick Legs', def: 'The heavy, wobbly feeling in your legs at the start of the run right after cycling.', category: 'Physiology' },
+  { term: 'Flying Mount', def: 'Jumping onto an already-moving bike with shoes pre-clipped to the pedals, to save time leaving T1.', category: 'Bike' },
+  { term: 'Flying Dismount', def: 'Stepping off a moving bike with feet on top of the shoes just before the line, to run into T2.', category: 'Bike' },
+  { term: 'Rack', def: 'The rail you hang your bike on in transition; also the verb ("rack your bike").', category: 'Racing' },
+  { term: 'Mount Line', def: 'The line just outside transition where you’re first allowed to get on and pedal the bike.', category: 'Racing' },
+  { term: 'Dismount Line', def: 'The line before transition where you must be off the bike.', category: 'Racing' },
+
+  // ---- Swim ----
+  { term: 'OWS', full: 'Open Water Swim', def: 'Swimming in a lake, river or sea rather than a pool — no walls, lines or lane ropes.', category: 'Swim' },
+  { term: 'Sighting', def: 'Lifting your eyes forward mid-stroke to check you’re swimming toward the buoy and staying on course.', category: 'Swim' },
+  { term: 'Buoy', def: 'A floating marker showing the swim course. You navigate from buoy to buoy.', category: 'Swim' },
+  { term: 'Turn Buoy', def: 'A buoy marking a point where the course changes direction — often congested.', category: 'Swim' },
+  { term: 'Drafting (swim)', def: 'Swimming just behind or beside another swimmer to ride their slipstream and save energy. Legal in the swim.', category: 'Swim' },
+  { term: 'Feet', def: 'Slang for the swimmer ahead of you: "get on their feet" means tuck in behind to draft.', category: 'Swim' },
+  { term: 'Washing Machine', def: 'The chaotic, physical scrum of arms and legs at a crowded mass swim start.', category: 'Swim' },
+  { term: 'Catch', def: 'The moment early in the stroke when your hand and forearm "grab" the water to pull you forward.', category: 'Swim' },
+  { term: 'EVF', full: 'Early Vertical Forearm', def: 'A technique keeping the forearm vertical early in the pull for a stronger catch.', category: 'Swim' },
+  { term: 'Bilateral Breathing', def: 'Breathing to both sides (e.g. every 3 strokes), useful for balance and sighting in open water.', category: 'Swim' },
+  { term: 'Stroke Rate', def: 'How many strokes you take per minute — a measure of swim cadence.', category: 'Swim' },
+  { term: 'SWOLF', def: 'A swim efficiency score: strokes per length plus the seconds it took. Lower is better.', category: 'Swim' },
+  { term: 'CSS', full: 'Critical Swim Speed', def: 'An estimate of your sustainable threshold swim pace, used to set training zones.', category: 'Swim' },
+  { term: 'Pull Buoy', def: 'A foam float held between the thighs to lift the legs so you focus on the arm pull.', category: 'Gear' },
+  { term: 'Paddles', def: 'Plastic plates worn on the hands to build pull strength and feel for the water.', category: 'Gear' },
+  { term: 'Tempo Trainer', def: 'A small beeper worn under the cap to keep a set stroke rhythm.', category: 'Gear' },
+  { term: 'Wetsuit', def: 'A neoprene suit that keeps you warm and adds buoyancy (and speed) in the swim.', category: 'Gear' },
+  { term: 'Wetsuit-legal', def: 'A swim where wetsuits are allowed, decided by water temperature. Above a cutoff, wetsuits are banned.', category: 'Swim' },
+  { term: 'Speedsuit / Swimskin', def: 'A thin non-buoyant suit worn over trisuit when the water is too warm for wetsuits.', category: 'Gear' },
+  { term: 'Neutral Buoyancy', def: 'Floating balanced in the water with good body position — flat and streamlined.', category: 'Swim' },
+  { term: 'Body Position', def: 'How level and streamlined you lie in the water; dropped hips create drag.', category: 'Swim' },
+  { term: 'Deadlift Wetsuit / Batman', def: 'The move of peeling the wetsuit down fast in T1; "Batman" arms means the sleeves are inside-out at the wrists.', category: 'Swim' },
+
+  // ---- Bike ----
+  { term: 'TT', full: 'Time Trial', def: 'Riding alone against the clock. Triathlon bike legs are essentially a time trial.', category: 'Bike' },
+  { term: 'TT Bike', full: 'Time Trial Bike', def: 'An aerodynamic bike with aero bars and steep geometry, built for solo riding against the clock.', category: 'Gear' },
+  { term: 'Tri Bike', def: 'A triathlon-specific bike, similar to a TT bike but tuned for comfort over long distances.', category: 'Gear' },
+  { term: 'Aero Bars / Aerobars', def: 'Extensions you rest your forearms on to get low and slippery through the air.', category: 'Gear' },
+  { term: 'Aero Position', def: 'The low, tucked posture on the aero bars that reduces drag.', category: 'Bike' },
+  { term: 'Aero', def: 'Short for aerodynamic — reducing air resistance is the biggest speed lever on the bike.', category: 'Bike' },
+  { term: 'CdA', full: 'Coefficient of drag × frontal Area', def: 'A number describing how aerodynamic you and your bike are. Lower CdA = faster for the same effort.', category: 'Bike' },
+  { term: 'Watts', def: 'A direct measure of the power you put into the pedals. The core metric of cycling training.', category: 'Bike' },
+  { term: 'FTP', full: 'Functional Threshold Power', def: 'The highest power you can hold for about an hour. The anchor for cycling training zones.', category: 'Bike' },
+  { term: 'Power Meter', def: 'A device (in the pedals, crank or hub) that measures your power output in watts.', category: 'Gear' },
+  { term: 'NP', full: 'Normalized Power', def: 'An adjusted average power that accounts for the surges of a variable ride — a truer sense of effort than raw average.', category: 'Bike' },
+  { term: 'IF', full: 'Intensity Factor', def: 'Your normalized power as a fraction of FTP — how hard a ride was relative to threshold.', category: 'Bike' },
+  { term: 'VI', full: 'Variability Index', def: 'Normalized power divided by average power. Near 1.0 means a smooth, steady effort — the goal on a tri bike.', category: 'Bike' },
+  { term: 'TSS', full: 'Training Stress Score', def: 'A single number for how much a session taxed you, combining duration and intensity.', category: 'Training' },
+  { term: 'W/kg', full: 'Watts per Kilogram', def: 'Power divided by body weight — a key climbing and performance ratio.', category: 'Bike' },
+  { term: 'Cadence', def: 'Pedal revolutions per minute (RPM). Most triathletes ride around 85–95 rpm.', category: 'Bike' },
+  { term: 'Drafting (bike)', def: 'Riding in another rider’s slipstream. Illegal in most age-group tri; you must stay in the "draft zone" rules.', category: 'Bike' },
+  { term: 'Draft Zone', def: 'The set distance you must keep behind the bike ahead in non-drafting races (e.g. several bike lengths).', category: 'Bike' },
+  { term: 'Blocking', def: 'Illegally riding on the left / not keeping right, obstructing faster riders trying to pass.', category: 'Bike' },
+  { term: 'Overtaking Zone', def: 'The time window you’re given to complete a legal pass before you must drop back or move over.', category: 'Bike' },
+  { term: 'Pacing', def: 'Managing your effort (power or heart rate) so you don’t blow up and can still run well.', category: 'Bike' },
+  { term: 'Negative Split', def: 'Completing the second half of a leg (or race) faster than the first — a sign of good pacing.', category: 'Racing' },
+  { term: 'Bonk', def: 'Hitting the wall — running out of carbohydrate fuel, leaving you suddenly weak and empty.', category: 'Physiology' },
+  { term: 'Bike Fit', def: 'Professional adjustment of your bike to your body for comfort, power and aerodynamics.', category: 'Gear' },
+  { term: 'Groupset', def: 'The bike’s gears, shifters, chain, cranks and brakes as a matched set (e.g. Shimano Di2).', category: 'Gear' },
+  { term: 'Di2 / eTap', def: 'Electronic shifting systems (Shimano Di2, SRAM eTap) that shift gears via a button and motor.', category: 'Gear' },
+  { term: 'Disc Wheel', def: 'A solid rear wheel that is very aerodynamic on flat, low-wind courses.', category: 'Gear' },
+  { term: 'Deep Section', def: 'A wheel with a tall (deep) rim that is more aerodynamic than a shallow box rim.', category: 'Gear' },
+  { term: 'BTA', full: 'Between The Arms', def: 'A drink bottle mounted between the aero bars — aerodynamic and easy to sip from.', category: 'Gear' },
+  { term: 'Special Needs', def: 'A drop-bag point on long-course bike and run where you collect extra nutrition or spares you packed.', category: 'Racing' },
+  { term: 'Mechanical', def: 'A bike problem during the race — a puncture, dropped chain, broken part, etc.', category: 'Bike' },
+  { term: 'Clincher / Tubular / Tubeless', def: 'The three main tyre systems: clinchers use an inner tube, tubulars are glued-on, tubeless run sealant with no tube.', category: 'Gear' },
+
+  // ---- Run ----
+  { term: 'Run Cadence', def: 'Steps per minute on the run; many aim for a quick, light turnover around 170–180 spm.', category: 'Run' },
+  { term: 'Shuffle', def: 'The short, economical stride many triathletes drop into on the run to survive off tired legs.', category: 'Run' },
+  { term: 'Run/Walk', def: 'Deliberately alternating running and walking (e.g. through aid stations) to manage fatigue on long races.', category: 'Run' },
+  { term: 'The Wall', def: 'The point (often ~30 km of a marathon) where glycogen runs low and everything gets much harder.', category: 'Physiology' },
+  { term: 'Death March', def: 'The slow, painful walk/jog to the finish when you’ve run out of energy or overcooked the bike.', category: 'Run' },
+  { term: 'Tempo Run', def: 'A sustained "comfortably hard" run at around threshold effort.', category: 'Run' },
+  { term: 'Fartlek', def: 'Swedish for "speed play" — unstructured bursts of faster running mixed into an easy run.', category: 'Run' },
+  { term: 'Strides', def: 'Short, relaxed accelerations (e.g. 20 s) to sharpen form and turnover.', category: 'Run' },
+  { term: 'Off the Bike', def: 'Describes running immediately after cycling — "a quick run off the bike".', category: 'Run' },
+  { term: 'GAP', full: 'Grade Adjusted Pace', def: 'Your pace corrected for hills, so an uphill effort is compared fairly to flat running.', category: 'Run' },
+
+  // ---- Training ----
+  { term: 'Base', def: 'A block of mostly easy, high-volume aerobic training that builds endurance foundations.', category: 'Training' },
+  { term: 'Build', def: 'A phase adding intensity and race-specific work on top of your base.', category: 'Training' },
+  { term: 'Peak', def: 'The highest-load part of training just before you taper.', category: 'Training' },
+  { term: 'Taper', def: 'Reducing training volume in the days/weeks before a race so you arrive fresh and sharp.', category: 'Training' },
+  { term: 'Periodization', def: 'Structuring training into phases (base, build, peak, taper) to peak at the right time.', category: 'Training' },
+  { term: 'Volume', def: 'How much you train — total hours or distance.', category: 'Training' },
+  { term: 'Intensity', def: 'How hard you train — the effort level of sessions.', category: 'Training' },
+  { term: 'Zone 2 / Z2', def: 'Easy aerobic training — conversational effort. The bread-and-butter of endurance base building.', category: 'Training' },
+  { term: 'LSD', full: 'Long Slow Distance', def: 'Long, easy sessions that build aerobic endurance.', category: 'Training' },
+  { term: 'Intervals', def: 'Repeated hard efforts with rest between, to raise fitness at higher intensities.', category: 'Training' },
+  { term: 'Threshold', def: 'The effort you can just sustain before fatigue rises sharply — a key training zone (e.g. FTP, CSS).', category: 'Training' },
+  { term: 'VO2max', def: 'The maximum rate your body can use oxygen — a ceiling for aerobic performance. Also a hard training zone.', category: 'Physiology' },
+  { term: 'RPE', full: 'Rate of Perceived Exertion', def: 'A subjective 1–10 scale of how hard an effort feels — a simple way to gauge intensity.', category: 'Training' },
+  { term: 'HR / HRM', full: 'Heart Rate / Heart Rate Monitor', def: 'Your beats per minute, and the strap or watch that measures it, used to guide effort.', category: 'Gear' },
+  { term: 'LTHR', full: 'Lactate Threshold Heart Rate', def: 'The heart rate at your lactate threshold, used to set heart-rate training zones.', category: 'Physiology' },
+  { term: 'Max HR', full: 'Maximum Heart Rate', def: 'The highest heart rate you can reach, used as a reference for zones.', category: 'Physiology' },
+  { term: 'CTL / ATL / TSB', full: 'Chronic / Acute Training Load, Training Stress Balance', def: 'Fitness (CTL), fatigue (ATL) and "form" (TSB = fitness minus fatigue) tracked over time to time your peak.', category: 'Training' },
+  { term: 'Form', def: 'How fresh and race-ready you are (TSB). Positive form usually means rested; deep negative means fatigued.', category: 'Training' },
+  { term: 'Overtraining / OTS', full: 'Overtraining Syndrome', def: 'Deep, lasting fatigue and performance loss from too much load and too little recovery.', category: 'Physiology' },
+  { term: 'Recovery', def: 'Rest, easy sessions, sleep and nutrition that let the body adapt and get stronger.', category: 'Training' },
+  { term: 'Active Recovery', def: 'Very easy movement (a spin or gentle swim) to aid recovery without adding real stress.', category: 'Training' },
+  { term: 'Deload / Recovery Week', def: 'A planned lighter week to absorb training and avoid burnout.', category: 'Training' },
+  { term: 'Time Crunched', def: 'Training on limited hours by favouring shorter, more intense sessions.', category: 'Training' },
+  { term: 'Two-a-day / Double', def: 'Two training sessions in one day, common when volume is high.', category: 'Training' },
+  { term: 'Open Water', def: 'Practising in lakes/sea to get comfortable with sighting, wetsuits and no walls before race day.', category: 'Training' },
+  { term: 'Trainer / Turbo', def: 'An indoor bike trainer. A "smart trainer" adjusts resistance and connects to apps like Zwift.', category: 'Gear' },
+  { term: 'Zwift', def: 'A popular virtual training app for riding and running indoors in a game-like world.', category: 'Gear' },
+  { term: 'Treadmill / Dreadmill', def: 'Indoor running belt; "dreadmill" is the affectionate groan for it.', category: 'Gear' },
+
+  // ---- Physiology / body ----
+  { term: 'Aerobic', def: 'Energy produced with oxygen — the sustainable engine behind endurance racing.', category: 'Physiology' },
+  { term: 'Anaerobic', def: 'Energy produced without enough oxygen, for short hard efforts. Fatigues quickly.', category: 'Physiology' },
+  { term: 'Lactate / Lactic', def: 'A by-product of hard effort. Rising blood lactate marks the threshold between easy and unsustainable pace.', category: 'Physiology' },
+  { term: 'Glycogen', def: 'Stored carbohydrate in muscles and liver — your main fuel for hard endurance efforts.', category: 'Physiology' },
+  { term: 'Cramp', def: 'A sudden, painful muscle spasm, often late in a race from fatigue, fluid or electrolyte issues.', category: 'Physiology' },
+  { term: 'Hyponatremia', def: 'Dangerously low blood sodium from drinking too much plain water without electrolytes.', category: 'Physiology' },
+  { term: 'DOMS', full: 'Delayed Onset Muscle Soreness', def: 'The muscle soreness that peaks a day or two after a hard or new session.', category: 'Physiology' },
+  { term: 'Economy', def: 'How little energy you use to hold a given pace — better economy means faster for the same effort.', category: 'Physiology' },
+  { term: 'Threshold Pace', def: 'The pace you can hold at lactate threshold — a benchmark for run and swim training.', category: 'Physiology' },
+
+  // ---- Nutrition ----
+  { term: 'Gel', def: 'A concentrated carbohydrate sachet for quick fuel during racing and long sessions.', category: 'Nutrition' },
+  { term: 'Carbs/hr', def: 'Grams of carbohydrate eaten per hour of racing — a key fuelling target (often 60–90 g/hr, sometimes more).', category: 'Nutrition' },
+  { term: 'Electrolytes', def: 'Salts (sodium, potassium, magnesium) lost in sweat and replaced to keep muscles and fluid balance working.', category: 'Nutrition' },
+  { term: 'Bottle / Bidon', def: 'Your drinks bottle. "Bidon" is the French term used in cycling.', category: 'Gear' },
+  { term: 'Hydration', def: 'Managing fluid intake before, during and after training and racing.', category: 'Nutrition' },
+  { term: 'Fuelling', def: 'Your plan for taking in carbohydrate and fluid to keep energy up through a long race.', category: 'Nutrition' },
+  { term: 'Gut Training', def: 'Practising race-day fuelling in training so your stomach can handle the carbs and fluids on the day.', category: 'Nutrition' },
+  { term: 'Carb Loading', def: 'Eating extra carbohydrate in the days before a long race to top up glycogen stores.', category: 'Nutrition' },
+  { term: 'Real Food', def: 'Whole foods (bananas, rice cakes, chews) used alongside or instead of gels for fuelling.', category: 'Nutrition' },
+
+  // ---- Gear / kit ----
+  { term: 'Trisuit', def: 'A one- or two-piece suit worn for the whole race — swim, bike and run — with a light quick-drying pad.', category: 'Gear' },
+  { term: 'Tri Shorts', def: 'Padded shorts with a thin chamois designed to be swum in, ridden in and run in.', category: 'Gear' },
+  { term: 'Chamois', def: 'The padded insert in cycling/tri shorts. "Chamois cream" reduces chafing and saddle sores.', category: 'Gear' },
+  { term: 'Cleats', def: 'The plates on the bottom of cycling shoes that clip into the pedals.', category: 'Gear' },
+  { term: 'Clipless Pedals', def: 'Pedals your shoe cleat clips into (confusingly named — there’s no toe-clip cage).', category: 'Gear' },
+  { term: 'Speed Laces / Elastic Laces', def: 'Stretchy or toggle laces that let you slip running shoes on instantly in T2.', category: 'Gear' },
+  { term: 'Garmin / Wahoo', def: 'Popular brands of GPS watches and bike computers used to record and guide training and racing.', category: 'Gear' },
+  { term: 'GPS Watch', def: 'A wrist device that tracks pace, distance, heart rate and more across all three disciplines.', category: 'Gear' },
+  { term: 'Bike Computer', def: 'A handlebar-mounted unit showing speed, power, heart rate and navigation while riding.', category: 'Gear' },
+  { term: 'DI / Dropper', def: 'Small aero add-ons like hydration or storage systems that tidy the bike; also "DI" for Di2 electronic shifting.', category: 'Gear' },
+  { term: 'Anti-fog', def: 'Treatment or spit used to keep swim goggles clear.', category: 'Gear' },
+  { term: 'Goggles', def: 'Eye protection for swimming; tinted for bright open water, clear for low light.', category: 'Gear' },
+  { term: 'Swim Cap', def: 'A latex or silicone cap, often colour-coded to your wave and required by most races for visibility.', category: 'Gear' },
+
+  // ================= EXPANSION PACK =================
+
+  // ---- Strength / exercise ----
+  { term: 'Rep', full: 'Repetition', def: 'One complete movement of an exercise, such as one squat or one press.', category: 'Strength' },
+  { term: 'Set (strength)', def: 'A group of consecutive reps done without rest.', category: 'Strength' },
+  { term: '1RM', full: 'One-Rep Max', def: 'The heaviest weight you can lift for a single rep — a benchmark of maximal strength.', category: 'Strength' },
+  { term: 'Progressive Overload', def: 'Gradually increasing weight, reps or volume over time so the body keeps adapting and getting stronger.', category: 'Strength' },
+  { term: 'Hypertrophy', def: 'Growth in muscle size, the goal of most bodybuilding-style training.', category: 'Strength' },
+  { term: 'Compound Lift', def: 'A multi-joint exercise that works many muscles at once (squat, deadlift, bench press, row).', category: 'Strength' },
+  { term: 'Isolation Exercise', def: 'A single-joint move targeting one muscle, like a biceps curl.', category: 'Strength' },
+  { term: 'Squat', def: 'A fundamental lower-body lift: bend the hips and knees to lower, then stand back up.', category: 'Strength' },
+  { term: 'Deadlift', def: 'Lifting a loaded barbell from the floor to standing — a full-body strength builder.', category: 'Strength' },
+  { term: 'Bench Press', def: 'Pressing a barbell up from the chest while lying on a bench.', category: 'Strength' },
+  { term: 'Overhead Press', def: 'Pressing weight from the shoulders up overhead.', category: 'Strength' },
+  { term: 'Row', def: 'Pulling weight toward the torso to strengthen the upper back.', category: 'Strength' },
+  { term: 'Pull-up', def: 'Pulling your body up to a bar using the back and arms.', category: 'Strength' },
+  { term: 'Lunge', def: 'A single-leg strength and stability exercise, stepping forward or back into a knee bend.', category: 'Strength' },
+  { term: 'Core', def: 'The trunk muscles (abdominals, lower back, hips) that stabilise the body and transfer power.', category: 'Strength' },
+  { term: 'Plank', def: 'An isometric hold in a push-up-like position to build core stability.', category: 'Strength' },
+  { term: 'Posterior Chain', def: 'The muscles along the back of the body (glutes, hamstrings, back) that drive running and cycling power.', category: 'Strength' },
+  { term: 'Glutes', def: 'The buttock muscles — major power producers for pushing off in run and bike.', category: 'Strength' },
+  { term: 'Eccentric', def: 'The lengthening (lowering) phase of a lift; builds strength and is a common cause of muscle soreness.', category: 'Strength' },
+  { term: 'Concentric', def: 'The shortening (lifting) phase of a movement.', category: 'Strength' },
+  { term: 'Isometric', def: 'A static contraction where the muscle works without changing length, like a plank or wall sit.', category: 'Strength' },
+  { term: 'Time Under Tension', full: 'TUT', def: 'How long a muscle is under load during a set — a variable for building size.', category: 'Strength' },
+  { term: 'Superset', def: 'Two exercises performed back-to-back with no rest in between.', category: 'Strength' },
+  { term: 'Drop Set', def: 'Reducing the weight after reaching failure so you can keep repping.', category: 'Strength' },
+  { term: 'Failure', def: 'The point in a set where you can no longer complete a rep with good form.', category: 'Strength' },
+  { term: 'RIR', full: 'Reps In Reserve', def: 'How many more reps you could have done — a way to gauge how hard a set was.', category: 'Strength' },
+  { term: 'Spotter', def: 'A partner who assists and keeps you safe during a heavy lift.', category: 'Strength' },
+  { term: 'Barbell', def: 'A long bar loaded with weight plates on each end.', category: 'Strength' },
+  { term: 'Dumbbell', def: 'A short, handheld free weight used singly or in pairs.', category: 'Strength' },
+  { term: 'Kettlebell', def: 'A cast weight with a handle, used for swings and ballistic strength moves.', category: 'Strength' },
+  { term: 'Squat Rack', def: 'A frame that holds a barbell for squatting and pressing safely.', category: 'Strength' },
+  { term: 'Working Set', def: 'A challenging set performed at your target training weight (as opposed to a warm-up set).', category: 'Strength' },
+  { term: 'Mobility', def: 'Usable range of motion around a joint — key for good technique and injury prevention.', category: 'Strength' },
+  { term: 'Flexibility', def: 'How far a muscle can lengthen; supports mobility and comfortable positions.', category: 'Strength' },
+  { term: 'Prehab', def: 'Preventive strength and mobility work done to avoid injuries before they happen.', category: 'Strength' },
+  { term: 'Rehab', def: 'Targeted exercises to recover from and strengthen an injured area.', category: 'Strength' },
+  { term: 'Activation', def: 'Waking up a muscle (e.g. glute activation drills) so it fires properly during a session.', category: 'Strength' },
+  { term: 'Functional Training', def: 'Exercises that mimic real-world or sport-specific movement patterns.', category: 'Strength' },
+  { term: 'Plyometrics', def: 'Explosive jump-based drills that build power and elastic strength.', category: 'Strength' },
+  { term: 'Bodyweight Training', def: 'Strength work using your own body as the resistance — push-ups, squats, pull-ups.', category: 'Strength' },
+  { term: 'DOMS Repeat Bout', def: 'The protective effect where a workout causes less soreness the second time you repeat it.', category: 'Strength' },
+
+  // ---- Workout / session types ----
+  { term: 'HIIT', full: 'High-Intensity Interval Training', def: 'Short bursts of near-maximal effort separated by brief recovery.', category: 'Workout' },
+  { term: 'LISS', full: 'Low-Intensity Steady State', def: 'Easy, continuous cardio held at a low, steady effort for a long time.', category: 'Workout' },
+  { term: 'AMRAP', full: 'As Many Rounds/Reps As Possible', def: 'Doing as much work as you can within a set time — a common conditioning format.', category: 'Workout' },
+  { term: 'EMOM', full: 'Every Minute On the Minute', def: 'Start a set amount of work at the top of each minute; rest with whatever time is left.', category: 'Workout' },
+  { term: 'Tabata', def: 'A HIIT protocol of 20 seconds hard and 10 seconds easy, repeated 8 times (4 minutes).', category: 'Workout' },
+  { term: 'Circuit Training', def: 'Rotating through a series of exercise stations with little rest between them.', category: 'Workout' },
+  { term: 'Pyramid', def: 'A workout where intensity or reps rise then fall (or fall then rise).', category: 'Workout' },
+  { term: 'Ladder', def: 'Intervals or reps that step up or down in length across the set (e.g. 200-400-600-400-200).', category: 'Workout' },
+  { term: 'Over-Unders', def: 'Intervals that alternate just above and just below threshold to sharpen that fitness.', category: 'Workout' },
+  { term: 'VO2 Intervals', def: 'Hard efforts of roughly 3–5 minutes near max aerobic effort to raise VO2max.', category: 'Workout' },
+  { term: 'Hill Repeats', def: 'Repeated hard efforts up a hill with easy jog/spin recoveries down.', category: 'Workout' },
+  { term: 'Progression Run', def: 'A run that gradually gets faster, finishing at the strongest pace.', category: 'Workout' },
+  { term: 'Long Run', def: 'The week’s longest run, building aerobic endurance and mental toughness.', category: 'Workout' },
+  { term: 'Recovery Run', def: 'A short, very easy run that promotes blood flow and recovery without adding stress.', category: 'Workout' },
+  { term: 'Easy Run', def: 'A relaxed, conversational-pace run — the backbone of most training weeks.', category: 'Workout' },
+  { term: 'Shakeout', def: 'A short, gentle run or spin the day before a race to stay loose and calm nerves.', category: 'Workout' },
+  { term: 'Warm-up', def: 'Easy activity and drills done before a session to prepare the body for harder work.', category: 'Workout' },
+  { term: 'Cool-down', def: 'Easy activity after a session to gradually bring the body back to rest.', category: 'Workout' },
+  { term: 'Dynamic Stretching', def: 'Active, moving stretches done as part of a warm-up.', category: 'Workout' },
+  { term: 'Static Stretching', def: 'Holding a stretch in place, usually done after exercise.', category: 'Workout' },
+  { term: 'Foam Rolling', def: 'Self-massage with a foam roller to ease tight muscles and aid recovery.', category: 'Workout' },
+  { term: 'Cross-Training', def: 'Training in a different discipline to build fitness while reducing sport-specific strain.', category: 'Workout' },
+  { term: 'Rest Day', def: 'A planned day off from training to let the body adapt and recover.', category: 'Workout' },
+  { term: 'Work:Rest Ratio', def: 'The proportion of hard-effort time to recovery time in an interval session (e.g. 1:1).', category: 'Workout' },
+  { term: 'Training Block', def: 'A multi-week phase of training focused on a specific goal or quality.', category: 'Workout' },
+  { term: 'Threshold Session', def: 'A workout spent at or near threshold effort to raise your sustainable pace.', category: 'Workout' },
+  { term: 'Sweet Spot', def: 'Training just below threshold (about 88–94% of FTP) — a time-efficient way to build fitness.', category: 'Workout' },
+  { term: 'Track Workout', def: 'A structured speed session run on a 400 m track for precise pacing.', category: 'Workout' },
+  { term: 'Repeats', def: 'Repeated hard efforts of a set distance or time with recovery between (e.g. 6 × 400 m).', category: 'Workout' },
+
+  // ---- Ultra-running ----
+  { term: 'Ultramarathon', def: 'Any running race longer than the marathon (42.2 km) — commonly 50K, 50 miles, 100K or 100 miles.', category: 'Ultra' },
+  { term: '50K', def: 'A 50-kilometre ultra (about 31 miles), the most accessible ultra distance.', category: 'Ultra' },
+  { term: '50-Miler', def: 'An 80 km ultra — a big step up from the marathon.', category: 'Ultra' },
+  { term: '100K', def: 'A 100-kilometre ultra (about 62 miles).', category: 'Ultra' },
+  { term: '100-Miler', def: 'A 100-mile ultra (161 km) — a landmark distance in the sport.', category: 'Ultra' },
+  { term: 'Vert', def: 'Vertical gain: the total height climbed over a course, a key measure of a trail race’s difficulty.', category: 'Ultra' },
+  { term: 'FKT', full: 'Fastest Known Time', def: 'The record for a set route, self-timed and verified by the trail-running community.', category: 'Ultra' },
+  { term: 'UTMB', full: 'Ultra-Trail du Mont-Blanc', def: 'A ~170 km race around Mont Blanc — one of the most prestigious trail ultras in the world.', category: 'Ultra' },
+  { term: 'Western States', def: 'The Western States 100 — the oldest 100-mile trail race, run in California.', category: 'Ultra' },
+  { term: 'Badwater', def: 'Badwater 135, a 135-mile road ultra through Death Valley in extreme heat.', category: 'Ultra' },
+  { term: 'Backyard Ultra', def: 'A last-one-standing race: run a 4.167-mile loop every hour until only one runner remains.', category: 'Ultra' },
+  { term: 'Drop Bag', def: 'A bag of your own supplies left at an aid station to collect mid-race.', category: 'Ultra' },
+  { term: 'Crew', def: 'Friends or family who meet you at aid stations with food, kit and encouragement.', category: 'Ultra' },
+  { term: 'Pacer', def: 'A companion runner allowed to accompany you through the later stages of an ultra.', category: 'Ultra' },
+  { term: 'Buckle', def: 'The belt buckle awarded for finishing a 100-miler, often tiered by finish time (e.g. sub-24-hour).', category: 'Ultra' },
+  { term: 'Sub-24', def: 'Finishing a 100-mile race in under 24 hours — a major achievement.', category: 'Ultra' },
+  { term: 'Hotspot', def: 'An early warning sign of a blister — a hot, rubbing patch on the foot.', category: 'Ultra' },
+  { term: 'Chafing', def: 'Skin irritation from repeated rubbing of skin or clothing, managed with lubricant.', category: 'Ultra' },
+  { term: 'Anti-Chafe', def: 'Balm or lubricant applied to skin to prevent chafing over long distances.', category: 'Ultra' },
+  { term: 'Gaiters', def: 'Light fabric covers over the shoe and ankle to keep out trail grit and stones.', category: 'Ultra' },
+  { term: 'Trekking Poles', def: 'Poles used on steep climbs to save the legs and improve balance.', category: 'Ultra' },
+  { term: 'Power Hiking', def: 'Fast, purposeful uphill hiking that is often more efficient than running steep grades.', category: 'Ultra' },
+  { term: 'Runnable', def: 'Terrain gradual and smooth enough to run rather than hike.', category: 'Ultra' },
+  { term: 'Technical Trail', def: 'Rough ground with rocks, roots and uneven footing that demands careful foot placement.', category: 'Ultra' },
+  { term: 'Single Track', def: 'A narrow trail wide enough for only one runner at a time.', category: 'Ultra' },
+  { term: 'Switchbacks', def: 'Zig-zag turns that ease the gradient of a steep climb or descent.', category: 'Ultra' },
+  { term: 'Night Section', def: 'The overnight portion of a long ultra, run by headtorch.', category: 'Ultra' },
+  { term: 'Headtorch', def: 'A head-worn lamp for running in the dark.', category: 'Ultra' },
+  { term: 'Sleep Deprivation', def: 'Pushing through long races without sleep, a defining challenge of multi-day and 100-mile events.', category: 'Ultra' },
+  { term: 'Dark Place', def: 'The low point most ultrarunners hit, where the challenge becomes mental as much as physical.', category: 'Ultra' },
+  { term: 'Vertical K', full: 'VK', def: 'A short, brutally steep race that climbs 1,000 m of vertical.', category: 'Ultra' },
+  { term: 'Skyrunning', def: 'Racing in high mountains over steep, technical terrain, often above 2,000 m.', category: 'Ultra' },
+  { term: 'Stage Race', def: 'A multi-day race with a timed stage each day, results totalled across days.', category: 'Ultra' },
+  { term: 'Self-Supported', def: 'A race format where you carry all your own food and gear between checkpoints.', category: 'Ultra' },
+  { term: 'Marathon des Sables', def: 'A famous multi-stage, self-supported ultra across the Sahara Desert.', category: 'Ultra' },
+  { term: 'Comrades', def: 'The Comrades Marathon, an iconic ~90 km ultra in South Africa.', category: 'Ultra' },
+  { term: 'Elevation Profile', def: 'A chart of a course’s climbs and descents used to plan pacing and effort.', category: 'Ultra' },
+  { term: 'Time Barrier', def: 'A cut-off time you must beat at a checkpoint to continue in the race.', category: 'Ultra' },
+  { term: 'Low Mileage Week', def: 'A deliberately reduced-volume week to absorb training and stay fresh.', category: 'Ultra' },
+  { term: 'DNF Rate', def: 'The proportion of starters who fail to finish — often high in tough ultras.', category: 'Ultra' },
+
+  // ---- Pure swimming ----
+  { term: 'Freestyle', def: 'Front crawl — the fastest stroke and the one used for almost all triathlon swimming.', category: 'Swim' },
+  { term: 'Backstroke', def: 'A stroke swum on the back, alternating arm pulls.', category: 'Swim' },
+  { term: 'Breaststroke', def: 'A stroke with a simultaneous arm sweep and a frog kick.', category: 'Swim' },
+  { term: 'Butterfly', def: 'A powerful stroke with a simultaneous double-arm pull and dolphin kick.', category: 'Swim' },
+  { term: 'Individual Medley', full: 'IM (swimming)', def: 'A race using all four strokes in order: butterfly, backstroke, breaststroke, then freestyle.', category: 'Swim' },
+  { term: 'Flip Turn', def: 'A somersault turn at the wall that lets you change direction without stopping. Also called a tumble turn.', category: 'Swim' },
+  { term: 'Streamline', def: 'The tight, arms-extended, head-tucked position held off each wall to cut drag.', category: 'Swim' },
+  { term: 'Catch-up Drill', def: 'A drill where one hand waits out front until the other catches up, teaching stroke timing.', category: 'Swim' },
+  { term: 'Kickboard', def: 'A foam board held out front to isolate and train the leg kick.', category: 'Swim' },
+  { term: 'Fins', def: 'Swim fins worn on the feet to build kick strength and ankle flexibility.', category: 'Swim' },
+  { term: 'Snorkel', def: 'A centre-mounted snorkel that lets you focus on stroke technique without turning to breathe.', category: 'Swim' },
+  { term: 'Pace Clock', def: 'The large poolside clock used to time swim repeats and rest intervals.', category: 'Swim' },
+  { term: 'Send-off', def: 'The interval time on which you start each repeat in a set (e.g. "100s on 1:40").', category: 'Swim' },
+  { term: 'Main Set', def: 'The core, hardest part of a swim session, sandwiched between warm-up and cool-down.', category: 'Swim' },
+  { term: 'DPS', full: 'Distance Per Stroke', def: 'How far you travel with each arm stroke — a measure of swimming efficiency.', category: 'Swim' },
+  { term: 'Stroke Count', def: 'The number of strokes taken per pool length; fewer usually means a more efficient stroke.', category: 'Swim' },
+  { term: 'Hypoxic Set', def: 'Swimming with reduced breathing frequency (e.g. every 5 or 7 strokes) to build breath control.', category: 'Swim' },
+  { term: 'Circle Swimming', def: 'Swimming in a loop (usually anticlockwise) so several swimmers can share one lane.', category: 'Swim' },
+  { term: 'Lane Etiquette', def: 'The unwritten rules of sharing a lane: circle swim, seed by speed, and let faster swimmers pass.', category: 'Swim' },
+  { term: 'Sculling', def: 'Small figure-eight hand movements used to feel and hold the water; a technique drill.', category: 'Swim' },
+  { term: 'High Elbow', def: 'Keeping the elbow higher than the hand early in the pull for a stronger catch.', category: 'Swim' },
+  { term: 'Rotation', def: 'Rolling the body along its long axis with each stroke to lengthen the reach and use the core.', category: 'Swim' },
+  { term: 'Descending Set', def: 'A set of repeats swum progressively faster, each quicker than the last.', category: 'Swim' },
+  { term: 'Kick Set', def: 'A set swum using the legs only, often with a kickboard.', category: 'Swim' },
+  { term: 'Pull Set', def: 'A set swum with a pull buoy (and often paddles), using the arms only.', category: 'Swim' },
+  { term: 'Open Turn', def: 'A simple touch-and-go turn at the wall, used in breaststroke and butterfly.', category: 'Swim' },
+  { term: 'Two-Beat Kick', def: 'A kicking pattern with two kicks per full stroke cycle, common in distance freestyle.', category: 'Swim' },
+  { term: 'Six-Beat Kick', def: 'A kicking pattern with six kicks per stroke cycle, used for speed and sprinting.', category: 'Swim' },
+  { term: 'Glide', def: 'The brief forward stretch between strokes where the body travels through the water.', category: 'Swim' },
+  { term: 'Drill', def: 'A focused exercise that breaks the stroke into parts to improve technique.', category: 'Swim' },
+
+  // ---- Pure running ----
+  { term: 'Foot Strike', def: 'Where the foot first lands — heel, midfoot or forefoot.', category: 'Run' },
+  { term: 'Heel Strike', def: 'Landing on the heel first; the most common running foot strike.', category: 'Run' },
+  { term: 'Midfoot Strike', def: 'Landing flat on the midfoot, often encouraged for efficiency.', category: 'Run' },
+  { term: 'Forefoot Strike', def: 'Landing on the ball of the foot first, common at faster paces.', category: 'Run' },
+  { term: 'Gait', def: 'Your individual pattern of movement while running.', category: 'Run' },
+  { term: 'Gait Analysis', def: 'An assessment of your running form, usually filmed on a treadmill, to guide shoes or technique.', category: 'Run' },
+  { term: 'Pronation', def: 'The natural inward roll of the foot as it lands and absorbs shock.', category: 'Run' },
+  { term: 'Overpronation', def: 'Excessive inward foot roll, sometimes addressed with supportive shoes.', category: 'Run' },
+  { term: 'Supination', def: 'Outward roll of the foot on landing (underpronation).', category: 'Run' },
+  { term: 'Ground Contact Time', def: 'How long the foot stays on the ground each step; shorter is generally more economical.', category: 'Run' },
+  { term: 'Vertical Oscillation', def: 'How much you bounce up and down as you run; less bounce usually means more efficiency.', category: 'Run' },
+  { term: 'Stride Length', def: 'The distance covered with each running step.', category: 'Run' },
+  { term: 'Turnover', def: 'Your step rate (cadence); many runners aim for a quick, light 170–180 steps per minute.', category: 'Run' },
+  { term: 'Pace', def: 'Your speed expressed as time per mile or kilometre.', category: 'Run' },
+  { term: 'Threshold Run', def: 'A sustained run at threshold effort — comfortably hard, near your one-hour race pace.', category: 'Run' },
+  { term: 'Runner’s High', def: 'The euphoric, calm feeling that can arrive during or after prolonged running.', category: 'Run' },
+  { term: 'Runner’s Knee', def: 'Pain around the kneecap (patellofemoral pain), a common overuse complaint.', category: 'Run' },
+  { term: 'Shin Splints', def: 'Pain along the shin bone from overuse, common when ramping up mileage too fast.', category: 'Run' },
+  { term: 'IT Band Syndrome', def: 'Pain on the outside of the knee from a tight iliotibial band.', category: 'Run' },
+  { term: 'Plantar Fasciitis', def: 'Heel and arch pain from irritation of the tissue along the sole of the foot.', category: 'Run' },
+  { term: 'Achilles Tendinopathy', def: 'Pain and stiffness in the Achilles tendon from overload.', category: 'Run' },
+  { term: 'Marathon', def: 'A 42.2 km (26.2 mile) road race — the classic long-distance running event.', category: 'Run' },
+  { term: 'Half Marathon', def: 'A 21.1 km (13.1 mile) road race.', category: 'Run' },
+  { term: '10K', def: 'A 10-kilometre race, a popular road-racing distance.', category: 'Run' },
+  { term: '5K', def: 'A 5-kilometre race, the classic entry-point running distance.', category: 'Run' },
+  { term: 'Parkrun', def: 'A free, timed, weekly 5 km community run held in parks worldwide.', category: 'Run' },
+  { term: 'Heel-to-Toe Drop', def: 'The height difference between a shoe’s heel and forefoot, measured in millimetres.', category: 'Run' },
+  { term: 'Stack Height', def: 'The amount of foam/cushioning between the foot and the ground in a shoe.', category: 'Run' },
+  { term: 'Carbon Plate', def: 'A stiff plate embedded in racing shoes that improves running economy.', category: 'Run' },
+  { term: 'Super Shoes', def: 'Highly cushioned, carbon-plated racing shoes that boost performance.', category: 'Run' },
+  { term: 'Zero Drop', def: 'A shoe with the heel and forefoot at the same height.', category: 'Run' },
+  { term: 'Fasted Run', def: 'An easy run done before eating, sometimes used to train fat metabolism.', category: 'Run' },
+
+  // ---- Pure bike ----
+  { term: 'Peloton', def: 'The main bunch of riders in a road race, sheltering in each other’s draft.', category: 'Bike' },
+  { term: 'Echelon', def: 'A diagonal line of riders staggered across the road to share shelter from a crosswind.', category: 'Bike' },
+  { term: 'Paceline', def: 'A line of riders taking turns at the front so the group goes faster for less effort.', category: 'Bike' },
+  { term: 'Pull (cycling)', def: 'Taking your turn at the front of a group, into the wind, before swinging off.', category: 'Bike' },
+  { term: 'Getting Dropped', def: 'Being unable to hold the group’s pace and falling off the back.', category: 'Bike' },
+  { term: 'Attack', def: 'A sudden, sharp acceleration to break away from other riders.', category: 'Bike' },
+  { term: 'Breakaway', def: 'A rider or small group that has escaped off the front of the peloton.', category: 'Bike' },
+  { term: 'Bridge', def: 'Closing the gap from one group across to another ahead.', category: 'Bike' },
+  { term: 'Domestique', def: 'A rider who sacrifices their own result to support a team leader.', category: 'Bike' },
+  { term: 'Cassette', def: 'The cluster of sprockets on the rear wheel that make up the gears.', category: 'Bike' },
+  { term: 'Chainring', def: 'The toothed front gear(s) attached to the cranks.', category: 'Bike' },
+  { term: 'Crankset', def: 'The arms that the pedals attach to, turning your pedalling into drive.', category: 'Bike' },
+  { term: 'Derailleur', def: 'The mechanism that shifts the chain across the gears, front or rear.', category: 'Bike' },
+  { term: 'Bottom Bracket', def: 'The bearing assembly the cranks spin on, housed in the frame.', category: 'Bike' },
+  { term: 'Headset', def: 'The bearings that let the fork and handlebars steer smoothly.', category: 'Bike' },
+  { term: 'Gear Ratio', def: 'The relationship between front and rear gear sizes that sets how hard or easy each gear is.', category: 'Bike' },
+  { term: 'Spinning', def: 'Pedalling at a high cadence in an easier gear.', category: 'Bike' },
+  { term: 'Mashing', def: 'Grinding a big, hard gear at low cadence — powerful but fatiguing.', category: 'Bike' },
+  { term: 'Granny Gear', def: 'The easiest, lowest gear, used for the steepest climbs.', category: 'Bike' },
+  { term: 'Cross-Chaining', def: 'Running the chain at an extreme angle (big-big or small-small), which is inefficient and wears parts.', category: 'Bike' },
+  { term: 'Hoods', def: 'The rubber covers on top of the brake levers where riders often rest their hands.', category: 'Bike' },
+  { term: 'Drops', def: 'The lower, curved section of road handlebars, used for a more aero position.', category: 'Bike' },
+  { term: 'Tyre Pressure', def: 'How firmly the tyres are inflated (in PSI or bar), tuned for grip and rolling speed.', category: 'Bike' },
+  { term: 'Rolling Resistance', def: 'The energy lost as a tyre deforms on the road — lower means free speed.', category: 'Bike' },
+  { term: 'Puncture', def: 'A flat tyre caused by a hole letting the air out.', category: 'Bike' },
+  { term: 'Pinch Flat', def: 'A puncture caused by the tube being squeezed against the rim, often from hitting a bump.', category: 'Bike' },
+  { term: 'Dropper Post', def: 'A seatpost that can be lowered on the fly at the push of a button, common off-road.', category: 'Bike' },
+  { term: 'Cadence Sensor', def: 'A small device that measures how fast you are pedalling (RPM).', category: 'Bike' },
+  { term: 'Sportive', def: 'A long, organised mass-participation road ride, timed but not usually a race.', category: 'Bike' },
+  { term: 'Gran Fondo', def: 'A large organised long-distance road ride, often with timed sections.', category: 'Bike' },
+  { term: 'Criterium', full: 'Crit', def: 'A short, fast, multi-lap bike race on a closed city-centre circuit.', category: 'Bike' },
+  { term: 'Soft-Pedal', def: 'Turning the pedals lightly without putting in real effort.', category: 'Bike' },
+  { term: 'Coasting', def: 'Rolling along without pedalling.', category: 'Bike' },
+  { term: 'KOM / QOM', full: 'King / Queen of the Mountain', def: 'The fastest recorded time on a climb or a Strava segment.', category: 'Bike' },
+  { term: 'Segment', def: 'A defined stretch of road or trail that riders’ times are ranked on, popularised by Strava.', category: 'Bike' },
+  { term: 'Gravel', def: 'Riding or racing on unpaved roads and tracks, usually on a drop-bar gravel bike.', category: 'Bike' },
+  { term: 'MTB', full: 'Mountain Bike', def: 'Off-road cycling on rugged trails, with fat knobbly tyres and suspension.', category: 'Bike' },
+  { term: 'N+1', def: 'The tongue-in-cheek rule that the correct number of bikes to own is always one more than you have.', category: 'Bike' },
+
+  // ---- Longevity / health ----
+  { term: 'Healthspan', def: 'The years of life spent in good health, free of chronic disease — the real goal of longevity training.', category: 'Longevity' },
+  { term: 'Lifespan', def: 'The total number of years lived; longevity work aims to stretch healthspan within it, not just add years.', category: 'Longevity' },
+  { term: 'Longevity', def: 'Living a long and, above all, healthy and capable life — the umbrella theme.', category: 'Longevity' },
+  { term: 'All-Cause Mortality', def: 'The risk of dying from any cause; fitness markers like VO2max and grip strength strongly predict it.', category: 'Longevity' },
+  { term: 'Cardiorespiratory Fitness', full: 'CRF', def: 'Overall aerobic fitness (closely tied to VO2max) — one of the strongest predictors of a long, healthy life.', category: 'Longevity' },
+  { term: 'Sarcopenia', def: 'The age-related loss of muscle mass and strength; resistance training is the main defence.', category: 'Longevity' },
+  { term: 'Osteoporosis', def: 'Loss of bone density that raises fracture risk; weight-bearing and resistance exercise help protect bone.', category: 'Longevity' },
+  { term: 'Muscle Mass', def: 'The amount of muscle on the body — protective for metabolism, strength, balance and longevity.', category: 'Longevity' },
+  { term: 'Grip Strength', def: 'How strongly you can grip; a simple, surprisingly strong predictor of overall strength and longevity.', category: 'Longevity' },
+  { term: 'Stability', def: 'The ability to control your joints and body through movement — key to avoiding injury and falls with age.', category: 'Longevity' },
+  { term: 'Fall Risk', def: 'The likelihood of falling, which rises with age and is reduced by balance and strength work.', category: 'Longevity' },
+  { term: 'Autophagy', def: 'The body’s process of clearing out and recycling damaged cell parts, boosted by exercise and fasting.', category: 'Longevity' },
+  { term: 'Mitochondria', def: 'The tiny power plants inside cells that produce energy; endurance training builds more of them.', category: 'Longevity' },
+  { term: 'Mitochondrial Biogenesis', def: 'The creation of new mitochondria, driven by aerobic training — more engines for endurance.', category: 'Longevity' },
+  { term: 'Metabolic Health', def: 'How well the body manages blood sugar, fats and energy — central to avoiding chronic disease.', category: 'Longevity' },
+  { term: 'Insulin Sensitivity', def: 'How responsive your cells are to insulin; exercise improves it and protects against type 2 diabetes.', category: 'Longevity' },
+  { term: 'Blood Glucose', def: 'The level of sugar in the blood; keeping it stable supports metabolic health and energy.', category: 'Longevity' },
+  { term: 'Inflammation', def: 'The immune system’s response to stress or injury; chronic low-grade inflammation is linked to ageing.', category: 'Longevity' },
+  { term: 'Resting Heart Rate', def: 'Your heart rate at complete rest; a lower value generally reflects better fitness.', category: 'Longevity' },
+  { term: 'Heart Rate Variability', full: 'HRV', def: 'The variation in time between heartbeats; higher usually signals good recovery and a healthy nervous system.', category: 'Longevity' },
+  { term: 'Blood Pressure', def: 'The force of blood against artery walls; regular exercise helps keep it in a healthy range.', category: 'Longevity' },
+  { term: 'Cholesterol', def: 'Fatty substances in the blood; the balance of LDL and HDL relates to heart-disease risk.', category: 'Longevity' },
+  { term: 'LDL / HDL', def: 'The "bad" (LDL) and "good" (HDL) cholesterol carriers used to gauge cardiovascular risk.', category: 'Longevity' },
+  { term: 'MET', full: 'Metabolic Equivalent of Task', def: 'A unit of exercise intensity where 1 MET equals sitting at rest; brisk activity is several METs.', category: 'Longevity' },
+  { term: 'NEAT', full: 'Non-Exercise Activity Thermogenesis', def: 'The energy burned through everyday movement — walking, chores, fidgeting — outside formal workouts.', category: 'Longevity' },
+  { term: 'Rucking', def: 'Walking with a weighted pack; a low-impact way to combine strength and cardio, popular in longevity circles.', category: 'Longevity' },
+  { term: 'Zone 2 Base', def: 'Easy aerobic training that builds the mitochondrial and metabolic base linked to long-term health.', category: 'Longevity' },
+  { term: 'Fasting', def: 'Going without food for a set period; studied for its effects on metabolism and cellular clean-up.', category: 'Longevity' },
+  { term: 'Time-Restricted Eating', def: 'Confining daily eating to a set window (for example eight hours) as a metabolic-health strategy.', category: 'Longevity' },
+  { term: 'Cold Exposure', def: 'Deliberate cold, such as ice baths or cold showers, used for recovery and resilience.', category: 'Longevity' },
+  { term: 'Heat Exposure', def: 'Sauna and heat sessions, linked in studies to cardiovascular and recovery benefits.', category: 'Longevity' },
+  { term: 'Sleep Hygiene', def: 'The habits and environment that support consistent, high-quality sleep — a foundation of recovery.', category: 'Longevity' },
+  { term: 'Deep Sleep', def: 'The restorative slow-wave stage of sleep important for physical recovery.', category: 'Longevity' },
+  { term: 'REM Sleep', def: 'The dreaming stage of sleep, important for brain function and memory.', category: 'Longevity' },
+  { term: 'Blue Zones', def: 'Regions of the world with unusually many people living to 100, studied for their lifestyle habits.', category: 'Longevity' },
+  { term: 'Centenarian', def: 'Someone who reaches the age of 100 or more.', category: 'Longevity' },
+  { term: 'VO2max Longevity Link', def: 'The well-established finding that higher VO2max is associated with markedly lower risk of early death.', category: 'Longevity' },
+  { term: 'Exercise Snack', def: 'A very short bout of activity (like a minute of stair-climbing) sprinkled through the day for health.', category: 'Longevity' },
+];
+
+</script>
+<script>
+
+(function(){
+  'use strict';
+  var KEY_CUSTOM='triGlossary.customTerms.v1',KEY_FAV='triGlossary.favourites.v1',KEY_THEME='triGlossary.theme.v1';
+  var VERSION='3.3',BUILD='2026-07-27 18:07 UTC';
+  var AMS_ICON='data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJz4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSdnJyB4MT0nMCcgeTE9JzAnIHgyPScwJyB5Mj0nMSc+CjxzdG9wIG9mZnNldD0nMCcgc3RvcC1jb2xvcj0nIzBiNzI4NScvPjxzdG9wIG9mZnNldD0nMScgc3RvcC1jb2xvcj0nIzA1MzY0MCcvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPgo8cmVjdCB3aWR0aD0nNTEyJyBoZWlnaHQ9JzUxMicgcng9JzEwNCcgZmlsbD0ndXJsKCNnKScvPgo8dGV4dCB4PScyNTYnIHk9JzIxMCcgZm9udC1mYW1pbHk9J0hlbHZldGljYSxBcmlhbCxzYW5zLXNlcmlmJyBmb250LXNpemU9JzE1MCcgZm9udC13ZWlnaHQ9JzgwMCcgZmlsbD0nI2ZmZicgdGV4dC1hbmNob3I9J21pZGRsZScgbGV0dGVyLXNwYWNpbmc9JzYnPkFNUzwvdGV4dD4KPCEtLSB0cmlhdGhsb246IHRocmVlIHdhdmVzIChzd2ltIMK3IGJpa2UgwrcgcnVuKSAtLT4KPGcgZmlsbD0nbm9uZScgc3Ryb2tlPScjN2ZlMWVmJyBzdHJva2Utd2lkdGg9JzIyJyBzdHJva2UtbGluZWNhcD0ncm91bmQnPgo8cGF0aCBkPSdNOTIgMzA2IHE0MiAtMzQgODQgMCB0ODQgMCB0ODQgMCB0ODQgMCcvPgo8cGF0aCBkPSdNOTIgMzY2IHE0MiAtMzQgODQgMCB0ODQgMCB0ODQgMCB0ODQgMCcvPgo8cGF0aCBkPSdNOTIgNDI2IHE0MiAtMzQgODQgMCB0ODQgMCB0ODQgMCB0ODQgMCcvPgo8L2c+Cjwvc3ZnPg==';
+  var CATEGORIES=window.TRIATHLON_CATEGORIES||[];
+  var BASE=window.TRIATHLON_TERMS||[];
+
+  var EXTRA=[
+    {term:'A / B / C Race',def:'How you rank races in a season: A = your big goal race (fully tapered for), B = important but not peaked, C = training/practice races.',category:'Training'},
+    {term:'Taper Madness',def:'The restlessness, phantom niggles and mood swings that hit many athletes during the taper, when training drops but nervous energy rises.',category:'Training',example:'Used like: "Ignore me, it\'s just taper madness."'},
+    {term:'Kit',def:'Your clothing and gear for training or racing (trisuit, shoes, helmet, etc.).',category:'Gear'},
+    {term:'DFL',full:'Dead Last',def:'Finishing last in the field. Often worn as a badge of honour — you still beat everyone who stayed home.',category:'Racing'},
+    {term:'Chicked',def:'Slang for being overtaken by a female athlete — used good-naturedly across the sport.',category:'Racing'},
+    {term:'Gantry',def:'The finish arch you run under at the end of the race — the backdrop of every finish-line photo.',category:'Racing'},
+    {term:'Podium',def:'A top-three finish in your category (or overall).',category:'Racing'},
+    {term:'Out-and-Back',def:'A course that goes out to a turnaround point and returns the same way.',category:'Racing'},
+    {term:'Loop Course',def:'A course made of one or more repeated laps.',category:'Racing'},
+    {term:'Point-to-Point',def:'A course that finishes somewhere different from where it started.',category:'Racing'},
+    {term:'Wetsuit Strippers',def:'Volunteers in T1 who yank your wetsuit off your legs as you lie down — a fast, welcome help.',category:'Swim'},
+    {term:'Hand-up',def:'Grabbing a bottle, gel or food handed to you without stopping.',category:'Racing'},
+    {term:'Type 2 Fun',def:'Activity that is miserable while you do it but deeply satisfying afterwards — much of endurance sport.',category:'General'},
+    {term:'Sufferfest',def:'A brutally hard session or race.',category:'Training'},
+    {term:'Neutral Support',def:'Race-provided mechanical help on the bike course, not tied to any team.',category:'Racing'},
+    {term:'Sandbagging',def:'Deliberately underselling your fitness or racing below your ability.',category:'Racing'},
+    {term:'Zone 1 / Recovery',def:'The easiest training zone — very light, active-recovery effort.',category:'Training'},
+    {term:'Aero Helmet',def:'A smooth, elongated helmet designed to cut drag on the bike.',category:'Gear'}
+  ];
+
+  var CAT_EMOJI={General:'🔺',Racing:'🏁',Swim:'🏊',Bike:'🚴',Run:'🏃',Training:'📈',Physiology:'🫀',Gear:'⚙️',Nutrition:'🥤',Strength:'🏋️',Workout:'⏱️',Ultra:'🏔️',Longevity:'🧬'};
+  var EMOJI={'im':'🏆','70.3':'🥈','140.6':'🎯','olympic / standard':'🥇','kona':'🌺','dnf':'🛑','dns':'⛔','dq':'🚩',
+    'pb / pr':'⏱️','wetsuit':'🤿','bonk':'💥','gel':'🧃','hydration':'💧','electrolytes':'🧂','fuelling':'⛽',
+    'podium':'🏆','gantry':'🏁','brick':'🧱','the wall':'🧱','taper madness':'😵','chicked':'💪','sufferfest':'😤',
+    'transition':'🔁','t1':'🔁','t2':'🔁','aero':'💨','ftp':'⚡','watts':'⚡','power meter':'⚡','vo2max':'🫁','rpe':'🗣️',
+    'cramp':'🦵','sighting':'👀','buoy':'🟠','turn buoy':'🟠','goggles':'🥽','swim cap':'🧢','disc wheel':'🛞',
+    'trainer / turbo':'🚲','zwift':'🎮','garmin / wahoo':'⌚','gps watch':'⌚','bib':'🔢','race belt':'🎽',
+    'sherpa':'🧳','aid station':'🥤','kit':'👕','duathlon':'🏃','aquathlon':'🏊','aquabike':'🚴','type 2 fun':'😅','dfl':'🐢'};
+
+  // deep detail: history / more paragraphs / tables / diagram key
+  var D={};
+  D['rpe']={history:'The perceived-exertion scale was created by Swedish psychologist Gunnar Borg in the 1960s. His original 6–20 scale was deliberately numbered so that multiplying the rating by 10 roughly estimates heart rate — 6 ≈ 60 bpm at rest, 20 ≈ 200 bpm near maximum. Borg later added a category-ratio 1–10 version (the "CR10"), which is what most triathlon coaches use today.',
+    more:['Triathletes love RPE because it needs no device, costs nothing, and unifies effort across swim, bike and run. It also self-corrects for the day: heat, fatigue, altitude, caffeine and a racing heart at the start line all skew heart rate, but your perceived effort still tells the truth.','A good habit: pair RPE with the "talk test" — at RPE 3–4 you can hold a conversation; by RPE 7 you manage short sentences; at RPE 9–10 you can barely speak.'],
+    tables:[
+      {caption:'Borg scale (6–20)',head:['Rating','Feels like'],rows:[['6','No exertion — complete rest'],['7–8','Extremely light'],['9–10','Very light (easy warm-up)'],['11–12','Light — comfortable, Zone 2'],['13–14','Somewhat hard — steady aerobic'],['15–16','Hard — around threshold'],['17–18','Very hard — only sustainable briefly'],['19','Extremely hard — near maximum'],['20','Maximal effort']]},
+      {caption:'Common 1–10 scale',head:['Rating','Effort'],rows:[['1','Very easy — recovery'],['2–3','Easy — conversational (Zone 2)'],['4','Moderate — steady'],['5–6','Somewhat hard → tempo'],['7','Hard — threshold, short sentences'],['8','Very hard — VO₂, few words'],['9','Severe — near-max intervals'],['10','All-out — sprint / maximal']]}
+    ]};
+  D['im']={history:'The first Ironman was held on Oahu, Hawaii, in 1978. Naval officer John Collins proposed settling a bar-room argument about who were the fittest athletes — swimmers, cyclists or runners — by stitching together three existing races: the 2.4-mile Waikiki Roughwater Swim, a 112-mile bike around the island, and the 26.2-mile Honolulu Marathon. Fifteen men started; twelve finished, and Gordon Haller won in 11:46.',
+    more:['Whoever finished, Collins said, "we\'ll call an Ironman." The distance — 2.4 / 112 / 26.2, totalling 140.6 miles — has been the full-distance benchmark ever since, and IRONMAN is now a global race brand owned by the World Triathlon Corporation.']};
+  D['kona']={history:'Kailua-Kona, on the Big Island of Hawaii, has hosted the IRONMAN World Championship since 1981 (it moved from Oahu as the field outgrew the island). It is the sport\'s most storied race.',
+    more:['Kona is infamous for its conditions: searing lava-field heat, high humidity, and the swirling "Mumuku" crosswinds along the Queen K Highway that can bring strong riders to a crawl. Earning a "Kona slot" — a qualifying place from another IRONMAN race — is a lifelong goal for many age-group triathletes.']};
+  D['fartlek']={history:'"Fartlek" is Swedish for "speed play". It was devised in the 1930s by coach Gösta Holmér for the Swedish cross-country team.',
+    more:['Unlike rigid intervals, fartlek is unstructured: you surge to a tree, a lamppost or the top of a hill, then float and recover by feel before the next burst. It blends continuous and interval training in one run and keeps sessions playful.']};
+  D['brick']={history:'A brick is a session that stacks two disciplines back-to-back — almost always a bike immediately followed by a run.',
+    more:['The point is to teach your body the ugly transition: for the first 5–15 minutes off the bike your legs feel heavy and wooden ("brick legs") as blood flow and stride re-adjust. Practise it and race day feels normal. The name is often explained as the "Bike-Run-ICK" feeling, or simply that your legs feel like bricks.'],diagram:'brick'};
+  D['t1']={history:'Transitions are sometimes called the "fourth discipline" — the only place you can gain time without being fitter.',
+    more:['T1 (swim-to-bike) rewards a rehearsed routine: wetsuit peeled to the waist while running, helmet on and buckled before you touch the bike, sunglasses and shoes sorted, then out to the mount line. Seconds fumbling here can cost more than minutes of hard riding.']};
+  D['t2']={more:['T2 (bike-to-run) is shorter but just as costly if messy: rack the bike, helmet off (only after the bike is racked — never before), slip into running shoes with elastic laces, grab race belt and go. Practising T2 also eases the jarring "brick legs" of the early run.']};
+  D['drafting (bike)']={history:'Riding in another cyclist\'s slipstream can save 20–30% of your energy — which is exactly why it is banned in most age-group triathlon.',
+    more:['In non-drafting racing you must keep a set distance behind the rider ahead (the "draft zone" — for example 12 metres in IRONMAN events) and complete any pass within a time limit, or drop back. Marshals on motorbikes hand out time penalties. Draft-legal ITU/Olympic racing is the exception, where packs work together like road cycling.'],diagram:'draft'};
+  D['draft zone']={more:['The draft zone is the protected space behind and beside each bike. In IRONMAN age-group racing it is commonly 12 m (about six bike lengths); you may enter it only to overtake, and must complete the pass (usually within 25 seconds) or drop back. Sit in it too long and you earn a drafting penalty.'],diagram:'draft'};
+  D['wetsuit']={history:'A triathlon wetsuit does three things: keeps you warm, adds buoyancy that lifts your legs into a faster position, and reduces drag — most swimmers are noticeably quicker in one.',
+    more:['Whether wetsuits are allowed depends on water temperature. Under governing-body rules they are typically permitted below about 24.5 °C for age-groupers and banned above roughly 28–30 °C (pros have a lower cutoff). Maximum thickness is capped (often 5 mm) for fairness.']};
+  D['vo2max']={history:'VO₂max is the maximum rate at which your body can take in, transport and use oxygen, measured in millilitres per kilogram of body weight per minute (ml/kg/min).',
+    more:['It sets a ceiling on aerobic performance. It is partly genetic but very trainable through hard aerobic work. For reference, an untrained adult might sit around 35–45, a keen age-grouper 55–65, and elite triathletes 70–85+.']};
+  D['ftp']={history:'Functional Threshold Power is the highest power (in watts) you can sustain for about an hour on the bike. It anchors your cycling training zones.',
+    more:['Because an all-out hour is brutal to test, FTP is often estimated from a 20-minute maximal effort multiplied by 0.95. Ride below it and you can go for hours; push above it and fatigue climbs fast. Divided by body weight it becomes W/kg, the number that matters on climbs.']};
+  D['bonk']={history:'"Bonking" (also "hitting the wall") is what happens when your muscles and liver run out of stored carbohydrate (glycogen).',
+    more:['Glycogen powers hard endurance efforts but lasts only around 90–120 minutes at race pace. When it empties, pace collapses and everything feels impossibly hard. The defence is fuelling — taking in roughly 60–90 g of carbohydrate per hour (sometimes more) and training your gut to handle it.']};
+  D['negative split']={history:'A negative split means covering the second half of a leg — or the whole race — faster than the first.',
+    more:['It is the signature of disciplined pacing: hold back early when adrenaline urges you to fly, and you\'ll have the reserves to accelerate late while others fade. On the run especially, the athletes who look strongest in the final miles almost always started conservatively.'],diagram:'split'};
+  D['sighting']={history:'Open water has no black line to follow, so you navigate by "sighting" — briefly lifting your eyes forward to check you\'re heading toward the next buoy.',
+    more:['The efficient technique is "alligator eyes": lift just enough for your eyes to clear the surface as you breathe, glance forward, then roll to the side for air. Sight every 4–8 strokes; without it, even strong swimmers drift and swim far extra distance.']};
+  D['taper']={history:'The taper is the deliberate reduction in training volume in the final one to three weeks before a race.',
+    more:['You cut how much you do while keeping some intensity, letting accumulated fatigue drain away so fitness surfaces — a rebound sometimes called supercompensation. It commonly triggers "taper madness": restlessness, phantom aches and doubt. Trust it; the work is already done.']};
+
+  var DIAGRAMS={
+    brick:{cap:'A brick: ride, then run straight off the bike.',svg:"<svg viewBox='0 0 300 90'><g fill='none' stroke='#0b7285' stroke-width='4'><circle cx='60' cy='60' r='18'/><circle cx='110' cy='60' r='18'/><path d='M60 60 l18 -28 h22 l10 28'/></g><text x='85' y='20' font-size='13' fill='#5b6b78'>bike</text><path d='M150 55 h34' stroke='#94a3ad' stroke-width='3' marker-end='url(#a)'/><defs><marker id='a' markerWidth='8' markerHeight='8' refX='6' refY='3' orient='auto'><path d='M0 0 L6 3 L0 6 z' fill='#94a3ad'/></marker></defs><g fill='none' stroke='#e8590c' stroke-width='4' stroke-linecap='round'><circle cx='225' cy='30' r='9' fill='#e8590c' stroke='none'/><path d='M225 40 l0 22 M225 48 l-16 6 M225 48 l15 8 M225 62 l-12 18 M225 62 l14 16'/></g><text x='205' y='20' font-size='13' fill='#5b6b78'>run</text></svg>"},
+    draft:{cap:'Non-drafting: keep the set gap (e.g. 12 m) behind the rider ahead.',svg:"<svg viewBox='0 0 300 80'><g fill='none' stroke='#0b7285' stroke-width='4'><circle cx='45' cy='52' r='15'/><circle cx='85' cy='52' r='15'/><path d='M45 52 l15 -22 h18 l7 22'/></g><g fill='none' stroke='#0b7285' stroke-width='4'><circle cx='210' cy='52' r='15'/><circle cx='250' cy='52' r='15'/><path d='M210 52 l15 -22 h18 l7 22'/></g><path d='M100 52 h95' stroke='#e8590c' stroke-width='2' stroke-dasharray='5 5'/><text x='118' y='26' font-size='13' fill='#e8590c'>draft zone</text></svg>"},
+    split:{cap:'Negative split: second half faster than the first.',svg:"<svg viewBox='0 0 300 90'><rect x='40' y='30' width='90' height='40' fill='#7fb2bd'/><rect x='170' y='18' width='90' height='52' fill='#0b7285'/><text x='60' y='84' font-size='12' fill='#5b6b78'>1st half</text><text x='188' y='84' font-size='12' fill='#5b6b78'>2nd half (faster)</text></svg>"}
+  };
+
+  var ENRICH={
+    'im':{link:'https://www.ironman.com',example:'Used like: "Her first IM was Ironman Austria."'},
+    '70.3':{link:'https://www.ironman.com',example:'Used like: "I\'m building up to a 70.3 this summer."'},
+    'olympic / standard':{link:'https://en.wikipedia.org/wiki/Triathlon_at_the_Summer_Olympics'},
+    'kona':{link:'https://www.ironman.com',example:'Used like: "He finally qualified for Kona."'},
+    'itu / world triathlon':{link:'https://www.triathlon.org'},
+    'usat':{link:'https://www.usatriathlon.org'},'btf':{link:'https://www.britishtriathlon.org'},
+    'vo2max':{link:'https://en.wikipedia.org/wiki/VO2_max'},'fartlek':{link:'https://en.wikipedia.org/wiki/Fartlek'},
+    'glycogen':{link:'https://en.wikipedia.org/wiki/Glycogen'},'hyponatremia':{link:'https://en.wikipedia.org/wiki/Hyponatremia'},
+    'doms':{link:'https://en.wikipedia.org/wiki/Delayed_onset_muscle_soreness'},
+    'bonk':{link:'https://en.wikipedia.org/wiki/Hitting_the_wall',example:'Used like: "I bonked at mile 20 and had to walk."'},
+    'zwift':{link:'https://www.zwift.com'},'tss':{link:'https://www.trainingpeaks.com'},
+    'garmin / wahoo':{link:'https://www.garmin.com'},'di2 / etap':{link:'https://bike.shimano.com'},
+    'rpe':{example:'Keep the long run at RPE 3–4 — you should be able to chat.'},
+    'brick':{example:'Used like: "I did a 60/20 brick — hour bike, 20-min run."'},
+    'negative split':{example:'Used like: "Perfect negative split — second lap was faster."'},
+    'aero':{example:'Used like: "Staying aero for 90 km saves you minutes."'}
+  };
+
+  var CAT_ART={};
+  (function(){
+    function art(inner){return "<svg viewBox='0 0 320 96' preserveAspectRatio='xMidYMid slice'><rect width='320' height='96' fill='"+"'/>"+inner+"</svg>";}
+    var g="<defs><linearGradient id='cg' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#0b7285'/><stop offset='1' stop-color='#0a5c6b'/></linearGradient></defs><rect width='320' height='96' fill='url(#cg)'/>";
+    function w(inner){return "<svg viewBox='0 0 320 96' preserveAspectRatio='xMidYMid slice'>"+g+inner+"</svg>";}
+    var s="#bfeef5";
+    CAT_ART['Swim']=w("<g fill='none' stroke='"+s+"' stroke-width='4' stroke-linecap='round'><path d='M0 54 q26 -18 52 0 t52 0 t52 0 t52 0 t52 0 t52 0'/><path d='M0 74 q26 -18 52 0 t52 0 t52 0 t52 0 t52 0 t52 0'/></g><circle cx='250' cy='34' r='13' fill='"+s+"'/>");
+    CAT_ART['Bike']=w("<g fill='none' stroke='"+s+"' stroke-width='5'><circle cx='96' cy='60' r='24'/><circle cx='224' cy='60' r='24'/><path d='M96 60 l40 -34 h34 l20 34'/><path d='M136 26 l-16 34'/></g>");
+    CAT_ART['Run']=w("<g fill='"+s+"'><circle cx='150' cy='24' r='11'/></g><g fill='none' stroke='"+s+"' stroke-width='6' stroke-linecap='round'><path d='M150 36 l0 26 M150 44 l-22 8 M150 44 l20 12 M150 62 l-16 24 M150 62 l20 22'/></g>");
+    CAT_ART['Racing']=w("<g><rect x='150' y='16' width='6' height='64' fill='"+s+"'/><g fill='"+s+"'><rect x='156' y='16' width='14' height='14'/><rect x='184' y='16' width='14' height='14'/><rect x='170' y='30' width='14' height='14'/><rect x='198' y='30' width='14' height='14'/><rect x='156' y='44' width='14' height='14'/><rect x='184' y='44' width='14' height='14'/></g></g>");
+    CAT_ART['Training']=w("<g fill='"+s+"'><rect x='96' y='58' width='22' height='26'/><rect x='128' y='42' width='22' height='42'/><rect x='160' y='28' width='22' height='56'/></g><path d='M92 40 l104 -20' stroke='"+s+"' stroke-width='4' fill='none'/><path d='M196 20 l-16 2 l6 14 z' fill='"+s+"'/>");
+    CAT_ART['Physiology']=w("<path d='M160 78 C120 48 128 24 150 24 C164 24 160 38 160 38 C160 38 156 24 170 24 C192 24 200 48 160 78 Z' fill='"+s+"'/><path d='M96 58 h34 l8 -14 l10 26 l8 -12 h58' fill='none' stroke='#0b7285' stroke-width='3'/>");
+    CAT_ART['Gear']=w("<g fill='"+s+"'><path d='M160 34 a26 26 0 1 0 0.1 0 Z M160 44 a16 16 0 1 1 -0.1 0 Z'/><g>"+([0,45,90,135].map(function(a){return "<rect x='156' y='6' width='8' height='16' transform='rotate("+a+" 160 48)'/>";}).join(''))+"</g></g>");
+    CAT_ART['Nutrition']=w("<g fill='"+s+"'><rect x='142' y='30' width='36' height='52' rx='8'/><rect x='150' y='18' width='20' height='14' rx='4'/></g><rect x='150' y='44' width='20' height='6' fill='#0b7285'/>");
+    CAT_ART['General']=w("<g fill='none' stroke='"+s+"' stroke-width='5'><circle cx='134' cy='48' r='24'/><circle cx='160' cy='48' r='24'/><circle cx='186' cy='48' r='24'/></g>");
+    CAT_ART['Strength']=w("<g fill='"+s+"'><rect x='120' y='40' width='12' height='16' rx='2'/><rect x='104' y='34' width='12' height='28' rx='3'/><rect x='188' y='40' width='12' height='16' rx='2'/><rect x='204' y='34' width='12' height='28' rx='3'/><rect x='132' y='45' width='56' height='7' rx='3'/></g>");
+    CAT_ART['Workout']=w("<g fill='none' stroke='"+s+"' stroke-width='7'><circle cx='160' cy='50' r='28'/></g><rect x='150' y='12' width='20' height='9' rx='2' fill='"+s+"'/><rect x='157' y='19' width='6' height='9' fill='"+s+"'/><path d='M160 50 V32 M160 50 l15 9' stroke='"+s+"' stroke-width='6' stroke-linecap='round' fill='none'/>");
+    CAT_ART['Ultra']=w("<path d='M30 82 L96 34 L138 62 L186 22 L250 60 L292 82 Z' fill='"+s+"'/><circle cx='210' cy='28' r='11' fill='"+s+"'/>");
+    CAT_ART['Longevity']=w("<path d='M160 80 C116 48 126 22 150 22 C166 22 160 38 160 38 C160 38 154 22 170 22 C194 22 204 48 160 80 Z' fill='"+s+"'/><path d='M96 54 h30 l7 -13 l10 24 l7 -11 h58' fill='none' stroke='#0b7285' stroke-width='3'/>");
+  })();
+
+  var CHANGELOG=[
+    {v:'3.3',date:'2026-07-27 18:07 UTC',notes:['~240 more terms — over 440 in total','New categories: Strength, Workout, Ultra-running and Longevity','More pure swimming, running and cycling terms']},
+    {v:'3.2',date:'2026-07-27 18:07 UTC',notes:['Quiz mode (🎓) — flashcards and multiple-choice, scored, over any filter or your Favourites','Related terms in each detail view — tap to jump between connected terms']},
+    {v:'3.1',date:'2026-07-27 18:07 UTC',notes:['Edit ANY term now — built-ins too — no duplicating; the editor opens pre-filled','Edited built-in terms are shown in an accent colour with an “edited” tag','“Reset to original” restores a built-in term you changed','Your own new terms are marked with the AMS badge','New quick filters: “AMS” (your created terms) and “Edited” (built-ins you’ve changed)']},
+    {v:'3.0',date:'2026-07-27 18:07 UTC',notes:['Tap any term for a full detail view — deeper explanation, history, examples & tables (e.g. RPE shows the Borg 6–20 and the 1–10 scales)','New AMS logo & home-screen icon (Anna · Martin Schabbauer)','Emoji + category illustration on every term','Hand-drawn diagrams for key terms (draft zone, brick, negative split…)','Attach your own image and deeper-detail text when adding/editing a term','18 more terms & many examples']},
+    {v:'2.0',date:'2026-07-27 18:07 UTC',notes:['Favourites (★) & filter','Edit your own terms','Backup: export / import','Search highlighting + chip counts','Copy / share','Random term','Reference links','Settings page & changelog','System / Light / Dark themes']},
+    {v:'1.0',date:'2026-07-27 18:07 UTC',notes:['First release: 180+ terms, search, categories, add-your-own, light & dark']}
+  ];
+
+  // curated related terms (keys must exist in the glossary)
+  var RELATED={
+    'ftp':['watts','w/kg','np','tss','threshold'],
+    'rpe':['zone 2 / z2','threshold','lthr','hr / hrm'],
+    't1':['t2','transition','brick','flying mount'],
+    't2':['t1','transition','brick','flying dismount'],
+    'brick':['brick legs','off the bike','t2'],
+    'drafting (bike)':['draft zone','blocking','non-drafting','draft-legal'],
+    'draft zone':['drafting (bike)','non-drafting','overtaking zone'],
+    'wetsuit':['wetsuit-legal','ows','speedsuit / swimskin','deadlift wetsuit / batman'],
+    'bonk':['glycogen','the wall','carbs/hr','fuelling'],
+    'vo2max':['aerobic','threshold','economy'],
+    'kona':['im','kq','slot / roll-down','m-dot'],
+    'im':['70.3','140.6','kona','olympic / standard'],
+    '70.3':['im','140.6','middle distance'],
+    'sighting':['ows','buoy','turn buoy','bilateral breathing'],
+    'negative split':['pacing','the wall'],
+    'taper':['taper madness','peak','periodization'],
+    'aero':['aero bars / aerobars','aero position','cda','tt bike'],
+    'cadence':['watts','power meter','run cadence'],
+    'glycogen':['bonk','carb loading','carbs/hr'],
+    'threshold':['ftp','css','lthr','rpe']
+  };
+
+  // ---------- storage ----------
+  function loadJSON(k){try{var r=localStorage.getItem(k);return r?JSON.parse(r):null;}catch(e){return null;}}
+  function loadCustom(){var a=loadJSON(KEY_CUSTOM);return Array.isArray(a)?a:[];}
+  function saveCustom(l){try{localStorage.setItem(KEY_CUSTOM,JSON.stringify(l));}catch(e){toast('Could not save (storage full?)');}}
+  function loadFav(){var a=loadJSON(KEY_FAV);return new Set(Array.isArray(a)?a:[]);}
+  function saveFav(s){try{localStorage.setItem(KEY_FAV,JSON.stringify(Array.from(s)));}catch(e){}}
+
+  // ---------- helpers ----------
+  function key(t){return String(t||'').trim().toLowerCase();}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function highlight(text,q){var e=esc(text);q=(q||'').trim();if(!q)return e;var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig');return e.replace(rx,'<mark>$1</mark>');}
+  function safeUrl(u){try{var x=new URL(u);return (x.protocol==='http:'||x.protocol==='https:')?x.href:null;}catch(e){return null;}}
+  function emojiFor(t){return t.emoji||EMOJI[key(t.term)]||CAT_EMOJI[t.category]||'🔺';}
+
+  function mergeTerms(builtin,custom){
+    var byKey={},order=[];
+    function add(t,isCustom){var k=key(t.term);if(!k)return;if(!(k in byKey))order.push(k);
+      byKey[k]={term:t.term,full:t.full||'',def:t.def||'',category:t.category||'General',example:t.example||'',
+        link:t.link||'',emoji:t.emoji||'',image:t.image||'',detail:t.detail||'',custom:!!isCustom};}
+    builtin.forEach(function(t){add(t,false);});custom.forEach(function(t){add(t,true);});
+    return order.map(function(k){return byKey[k];});
+  }
+
+  var state={query:'',category:'All',custom:loadCustom()};
+  var favSet=loadFav(),allByKey={};
+
+  function baseTerms(){
+    return BASE.concat(EXTRA).map(function(t){var en=ENRICH[key(t.term)];if(!en)return t;
+      var c={};for(var p in t)c[p]=t[p];if(en.link&&!c.link)c.link=en.link;if(en.example&&!c.example)c.example=en.example;return c;});
+  }
+  function allTerms(){
+    var base=baseTerms(),bk={};base.forEach(function(t){bk[key(t.term)]=1;});
+    var merged=mergeTerms(base,state.custom);
+    merged.forEach(function(t){var k=key(t.term);t.isBuiltin=!!bk[k];t.edited=t.custom&&t.isBuiltin;t.isNew=t.custom&&!t.isBuiltin;});
+    return merged;
+  }
+
+  // ---------- rendering ----------
+  var els={};
+  function refHtml(t){var url=t.link&&safeUrl(t.link),label,href;
+    if(url){label='Learn more';href=url;}else{label='Look it up';href='https://www.google.com/search?q='+encodeURIComponent(t.term+' '+(t.full||'')+' triathlon');}
+    return "<a class='reflink' href='"+esc(href)+"' target='_blank' rel='noopener noreferrer'>"+label+" ↗</a>";}
+  function avatarHtml(t){var img=t.image&&safeUrl(t.image);
+    return "<div class='avatar'>"+(img?"<img src='"+esc(img)+"' alt='' loading='lazy'/>":esc(emojiFor(t)))+"</div>";}
+
+  function inCategory(t){
+    if(state.category==='Favourites')return favSet.has(key(t.term));
+    if(state.category==='AMS')return !!t.isNew;
+    if(state.category==='Edited')return !!t.edited;
+    return state.category==='All'||t.category===state.category;
+  }
+  function buildFilters(){
+    var terms=allTerms(),counts={All:terms.length,Favourites:0,AMS:0,Edited:0};
+    CATEGORIES.forEach(function(c){counts[c]=0;});
+    terms.forEach(function(t){if(counts[t.category]!=null)counts[t.category]++;if(favSet.has(key(t.term)))counts.Favourites++;if(t.isNew)counts.AMS++;if(t.edited)counts.Edited++;});
+    var opts=['All','★ Favourites','AMS','Edited'].concat(CATEGORIES);els.filters.innerHTML='';
+    opts.forEach(function(label){var cat=label==='★ Favourites'?'Favourites':label;var b=document.createElement('button');
+      b.className='filter'+(cat===state.category?' active':'');b.setAttribute('data-cat',cat);
+      var inner=label==='AMS'?"<img class='chip-ams' src='"+AMS_ICON+"' alt=''/>AMS":(label==='Edited'?"<span class='chip-edited'>Edited</span>":esc(label));
+      b.innerHTML=inner+" <span class='n'>"+(counts[cat]||0)+"</span>";
+      b.addEventListener('click',function(){state.category=cat;render();});els.filters.appendChild(b);});
+  }
+
+  function render(){
+    buildFilters();
+    var q=state.query,terms=allTerms();allByKey={};terms.forEach(function(t){allByKey[key(t.term)]=t;});
+    var qq=(q||'').trim().toLowerCase();
+    var filtered=terms.filter(function(t){
+      if(!inCategory(t))return false;
+      if(!qq)return true;return (t.term+' '+t.full+' '+t.def+' '+(t.example||'')).toLowerCase().indexOf(qq)!==-1;})
+      .sort(function(a,b){return a.term.toLowerCase().localeCompare(b.term.toLowerCase());});
+    els.count.textContent=filtered.length+(filtered.length===1?' term':' terms')+((qq||state.category!=='All')?' shown':'');
+    if(!filtered.length){els.list.innerHTML="<p class='empty'>Nothing here yet. Try a different search or category — or tap + to add your own term.</p>";return;}
+    var html='';
+    filtered.forEach(function(t){var k=key(t.term),fav=favSet.has(k);
+      var head="<span class='term-name'>"+highlight(t.term,q)+"</span>";
+      if(t.full)head+="<span class='term-full'>"+highlight(t.full,q)+"</span>";
+      if(t.isNew)head+="<img class='ams-badge' src='"+AMS_ICON+"' alt='AMS' title='Your AMS term'/>";
+      else if(t.edited)head+="<span class='edited-tag'>edited</span>";
+      var acts="<button data-action='copy' data-key='"+esc(k)+"' title='Copy / share'>⧉ Copy</button><button data-action='edit' data-key='"+esc(k)+"' title='Edit'>✎ Edit</button>";
+      if(t.isNew)acts+="<button data-action='del' data-key='"+esc(k)+"' title='Delete'>× Delete</button>";
+      else if(t.edited)acts+="<button data-action='reset' data-key='"+esc(k)+"' title='Reset to original'>↺ Reset</button>";
+      html+="<article class='card"+(t.edited?' edited':'')+"' data-key='"+esc(k)+"'>"
+        +"<button class='star"+(fav?' on':'')+"' data-action='fav' data-key='"+esc(k)+"' aria-label='Toggle favourite'>"+(fav?'★':'☆')+"</button>"
+        +"<div class='card-top'>"+avatarHtml(t)+"<div class='card-main'>"
+        +"<div class='card-head'>"+head+"</div>"
+        +"<span class='chip'>"+esc(t.category)+"</span>"
+        +"<p class='def'>"+highlight(t.def,q)+"</p>"
+        +(t.example?"<p class='example'>"+highlight(t.example,q)+"</p>":"")
+        +"<div class='card-foot'><button class='detail-link' data-action='detail' data-key='"+esc(k)+"'>ⓘ More</button>"+refHtml(t)+"<span class='act'>"+acts+"</span></div>"
+        +"</div></div></article>";
+    });
+    els.list.innerHTML=html;
+  }
+
+  // ---------- detail view ----------
+  function tableHtml(tb){var h="<table class='scale'><caption>"+esc(tb.caption)+"</caption><thead><tr>";
+    tb.head.forEach(function(c){h+="<th>"+esc(c)+"</th>";});h+="</tr></thead><tbody>";
+    tb.rows.forEach(function(r){h+="<tr>";r.forEach(function(c){h+="<td>"+esc(c)+"</td>";});h+="</tr>";});return h+"</tbody></table>";}
+  function openDetail(k){var t=allByKey[k];if(!t)return;
+    var d=D[k]||{},img=t.image&&safeUrl(t.image);
+    var h="<div class='detail-banner'>"+(CAT_ART[t.category]||'')+"</div>"
+      +"<div class='detail-head'><div class='detail-emoji'>"+(img?"<img src='"+esc(img)+"' alt=''/>":esc(emojiFor(t)))+"</div>"
+      +"<div><div class='dterm"+(t.edited?' edited':'')+"'>"+esc(t.term)+"</div>"+(t.full?"<div class='dfull'>"+esc(t.full)+"</div>":"")+"</div></div>"
+      +"<div style='margin-top:.5rem'><span class='chip'>"+esc(t.category)+"</span>"
+      +(t.isNew?" <img class='ams-badge' src='"+AMS_ICON+"' alt='AMS' title='Your AMS term'/>":"")
+      +(t.edited?" <span class='edited-tag'>edited</span>":"")+"</div>";
+    if(img&&!t.emoji)h+="<img class='detail-img' src='"+esc(img)+"' alt=''/>";
+    h+="<div class='detail'><p>"+esc(t.def)+"</p>";
+    if(t.example)h+="<p class='example'>"+esc(t.example)+"</p>";
+    if(t.detail)h+="<h4>More</h4><p>"+esc(t.detail).replace(/\n+/g,'</p><p>')+"</p>";
+    if(d.history)h+="<h4>History</h4><p>"+esc(d.history)+"</p>";
+    if(d.more){h+=(d.history||t.detail?"":"<h4>More</h4>");d.more.forEach(function(p){h+="<p>"+esc(p)+"</p>";});}
+    if(d.tables)d.tables.forEach(function(tb){h+=tableHtml(tb);});
+    if(d.diagram&&DIAGRAMS[d.diagram])h+="<div class='diagram'>"+DIAGRAMS[d.diagram].svg+"<div class='cap'>"+esc(DIAGRAMS[d.diagram].cap)+"</div></div>";
+    if(!d.history&&!d.more&&!t.detail)h+="<p class='muted' style='margin-top:.8rem'>Want more depth here? Tap ✎ Edit to add history, examples or a link.</p>";
+    var rel=relatedFor(t);
+    if(rel.length){h+="<h4>Related</h4><div class='rel-wrap'>";rel.forEach(function(r){h+="<button class='rel-chip' data-action='detail' data-key='"+esc(key(r.term))+"'>"+esc(emojiFor(r))+" "+esc(r.term)+"</button>";});h+="</div>";}
+    h+="<div class='card-foot' style='margin-top:1rem'>"+refHtml(t)+"<span class='act'>"
+      +"<button data-action='copy' data-key='"+esc(k)+"'>⧉ Copy</button>"
+      +"<button data-action='editfromdetail' data-key='"+esc(k)+"'>✎ Edit</button>"
+      +(t.isNew?"<button data-action='delfromdetail' data-key='"+esc(k)+"'>× Delete</button>":"")
+      +(t.edited?"<button data-action='resetfromdetail' data-key='"+esc(k)+"'>↺ Reset</button>":"")+"</span></div></div>";
+    els.detailBody.innerHTML=h;if(!els.detail.open)els.detail.showModal();els.detailBody.parentNode.scrollTop=0;
+  }
+  function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+  function relatedFor(t){
+    var k=key(t.term),out=[],seen={};seen[k]=1;
+    var ks=RELATED[k];
+    if(ks)ks.forEach(function(rk){var r=allByKey[rk];if(r&&!seen[rk]){seen[rk]=1;out.push(r);}});
+    if(out.length<3){var pool=allTerms().filter(function(x){return x.category===t.category&&!seen[key(x.term)];});shuffle(pool);
+      for(var i=0;i<pool.length&&out.length<4;i++){out.push(pool[i]);seen[key(pool[i].term)]=1;}}
+    return out.slice(0,6);
+  }
+
+  // ---------- actions ----------
+  function toggleFav(k){if(favSet.has(k))favSet.delete(k);else favSet.add(k);saveFav(favSet);render();}
+  function deleteCustom(k){var t=allByKey[k];if(!t)return;if(!window.confirm('Delete "'+t.term+'"? This removes your own term for good.'))return;
+    state.custom=state.custom.filter(function(x){return key(x.term)!==k;});saveCustom(state.custom);render();toast('Deleted');}
+  function resetOriginal(k){var t=allByKey[k];if(!t)return;if(!window.confirm('Reset "'+t.term+'" to the built-in version? Your changes to it will be removed.'))return;
+    state.custom=state.custom.filter(function(x){return key(x.term)!==k;});saveCustom(state.custom);render();toast('Reset to original');}
+  function copyTerm(k){var t=allByKey[k];if(!t)return;var text=t.term+(t.full?' ('+t.full+')':'')+' — '+t.def+(t.example?'  '+t.example:'');
+    if(navigator.share){navigator.share({title:t.term,text:text}).catch(function(){});return;}
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(function(){toast('Copied');},function(){toast('Copy failed');});}else toast('Copy not supported here');}
+
+  // ---------- add / edit ----------
+  var editingKey=null;
+  function openAdd(){editingKey=null;els.form.reset();els.dlgTitle.textContent='Add a term';els.formError.textContent='';els.dialog.showModal();els.fTerm.focus();}
+  function openEdit(k){var t=allByKey[k];if(!t)return;editingKey=k;els.dlgTitle.textContent='Edit term';els.formError.textContent='';
+    els.fTerm.value=t.term;els.fFull.value=t.full||'';els.fDef.value=t.def||'';els.fCat.value=t.category||'General';
+    els.fEx.value=t.example||'';els.fLink.value=t.link||'';els.fEmoji.value=t.emoji||'';els.fImg.value=t.image||'';els.fDetail.value=t.detail||'';
+    els.dialog.showModal();els.fTerm.focus();}
+  function submitForm(e){e.preventDefault();var term=els.fTerm.value.trim(),def=els.fDef.value.trim();
+    if(!term||!def){els.formError.textContent='Please fill in at least the term and its explanation.';return;}
+    var link=els.fLink.value.trim();if(link&&!safeUrl(link)){els.formError.textContent='That link doesn’t look like a valid http(s) web address.';return;}
+    var img=els.fImg.value.trim();if(img&&!safeUrl(img)){els.formError.textContent='That image link doesn’t look like a valid http(s) address.';return;}
+    var nk=key(term);
+    if(editingKey&&editingKey!==nk)state.custom=state.custom.filter(function(x){return key(x.term)!==editingKey;});
+    state.custom=state.custom.filter(function(x){return key(x.term)!==nk;});
+    state.custom.push({term:term,full:els.fFull.value.trim(),def:def,category:els.fCat.value||'General',
+      example:els.fEx.value.trim(),link:link,emoji:els.fEmoji.value.trim(),image:img,detail:els.fDetail.value.trim()});
+    saveCustom(state.custom);els.dialog.close();
+    if(!editingKey){state.query='';els.search.value='';state.category='All';}editingKey=null;render();toast('Saved');}
+
+  // ---------- random ----------
+  function showRandom(){pickRandom();els.rand.showModal();}
+  function pickRandom(){var all=allTerms();if(!all.length)return;var t=all[Math.floor(Math.random()*all.length)];
+    els.randBody.innerHTML="<div class='card-top'>"+avatarHtml(t)+"<div><span class='rterm'>"+esc(t.term)+"</span>"+(t.full?"<span class='rfull'>"+esc(t.full)+"</span>":"")+"</div></div>"
+      +"<div style='margin-top:.5rem'><span class='chip'>"+esc(t.category)+"</span></div><p class='def'>"+esc(t.def)+"</p>"
+      +(t.example?"<p class='example'>"+esc(t.example)+"</p>":"")+"<div class='card-foot' style='margin-top:.6rem'><button class='detail-link' data-action='detail' data-key='"+esc(key(t.term))+"'>ⓘ More</button>"+refHtml(t)+"</div>";}
+
+  // ---------- quiz ----------
+  var quiz={mode:'flash',pool:[],i:0,score:0,answered:false,_opts:null};
+  function quizScope(){return allTerms().filter(inCategory).filter(function(t){return t.def;});}
+  function scopeLabel(){return state.category==='All'?'All terms':(state.category==='Favourites'?'★ Favourites':(state.category==='AMS'?'Your AMS terms':(state.category==='Edited'?'Edited terms':state.category)));}
+  function openQuiz(){renderQuizStart();els.quiz.showModal();}
+  function renderQuizStart(){
+    var n=quizScope().length;
+    var h="<h2>🎓 Quiz</h2><p class='quiz-scope'>Scope: "+esc(scopeLabel())+" — "+n+" term"+(n===1?'':'s')+". Tip: pick a category or ★ Favourites filter first to quiz just those.</p>";
+    if(n<1){h+="<p class='muted'>No terms in this scope.</p><div class='dialog-actions'><button class='btn primary' data-q='close'>Close</button></div>";els.quizBody.innerHTML=h;return;}
+    h+="<div class='row-btns'><button class='btn primary' data-q='mode' data-mode='flash'>🃏 Flashcards</button><button class='btn' data-q='mode' data-mode='choice'"+(n<4?" disabled":"")+">✅ Multiple choice</button></div>"
+      +"<div class='dialog-actions'><button class='btn ghost' data-q='close'>Close</button></div>";
+    els.quizBody.innerHTML=h;
+  }
+  function startRound(mode){var pool=quizScope();shuffle(pool);quiz.pool=pool.slice(0,Math.min(10,pool.length));quiz.mode=mode;quiz.i=0;quiz.score=0;renderQuestion();}
+  function quizProgress(){return "<div class='quiz-progress'><span>"+(quiz.i+1)+" / "+quiz.pool.length+"</span><span class='qscore'>Score "+quiz.score+"</span></div>";}
+  function distractors(correct,n){var all=allTerms().filter(function(x){return x.def&&key(x.term)!==key(correct.term)&&x.def!==correct.def;});shuffle(all);return all.slice(0,n);}
+  function renderQuestion(){
+    var t=quiz.pool[quiz.i];quiz.answered=false;var h=quizProgress();
+    if(quiz.mode==='flash'){
+      h+="<div class='card-top'>"+avatarHtml(t)+"<div><div class='quiz-q'>"+esc(t.term)+"</div>"+(t.full?"<div class='quiz-full'>"+esc(t.full)+"</div>":"")+"</div></div>"
+        +"<div style='margin-top:.4rem'><span class='chip'>"+esc(t.category)+"</span></div><div id='qreveal' style='margin-top:.7rem'></div>"
+        +"<div class='dialog-actions'><button class='btn ghost' data-q='close'>Quit</button><button class='btn primary' data-q='reveal'>Show answer</button></div>";
+    } else {
+      var opts=[t].concat(distractors(t,3));shuffle(opts);quiz._opts=opts;
+      h+="<div class='quiz-q'>"+esc(t.term)+"</div>"+(t.full?"<div class='quiz-full'>"+esc(t.full)+"</div>":"")+"<p class='muted' style='margin:.5rem 0'>Which is the right meaning?</p>";
+      opts.forEach(function(o,ix){h+="<button class='quiz-opt' data-q='choose' data-idx='"+ix+"'>"+esc(o.def)+"</button>";});
+      h+="<div class='dialog-actions'><button class='btn ghost' data-q='close'>Quit</button></div>";
+    }
+    els.quizBody.innerHTML=h;els.quizBody.parentNode.scrollTop=0;
+  }
+  function revealFlash(){var t=quiz.pool[quiz.i];
+    var r=document.getElementById('qreveal');if(r)r.innerHTML="<div class='quiz-reveal'><p class='def'>"+esc(t.def)+"</p>"+(t.example?"<p class='example'>"+esc(t.example)+"</p>":"")+"</div>";
+    var acts=els.quizBody.querySelector('.dialog-actions');if(acts)acts.innerHTML="<button class='btn' data-q='score' data-correct='0'>✗ Missed</button><button class='btn primary' data-q='score' data-correct='1'>✓ Got it</button>";}
+  function chooseAnswer(ix){if(quiz.answered)return;quiz.answered=true;var t=quiz.pool[quiz.i],opts=quiz._opts;if(opts[ix].def===t.def)quiz.score++;
+    var btns=els.quizBody.querySelectorAll('.quiz-opt');Array.prototype.forEach.call(btns,function(b,j){b.disabled=true;if(opts[j].def===t.def)b.classList.add('correct');else if(j===ix)b.classList.add('wrong');});
+    var sc=els.quizBody.querySelector('.qscore');if(sc)sc.textContent='Score '+quiz.score;
+    var acts=els.quizBody.querySelector('.dialog-actions');if(acts)acts.innerHTML="<button class='btn ghost' data-q='close'>Quit</button><button class='btn primary' data-q='next'>Next →</button>";}
+  function scoreFlash(correct){if(!quiz.answered){quiz.answered=true;if(correct)quiz.score++;}nextQuestion();}
+  function nextQuestion(){quiz.i++;if(quiz.i>=quiz.pool.length)renderResult();else renderQuestion();}
+  function renderResult(){var n=quiz.pool.length,pct=n?Math.round(quiz.score/n*100):0;
+    els.quizBody.innerHTML="<div class='quiz-result'><div class='quiz-score'>"+quiz.score+" / "+n+"</div><p class='muted'>"+pct+"% — "+(pct>=80?'Excellent! 🏆':(pct>=50?'Nice work! 💪':'Keep going! 🔁'))+"</p></div>"
+      +"<div class='dialog-actions'><button class='btn ghost' data-q='again'>New round</button><button class='btn primary' data-q='close'>Done</button></div>";}
+  function handleQuiz(e){var b=e.target.closest('[data-q]');if(!b)return true;var a=b.getAttribute('data-q');
+    if(a==='close')els.quiz.close();else if(a==='mode')startRound(b.getAttribute('data-mode'));else if(a==='reveal')revealFlash();
+    else if(a==='score')scoreFlash(b.getAttribute('data-correct')==='1');else if(a==='choose')chooseAnswer(parseInt(b.getAttribute('data-idx'),10));
+    else if(a==='next')nextQuestion();else if(a==='again')renderQuizStart();return true;}
+
+  // ---------- backup ----------
+  function exportTerms(){if(!state.custom.length){toast('You have no added terms to export yet');return;}
+    var text=JSON.stringify(state.custom,null,2),blob=new Blob([text],{type:'application/json'}),url=URL.createObjectURL(blob);
+    var a=document.createElement('a');a.href=url;a.download='triathlon-glossary-terms.json';document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url);},1000);toast('Exported '+state.custom.length+' term'+(state.custom.length===1?'':'s'));}
+  function importTerms(file){var r=new FileReader();r.onload=function(){try{var arr=JSON.parse(r.result);if(!Array.isArray(arr))throw 0;var added=0;
+    arr.forEach(function(t){if(!t||!t.term||!t.def)return;var nk=key(t.term);state.custom=state.custom.filter(function(x){return key(x.term)!==nk;});
+      state.custom.push({term:String(t.term),full:t.full?String(t.full):'',def:String(t.def),category:t.category?String(t.category):'General',
+        example:t.example?String(t.example):'',link:t.link?String(t.link):'',emoji:t.emoji?String(t.emoji):'',image:t.image?String(t.image):'',detail:t.detail?String(t.detail):''});added++;});
+    saveCustom(state.custom);render();toast('Imported '+added+' term'+(added===1?'':'s'));}catch(e){toast('Could not read that file');}};r.readAsText(file);}
+
+  // ---------- theme ----------
+  function applyTheme(mode){if(mode==='light'||mode==='dark')document.documentElement.setAttribute('data-theme',mode);else document.documentElement.removeAttribute('data-theme');
+    try{localStorage.setItem(KEY_THEME,mode);}catch(e){}var r=document.querySelector('input[name="theme"][value="'+mode+'"]');if(r)r.checked=true;}
+  function currentTheme(){var s=null;try{s=localStorage.getItem(KEY_THEME);}catch(e){}return s||'system';}
+  function initTheme(){var m=currentTheme();if(m==='light'||m==='dark')document.documentElement.setAttribute('data-theme',m);}
+  function quickToggleTheme(){var cur=document.documentElement.getAttribute('data-theme');if(!cur)cur=(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches)?'dark':'light';applyTheme(cur==='dark'?'light':'dark');}
+
+  // ---------- settings ----------
+  function openSettings(){applyTheme(currentTheme());els.settings.showModal();}
+  function fillChangelog(){var h='';CHANGELOG.forEach(function(c){h+="<li><span class='v'>v"+esc(c.v)+"</span> <span class='muted'>("+esc(c.date)+")</span><ul>";
+    c.notes.forEach(function(n){h+="<li>"+esc(n)+"</li>";});h+="</ul></li>";});els.changelog.innerHTML=h;
+    els.build.textContent='AMS Triathlon Glossary — version '+VERSION+' • built '+BUILD;}
+
+  var toastTimer=null;
+  function toast(msg){var t=els.toast||document.getElementById('toast');if(!t)return;t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove('show');},1800);}
+
+  function $(s){return document.querySelector(s);}
+  function init(){
+    els.list=$('#list');els.count=$('#count');els.search=$('#search');els.filters=$('#filters');
+    els.dialog=$('#addDialog');els.form=$('#addForm');els.dlgTitle=$('#dlgTitle');els.formError=$('#formError');
+    els.fTerm=$('#f-term');els.fFull=$('#f-full');els.fDef=$('#f-def');els.fCat=$('#f-cat');els.fEx=$('#f-ex');els.fLink=$('#f-link');
+    els.fEmoji=$('#f-emoji');els.fImg=$('#f-img');els.fDetail=$('#f-detail');
+    els.rand=$('#rand');els.randBody=$('#randBody');els.detail=$('#detail');els.detailBody=$('#detailBody');
+    els.quiz=$('#quiz');els.quizBody=$('#quizBody');
+    els.settings=$('#settings');els.changelog=$('#changelog');els.build=$('#build');els.toast=$('#toast');
+
+    CATEGORIES.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;els.fCat.appendChild(o);});
+
+    els.search.addEventListener('input',function(){state.query=els.search.value;render();});
+    function handleAction(e){var b=e.target.closest('[data-action]');if(b){var k=b.getAttribute('data-key'),a=b.getAttribute('data-action');
+        if(a==='fav')toggleFav(k);else if(a==='copy')copyTerm(k);else if(a==='edit')openEdit(k);else if(a==='del')deleteCustom(k);
+        else if(a==='reset')resetOriginal(k);
+        else if(a==='detail'){els.rand.open&&els.rand.close();openDetail(k);}
+        else if(a==='editfromdetail'){els.detail.close();openEdit(k);}
+        else if(a==='delfromdetail'){els.detail.close();deleteCustom(k);}
+        else if(a==='resetfromdetail'){els.detail.close();resetOriginal(k);}
+        return true;}return false;}
+    els.list.addEventListener('click',function(e){if(handleAction(e))return;if(e.target.closest('a'))return;var card=e.target.closest('.card');if(card)openDetail(card.getAttribute('data-key'));});
+
+    $('#addBtn').addEventListener('click',openAdd);
+    $('#cancelBtn').addEventListener('click',function(e){e.preventDefault();els.dialog.close();});
+    els.form.addEventListener('submit',submitForm);
+    els.dialog.addEventListener('click',function(e){if(e.target===els.dialog)els.dialog.close();});
+
+    $('#quizBtn').addEventListener('click',openQuiz);
+    els.quiz.addEventListener('click',function(e){if(e.target.closest('[data-q]')){handleQuiz(e);return;}if(e.target===els.quiz)els.quiz.close();});
+    $('#randomBtn').addEventListener('click',showRandom);
+    $('#randAnother').addEventListener('click',pickRandom);
+    $('#randClose').addEventListener('click',function(){els.rand.close();});
+    els.rand.addEventListener('click',function(e){if(handleAction(e))return;if(e.target===els.rand)els.rand.close();});
+    els.detail.addEventListener('click',function(e){if(handleAction(e))return;if(e.target===els.detail)els.detail.close();});
+    $('#detailClose').addEventListener('click',function(){els.detail.close();});
+
+    $('#themeBtn').addEventListener('click',quickToggleTheme);
+    $('#settingsBtn').addEventListener('click',openSettings);
+    $('#settingsClose').addEventListener('click',function(){els.settings.close();});
+    els.settings.addEventListener('click',function(e){if(e.target===els.settings)els.settings.close();});
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="theme"]'),function(r){r.addEventListener('change',function(){applyTheme(r.value);});});
+    $('#exportBtn').addEventListener('click',exportTerms);
+    $('#importFile').addEventListener('change',function(){if(this.files&&this.files[0])importTerms(this.files[0]);this.value='';});
+
+    fillChangelog();render();
+  }
+  initTheme();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+
+</script>
 </body>
 </html>
