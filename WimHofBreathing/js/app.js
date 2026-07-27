@@ -1,10 +1,17 @@
 /* Wim Hof Breathing — app logic (vanilla JS, no build) */
 'use strict';
 
-const APP_VERSION = '1.2.1';
+const APP_VERSION = '1.2.2';
 
 /* ---------- Version history (newest first) ---------- */
 const CHANGELOG = [
+  {
+    version: '1.2.2',
+    date: '2026-07-27 17:47',
+    changes: [
+      'The app now updates itself automatically: whenever you open it with a connection, it loads the latest version and refreshes its offline copy in the background — no manual steps ever needed. Offline still works from the last saved copy.',
+    ],
+  },
   {
     version: '1.2.1',
     date: '2026-07-26 16:46',
