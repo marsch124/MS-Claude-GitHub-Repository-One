@@ -15,7 +15,7 @@ const browser = {
 
 export default [
   // WimHofBreathing is a self-contained drop-in app with its own tooling; not linted here.
-  { ignores: ['node_modules/**', 'WimHofBreathing/**'] },
+  { ignores: ['node_modules/**', 'AMS-Breathing/**', 'WimHofBreathing/**'] },
   js.configs.recommended,
   // Empty catch blocks are a deliberate pattern here (localStorage/permission guards).
   { rules: { 'no-empty': ['error', { allowEmptyCatch: true }] } },
