@@ -5,7 +5,7 @@ out  = pathlib.Path("/tmp/claude-0/-home-user-MS-Claude-GitHub-Repository-One/3c
 
 terms_js = (root/"js"/"terms.js").read_text()
 
-VERSION = "3.3"
+VERSION = "3.4"
 BUILD = sys.argv[1] if len(sys.argv) > 1 else "2026-07-25"
 
 # ---------------- Logo (AMS + triathlon) ----------------
@@ -297,6 +297,7 @@ APP = r"""
   })();
 
   var CHANGELOG=[
+    {v:'3.4',date:'__BUILD__',notes:['Works fully offline once loaded — open it at a pool or race with no signal','Always shows your latest version when you are online']},
     {v:'3.3',date:'__BUILD__',notes:['~240 more terms — over 440 in total','New categories: Strength, Workout, Ultra-running and Longevity','More pure swimming, running and cycling terms']},
     {v:'3.2',date:'__BUILD__',notes:['Quiz mode (🎓) — flashcards and multiple-choice, scored, over any filter or your Favourites','Related terms in each detail view — tap to jump between connected terms']},
     {v:'3.1',date:'__BUILD__',notes:['Edit ANY term now — built-ins too — no duplicating; the editor opens pre-filled','Edited built-in terms are shown in an accent colour with an “edited” tag','“Reset to original” restores a built-in term you changed','Your own new terms are marked with the AMS badge','New quick filters: “AMS” (your created terms) and “Edited” (built-ins you’ve changed)']},
@@ -772,6 +773,14 @@ __TERMS_JS__
 </script>
 <script>
 __APP_JS__
+</script>
+<script>
+/* Register the offline service worker (ignored when opened from a file). */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () { /* offline is a nice-to-have */ });
+  });
+}
 </script>
 </body>
 </html>
