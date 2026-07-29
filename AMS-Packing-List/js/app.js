@@ -16,7 +16,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v22';
+const APP_VERSION = 'v23';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -356,10 +356,13 @@ const VIEW_MODES = ['when', 'container', 'category'];
 function totalView() { try { const v = localStorage.getItem(VIEW_KEY); return VIEW_MODES.includes(v) ? v : 'when'; } catch { return 'when'; } }
 function setTotalView(v) { try { localStorage.setItem(VIEW_KEY, v); } catch {} }
 let expandedEntry = null; // id of the entry whose inline editor is open
+let flagFilter = new Set(); // active "sort out" filters on the Total List: 'liquid' and/or 'charge'
+let flagFilterFor = null;   // the event id the filter belongs to (cleared when you switch trips)
 
 async function renderEvent(eventId) {
   const ev = await db.getEvent(eventId);
   if (!ev) { location.assign('#/'); return h('<section></section>'); }
+  if (flagFilterFor !== eventId) { flagFilter = new Set(); flagFilterFor = eventId; } // fresh per trip
   const p = progress(ev.entries);
   const meta = [ev.transport, ev.season, cateringShort(ev.catering), ...(ev.contexts || [])].filter(Boolean);
 
@@ -417,6 +420,36 @@ async function renderEvent(eventId) {
 
   const rerender = () => { renderTotalBody(body, ev); };
   rerender();
+
+  // "Sort out" quick filters: isolate all liquids (💧) or all chargeables (⚡)
+  // so they can be gathered — the wash bag, the cable pouch. Reuses the same rows.
+  const liquidCount = ev.entries.filter((e) => e.liquid).length;
+  const chargeCount = ev.entries.filter((e) => e.charging).length;
+  if (liquidCount || chargeCount) {
+    const fchip = (key, label, n) => `<button class="fchip${flagFilter.has(key) ? ' on' : ''}" data-filter="${key}">${label} <em>${n}</em></button>`;
+    const filterbar = h(`<div class="filterbar">
+      <span class="filterbar-lbl">Sort out</span>
+      ${liquidCount ? fchip('liquid', '💧 Liquids', liquidCount) : ''}
+      ${chargeCount ? fchip('charge', '⚡ Charge', chargeCount) : ''}
+      <button class="fchip clear" data-filter="__clear" hidden>Show all</button>
+    </div>`);
+    wrap.insertBefore(filterbar, body);
+    const syncChips = () => {
+      $$('.fchip[data-filter]', filterbar).forEach((c) => {
+        if (c.dataset.filter !== '__clear') c.classList.toggle('on', flagFilter.has(c.dataset.filter));
+      });
+      $('.fchip.clear', filterbar).hidden = flagFilter.size === 0;
+    };
+    filterbar.addEventListener('click', (e) => {
+      const key = e.target.closest('[data-filter]')?.dataset.filter;
+      if (!key) return;
+      if (key === '__clear') flagFilter.clear();
+      else if (flagFilter.has(key)) flagFilter.delete(key); else flagFilter.add(key);
+      syncChips();
+      rerender();
+    });
+    syncChips();
+  }
 
   toolbar.addEventListener('change', (e) => {
     if (e.target.name === 'tview') {
@@ -583,13 +616,28 @@ function renderTotalBody(body, ev) {
     </div>`));
     return;
   }
+  // Apply the "sort out" filter; always keep the item being edited visible so a
+  // freshly-added row still shows even when a filter is on.
+  const entries = flagFilter.size
+    ? ev.entries.filter((e) => e.id === expandedEntry
+        || (flagFilter.has('liquid') && e.liquid)
+        || (flagFilter.has('charge') && e.charging))
+    : ev.entries;
+  if (!entries.length) {
+    const labels = [...flagFilter].map((k) => (k === 'liquid' ? 'liquids' : 'charge items')).join(' or ');
+    body.appendChild(h(`<div class="empty">
+      <p class="empty-t">No ${esc(labels)} in this list</p>
+      <p class="empty-s">Tap “Show all” above to see every item again.</p>
+    </div>`));
+    return;
+  }
   const mode = totalView();
   // Secondary sub-grouping: When→by container, Where→by phase, Category→by phase.
   const subOf = mode === 'when'
     ? (entries) => groupByContainer(entries).map((g) => ({ label: g.container || 'Unpacked', entries: g.entries }))
     : (entries) => entriesByPhase(entries).map((g) => ({ label: g.phase.label, entries: g.entries }));
 
-  for (const g of groupBy(mode, ev.entries)) {
+  for (const g of groupBy(mode, entries)) {
     const sec = h(`<div class="group"><div class="group-h"><span class="ph">${esc(g.label)}</span>${g.hint ? `<span class="ph-hint">${esc(g.hint)}</span>` : ''}</div></div>`);
     const subs = subOf(g.entries);
     const showSub = subs.length > 1; // only show sub-headers when they actually split the group
@@ -674,6 +722,7 @@ function entryEditor(ev, entry, body) {
       <div class="checks">
         <label class="check${entry.perNight ? ' on' : ''}"><input type="checkbox" name="perNight" ${entry.perNight ? 'checked' : ''}>Per night</label>
         <label class="check${entry.liquid ? ' on' : ''}"><input type="checkbox" name="liquid" ${entry.liquid ? 'checked' : ''}>💧</label>
+        <label class="check${entry.charging ? ' on' : ''}"><input type="checkbox" name="charging" ${entry.charging ? 'checked' : ''}>⚡</label>
         <label class="check${entry.restricted ? ' on' : ''}"><input type="checkbox" name="restricted" ${entry.restricted ? 'checked' : ''}>🔋</label>
       </div>
     </div>
@@ -705,6 +754,7 @@ function entryEditor(ev, entry, body) {
       entry.weight = Math.max(0, parseInt($('input[name=weight]', ed).value, 10) || 0);
       entry.perNight = $('input[name=perNight]', ed).checked;
       entry.liquid = $('input[name=liquid]', ed).checked;
+      entry.charging = $('input[name=charging]', ed).checked;
       entry.restricted = $('input[name=restricted]', ed).checked;
       entry.note = ($('input[name=note]', ed).value || '').trim();
       entry._edited = true;
@@ -1259,6 +1309,7 @@ function howtoCard() {
         <h3>Reading &amp; organising the list</h3>
         <ul>
           <li><b>Group by</b> When / Where / Category — same list, three lenses.</li>
+          <li><b>Sort out</b> — quick filters above the list isolate all <b>💧 Liquids</b> (for the wash bag / 100 ml rule) or all <b>⚡ Charge</b> items (to round up cables and chargers). Tap a chip to show only those; tap <b>Show all</b> to bring the full list back. Ticking and editing work the same in the filtered view. Mark an item as a liquid or charge item with the 💧 / ⚡ toggles in its editor.</li>
           <li>Badges show flags at a glance; quantities marked per-night show the scaled count (e.g. Socks ×6 for a 6-night trip).</li>
           <li><b>Regenerate</b> refreshes the list from your building-block lists while keeping your ticks, edits and manually-added items.</li>
         </ul>
@@ -1309,6 +1360,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v23', '2026-07-29 · 10:51 UTC', false, '“Sort out” liquids &amp; charge items',
+      'Added quick filters above a trip’s list: <b>💧 Liquids</b> and <b>⚡ Charge</b>, each showing a count. Tap one to isolate just those items — all your liquids together for the wash bag and the 100 ml rule, or everything that needs a cable/charger rounded up in one place — and <b>Show all</b> to return to the full list. Ticking and editing behave exactly as normal in the filtered view, and an item you’re editing stays visible even while a filter is on. The item editor now also has a <b>⚡</b> toggle (next to 💧 and 🔋) so you can mark anything as a charge item. Filters reset when you switch trips.',
+      'When it’s time to pack, you can gather every liquid or every chargeable in one tap instead of hunting through the whole list.'),
     v('v22', '2026-07-29 · 10:42 UTC', false, 'Version marker on the Home screen',
       'Added a very subtle build marker at the very bottom of the <b>Home</b> screen — “AMS Packing List · v22” in small, faint text. It stays out of the way day-to-day but is easy to find when you want to know exactly which version you’re running (handy after an update). Tapping it jumps straight to this version history in Settings.',
       'You can always confirm at a glance which release is live, without it cluttering the screen.'),

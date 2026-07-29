@@ -218,6 +218,20 @@ legend { font-size: .82rem; color: var(--muted); font-weight: 700; padding: 0 4p
 .toolbar .spacer, .spacer { flex: 1; }
 .toolbar-lbl { font-size: .78rem; color: var(--muted); font-weight: 600; }
 
+/* "Sort out" quick filters (liquids / charge) */
+.filterbar { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; flex-wrap: wrap; }
+.filterbar-lbl { font-size: .78rem; color: var(--muted); font-weight: 600; }
+.fchip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 11px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  font-size: .85rem; font-weight: 600; line-height: 1;
+}
+.fchip em { font-style: normal; opacity: .6; font-variant-numeric: tabular-nums; }
+.fchip.on { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+.fchip.on em { opacity: .85; }
+.fchip.clear { border-style: dashed; color: var(--muted); font-weight: 500; }
+
 .ev-summary { margin: 4px 0 6px; }
 
 /* total list */
