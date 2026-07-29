@@ -146,6 +146,12 @@ export function coerceList(l) {
   if (!l || typeof l !== 'object') return l;
   l.items = asArray(l.items).map(coerceItem);
   l.group = GROUP_IDS.includes(l.group) ? l.group : '';  // '' = ungrouped / utility list
+  // role decides how the list feeds a trip:
+  //  'base'      → always included on every trip (the common core),
+  //  'transport' → included only when the trip's transport matches l.transport,
+  //  ''          → a normal activity list the user ticks (GA / WET).
+  l.role = ['base', 'transport'].includes(l.role) ? l.role : '';
+  l.transport = TRANSPORTS.includes(l.transport) ? l.transport : '';  // only meaningful when role === 'transport'
   return l;
 }
 export function coerceEvent(e) {
@@ -197,6 +203,8 @@ export function newList(partial = {}) {
     id: id(),
     name: '',
     group: '',          // 'GA' | 'WET' | 'OE' | '' (ungrouped)
+    role: '',           // '' (ticked activity) | 'base' (always on) | 'transport' (auto by transport)
+    transport: '',      // '' | 'Car' | 'Plane' | 'RV' — only used when role === 'transport'
     builtin: false,
     items: [],
     createdAt: nowISO(),
@@ -281,15 +289,33 @@ function entryFromItem(item, list) {
   });
 }
 
+// The building-block lists that feed a trip's Total List, in dedup-priority order:
+//  1. every always-on base list (role 'base') — the common core of any trip,
+//  2. the one transport list matching the trip's transport (role 'transport'),
+//  3. the GA/WET activity lists the user ticked, in the order they picked them.
+// Earlier lists win on a name+container clash, so the common base takes priority.
+export function listsForEvent(event, lists) {
+  const all = asArray(lists).map(coerceList);
+  const base = all.filter((l) => l.role === 'base');
+  const transport = all.filter((l) => l.role === 'transport' && l.transport === event.transport);
+  const tickable = new Map(all.filter((l) => !l.role).map((l) => [l.id, l]));
+  const ticked = asArray(event.activities).map((lid) => tickable.get(lid)).filter(Boolean);
+  const out = [];
+  const seen = new Set();
+  for (const l of [...base, ...transport, ...ticked]) {
+    if (seen.has(l.id)) continue;
+    seen.add(l.id);
+    out.push(l);
+  }
+  return out;
+}
+
 // Build the raw combined list from the chosen building blocks, de-duplicated by
 // name+container (quantities of a duplicate are merged into a "x N" hint).
 export function buildTotalEntries(event, lists) {
-  const byId = new Map(asArray(lists).map((l) => [l.id, coerceList(l)]));
   const seen = new Map(); // key -> entry
   const out = [];
-  for (const listId of asArray(event.activities)) {
-    const list = byId.get(listId);
-    if (!list) continue;
+  for (const list of listsForEvent(event, lists)) {
     for (const item of list.items) {
       if (!item || !String(item.name || '').trim()) continue;
       if (!itemMatchesEvent(item, event)) continue;

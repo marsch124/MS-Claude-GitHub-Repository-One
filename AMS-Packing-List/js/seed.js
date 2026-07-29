@@ -601,10 +601,16 @@ function tagSeed(lists) {
 }
 
 export function seedLists() {
-  const L = (name, group, items) => newList({ name, group, builtin: true, items });
+  const L = (name, group, items, extra) => newList({ name, group, builtin: true, items, ...extra });
   return tagSeed([
+    // Common base — always included on every trip, whatever the transport / activities.
+    L('Travel', '', TRAVEL, { role: 'base' }),
+    // Transport bases — auto-included by the trip's "Way of transport". Car & Plane
+    // start empty (fill them in the Lists tab); RV carries the full motorhome kit.
+    L('Car (base)', '', [], { role: 'transport', transport: 'Car' }),
+    L('Plane (base)', '', [], { role: 'transport', transport: 'Plane' }),
+    L('RV Granden (base)', '', RVBASE, { role: 'transport', transport: 'RV' }),
     // GA — Goal Activity
-    L('Travel', 'GA', TRAVEL),
     L('Golf', 'GA', GOLF),
     L('Hiking', 'GA', HIKE),
     L('Diving', 'GA', []),        // scaffold — to fill
@@ -616,27 +622,10 @@ export function seedLists() {
     L('Strength', 'WET', []),         // scaffold — to fill
     L('Yoga / Mobility', 'WET', []),  // scaffold — to fill
     L('Breath work', 'WET', []),      // scaffold — to fill
-    // Utility / master bases (ungrouped)
-    L('RV Granden (base)', '', RVBASE),
     // OE — Other Events: no packing lists for now (kept as an empty group)
   ]);
 }
 
-// Start-from templates: a named event setup that pre-selects base + activity lists.
-// `activities` are list NAMES (resolved to ids when applied).
-export function seedTemplates() {
-  return [
-    {
-      id: 'tmpl-travel', name: 'Travel', label: 'Travel — full kit',
-      transport: 'Plane', season: 'Summer', catering: 'eatout',
-      description: 'Loads the whole Travel base list and sets Plane · Summer · eat-out. Add GA/WET activities as needed.',
-      activities: ['Travel'],
-    },
-    {
-      id: 'tmpl-rv', name: 'RV “Granden”', label: 'RV “Granden” — full kit',
-      transport: 'RV', season: 'Summer', catering: 'self',
-      description: 'Loads the whole RV Granden motorhome list + the Travel base and sets RV · Summer · self-catering. Tick any extra activities you’ll do.',
-      activities: ['RV Granden (base)', 'Travel'],
-    },
-  ];
-}
+// (Start-from templates were removed in v30: the common base is always included,
+// and the transport radio now auto-adds its own base list — see js/model.js
+// listsForEvent — so a separate "start from" preset is no longer needed.)

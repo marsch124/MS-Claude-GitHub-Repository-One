@@ -10,13 +10,12 @@ import {
 } from './model.js';
 import * as db from './db.js';
 import * as weather from './weather.js';
-import { seedTemplates } from './seed.js';
 import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v29';
+const APP_VERSION = 'v30';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -99,7 +98,12 @@ function activitiesPicker(lists, selected) {
   const set = new Set(selected || []);
   const byGroup = new Map(GROUP_IDS.map((g) => [g, []]));
   const ungrouped = [];
-  for (const l of lists) (byGroup.has(l.group) ? byGroup.get(l.group) : ungrouped).push(l);
+  // Base and transport lists are auto-included (common core + the transport radio),
+  // so they're not shown here as tickable activities.
+  for (const l of lists) {
+    if (l.role === 'base' || l.role === 'transport') continue;
+    (byGroup.has(l.group) ? byGroup.get(l.group) : ungrouped).push(l);
+  }
   const box = (l) => `<label class="check${set.has(l.id) ? ' on' : ''}"><input type="checkbox" name="activities" value="${esc(l.id)}"${set.has(l.id) ? ' checked' : ''}>${esc(l.name)}${l.items.length ? '' : ' <em>(empty)</em>'}</label>`;
   const section = (title, hint, gid, arr) => {
     if (!arr.length) return '';
@@ -134,25 +138,12 @@ async function renderHome() {
     </a>`));
   }
 
-  wrap.appendChild(h('<p class="muted pad">Tick what you’re packing for and set the trip details, then press <b>Create Event List</b> to build one combined list to pack from.</p>'));
+  wrap.appendChild(h('<p class="muted pad">Set your trip details — your common base and your transport’s kit come in automatically. Tick any extra activities, then press <b>Create Event List</b> to build one combined list to pack from.</p>'));
 
   // The builder card — a fresh event, generated on submit.
   const card = h('<div class="card builder"></div>');
   const ev = newEvent({ name: '', startDate: '' });
   const form = eventForm(ev, lists, false);
-
-  // Start-from templates: one tap pre-fills the builder below.
-  const templates = seedTemplates();
-  if (templates.length) {
-    const row = h('<div class="templates"></div>');
-    row.appendChild(h('<span class="templates-lbl">Start from</span>'));
-    for (const t of templates) {
-      const b = h(`<button type="button" class="btn chip-btn" title="${esc(t.description)}">${esc(t.label || t.name)}</button>`);
-      b.addEventListener('click', () => { applyTemplate(t, form, lists); form.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-      row.appendChild(b);
-    }
-    wrap.appendChild(row);
-  }
 
   card.appendChild(form);
   wrap.appendChild(card);
@@ -226,6 +217,16 @@ function eventForm(ev, lists, isEdit) {
   const form = h('<form class="form"></form>');
   // Older events stored only `nights`; show an end date derived from start + nights.
   const endVal = ev.endDate || endFromNights(ev.startDate, ev.nights);
+  // What the list auto-includes (so the builder explains itself): the always-on
+  // common base, plus which transports actually carry their own base list today.
+  const baseNames = lists.filter((l) => l.role === 'base' && l.items.length).map((l) => l.name);
+  const transportsWithKit = lists.filter((l) => l.role === 'transport' && l.items.length).map((l) => l.transport);
+  const baseHint = baseNames.length
+    ? `Always included: your <b>${esc(baseNames.join(' + '))}</b> base.`
+    : '';
+  const transportHint = transportsWithKit.length
+    ? ` Choosing <b>${esc(transportsWithKit.join(' / '))}</b> also adds that transport’s own kit${transportsWithKit.includes('RV') ? ' (the full motorhome list)' : ''}.`
+    : '';
   form.innerHTML = `
     <label class="field"><span>Event name</span>
       <input name="name" value="${esc(ev.name)}" placeholder="e.g. Dolomites road trip" autocomplete="off"></label>
@@ -239,12 +240,14 @@ function eventForm(ev, lists, isEdit) {
     <label class="field"><span>Destination <em>(optional — for weather)</em></span>
       <input name="destination" value="${esc(ev.destination)}" placeholder="e.g. Chamonix" autocomplete="off"></label>
 
-    <fieldset><legend>Way of transport</legend>${radioRow('transport', TRANSPORTS, ev.transport)}</fieldset>
+    <fieldset><legend>Way of transport</legend>${radioRow('transport', TRANSPORTS, ev.transport)}
+      ${baseHint || transportHint ? `<p class="grp-hint">${baseHint}${transportHint}</p>` : ''}</fieldset>
     <fieldset><legend>Time of year</legend>${radioRow('season', SEASONS, ev.season)}</fieldset>
     <fieldset><legend>Catering</legend>${radioRow('catering', CATERING.map((c) => ({ value: c.id, label: c.label })), ev.catering)}</fieldset>
     <fieldset><legend>Context <em>(optional — narrows the list)</em></legend>${checkRow('contexts', CONTEXTS, ev.contexts)}</fieldset>
 
-    <fieldset><legend>Activities to pack for</legend>
+    <fieldset><legend>Extra activities to pack for</legend>
+      <p class="grp-hint">Your common base and transport kit are already in — tick only the extra activities you’ll do.</p>
       ${activitiesPicker(lists, ev.activities)}
     </fieldset>
 
@@ -258,21 +261,6 @@ function eventForm(ev, lists, isEdit) {
     const t = e.target;
     if (t.type === 'radio') $$(`.seg`, t.closest('fieldset')).forEach((s) => s.classList.toggle('on', s.querySelector('input').checked));
     if (t.type === 'checkbox') t.closest('label')?.classList.toggle('on', t.checked);
-
-    // Choosing RV as the transport only tags the trip; it does NOT pull in the
-    // motorhome-specific items. Offer to add the whole RV Granden base list so the
-    // radio and the "full kit" template lead to the same place. Skip if already ticked.
-    // (applyTemplate sets the radio programmatically, which doesn't fire 'change', so
-    // this never double-prompts when a template is applied.)
-    if (t.name === 'transport' && t.value === 'RV') {
-      const rv = lists.find((l) => l.name === 'RV Granden (base)');
-      const cb = rv && form.querySelector(`input[name=activities][value="${rv.id}"]`);
-      if (cb && !cb.checked
-        && confirm('Travelling by RV? Add the full “RV Granden (base)” motorhome packing list to your activities?')) {
-        cb.checked = true;
-        cb.closest('label')?.classList.add('on');
-      }
-    }
   });
 
   // Live nights readout: the trip length is derived from start -> end, and still
@@ -334,24 +322,6 @@ function eventForm(ev, lists, isEdit) {
     if (await saveGuard(db.saveEvent(ev))) location.assign(`#/event/${ev.id}`);
   });
   return form;
-}
-
-// Pre-fill a builder form from a template: set the radios and tick its activity lists.
-function applyTemplate(tmpl, form, lists) {
-  const setRadio = (name, val) => {
-    const el = [...form.querySelectorAll(`input[name="${name}"]`)].find((i) => i.value === val);
-    if (el) { el.checked = true; $$(`.seg`, el.closest('fieldset')).forEach((s) => s.classList.toggle('on', s.querySelector('input').checked)); }
-  };
-  if (tmpl.transport) setRadio('transport', tmpl.transport);
-  if (tmpl.season) setRadio('season', tmpl.season);
-  if (tmpl.catering) setRadio('catering', tmpl.catering);
-  // Resolve activity names -> ids and tick them (leave the user's existing ticks in place).
-  const wanted = new Set((tmpl.activities || []).map((n) => (lists.find((l) => l.name === n) || {}).id).filter(Boolean));
-  $$('input[name=activities]', form).forEach((cb) => {
-    if (wanted.has(cb.value)) { cb.checked = true; cb.closest('label')?.classList.add('on'); }
-  });
-  const nameInput = form.querySelector('input[name=name]');
-  if (nameInput && !nameInput.value) nameInput.value = tmpl.name.replace(/[“”"]/g, '');
 }
 
 async function renderEventForm(existing) {
@@ -1368,24 +1338,24 @@ function howtoCard() {
         </ul>
 
         <h3>Creating a trip</h3>
-        <p>The <b>Home</b> tab is the builder. Tick the activities you're doing, set the trip's conditions, and press <b>Create Event List</b> — it generates an editable event that then lives under the <b>Events</b> tab.</p>
+        <p>The <b>Home</b> tab is the builder. Set the trip's conditions, tick any <b>extra activities</b> you're doing, and press <b>Create Event List</b> — it generates an editable event that then lives under the <b>Events</b> tab.</p>
         <ul>
-          <li><b>Start from a template</b> (“full kit”) to pre-fill the builder in one tap (e.g. Travel, RV “Granden”) — see the box below for exactly what that does.</li>
           <li><b>Name, start date, end date, destination</b> (end date and destination are optional). You give the <b>end date</b> — the return day — rather than counting nights yourself; the app works out the nights and shows them live below the dates.</li>
-          <li><b>Transport, time of year, catering, context</b> narrow the list; the <b>nights between your start and end date</b> drive per-night quantities (e.g. socks ×6 for six nights).</li>
+          <li><b>Time of year, catering, context</b> narrow the list; the <b>nights between your start and end date</b> drive per-night quantities (e.g. socks ×6 for six nights).</li>
           <li>The <b>start date</b> also decides where a trip sorts on Home and the Events tab — nearest upcoming first, then undated drafts, then past trips.</li>
         </ul>
 
-        <h3>Transport radio vs. the “full kit” templates <em>(they’re not the same thing)</em></h3>
-        <p>Two controls mention the same trip types (Car / Plane / RV), and it’s worth knowing they do very different jobs:</p>
+        <h3>Where the packing list comes from <em>(three sources)</em></h3>
+        <p>Every trip's list is built from three sources — you never start from a blank page, and you never have to remember the basics:</p>
         <ul>
-          <li><b>“Way of transport” (Car / Plane / RV) is a <u>filter</u>.</b> It just tags the trip. Each building-block item can optionally say <em>“only include me when travelling by X”</em>, so switching between Car, Plane and RV <b>only adds or removes the handful of items that carry a transport condition</b> (for example a plane-only liquids bag). The vast majority of items have no transport condition, so they appear either way. In short: the radio <em>nudges</em> the list — it does not build it, and on its own it does <b>not</b> bring in any motorhome-specific gear.</li>
-          <li><b>“Start from → RV “Granden” — full kit” is a <u>starter preset</u>.</b> One tap pre-fills the builder with several things at once: it sets the transport to <b>RV</b>, the season to <b>Summer</b> and catering to <b>self-catering</b>, and — the important part — it <b>ticks two whole activity lists for you: “RV Granden (base)” + “Travel.”</b> The <b>RV Granden (base)</b> list is a large bundle of motorhome-specific items (levelling chocks, water hose, gas, awning, and so on). Those items live in that list, not in the transport setting — so <b>picking “RV” in the radio alone will never pull them in; only ticking the RV Granden list does.</b></li>
+          <li><b>1. Your common base — always included.</b> There's one always-on base list (currently named <b>“Travel”</b>) holding everything you need on <em>any</em> trip: clothes, toiletries, documents, everyday electronics and chargers. It's added to every list automatically, so you can't forget your underwear because you picked the wrong option. You never tick it; to change what's in it, edit the <b>Travel</b> list in the <b>Lists</b> tab.</li>
+          <li><b>2. Your transport's own kit — added by the “Way of transport” radio.</b> Each of <b>Car / Plane / RV</b> has its own base list, and picking one <b>automatically pulls its whole list in</b>. Choose <b>RV</b> and the full motorhome kit (levelling chocks, water hose, gas, awning, kitchen…) comes along — no extra step, no separate tick. Right now the <b>RV</b> list is the filled-in one; <b>Car</b> and <b>Plane</b> start empty, ready for you to add their specifics (e.g. a flight liquids bag or travel documents) in the <b>Lists</b> tab whenever you like. This replaces the old “Start from” shortcut: the transport radio <em>is</em> the shortcut now.</li>
+          <li><b>3. The extra activities you tick.</b> Under <b>Extra activities to pack for</b> you tick your <b>GA</b> (Goal Activity — Golf, Hiking, Diving…) and <b>WET</b> (Workout, Exercise &amp; Training — Swim, Bike, Run…) lists. Only these need ticking; the base and transport lists are already in, which is why they don't appear in that picker.</li>
         </ul>
-        <p>Because that catches people out, the two now meet in the middle: <b>choosing “RV” in the transport radio offers to add the full “RV Granden (base)” list for you</b> (say yes and it ticks it; say no and you just get the RV tag). And the template buttons are labelled <b>“… — full kit”</b> to make clear they load the whole list, not merely set a mode. So: reach for the <b>template</b> when you want the complete motorhome kit in one tap; the <b>radio</b> is for fine-tuning transport-specific items on any trip.</p>
+        <p>So a plain RV holiday needs <em>zero</em> ticks — just pick <b>RV</b> — and you get the common base + the whole RV kit. Add a round of golf by ticking <b>Golf</b>, and its clubs and shoes join the same list.</p>
 
         <h3>How the Total List is composed</h3>
-        <p>The app takes the union of every item in the lists you ticked, drops anything whose conditions don't match the trip, and de-duplicates by name + container. Weather-conditional items are held back (see below). The result is your editable Total List — add, edit, tick, or remove any line.</p>
+        <p>The app takes the union of every item from those three sources — <b>common base + your transport's list + the activities you ticked</b> — drops anything whose remaining conditions (season, catering, context) don't match the trip, and de-duplicates by name + container (the common base wins any clash). Weather-conditional items are held back (see below). The result is your editable Total List — add, edit, tick, or remove any line.</p>
 
         <h3>Reading &amp; organising the list</h3>
         <ul>
@@ -1442,6 +1412,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v30', '2026-07-29 · 19:45 UTC', false, 'Transport now builds the list — “Start from” removed',
+      'Big simplification of how a trip’s list is generated, from three clear sources: <b>(1) a common base that’s always included</b> (the “Travel” list — clothes, toiletries, documents, everyday electronics), <b>(2) your transport’s own kit, added automatically by the “Way of transport” radio</b> — pick <b>RV</b> and the full motorhome list comes with it, no separate step — and <b>(3) the extra GA/WET activities you tick</b>. The old <b>“Start from”</b> templates and the RV prompt are gone: the transport radio <em>is</em> the shortcut now, so a plain RV trip needs zero ticks. The base and transport lists no longer clutter the activity picker (they’re automatic), and each still lives in the <b>Lists</b> tab for editing. <b>Car</b> and <b>Plane</b> base lists are created but left empty for you to fill; the <b>How it works</b> guide is rewritten to explain the three sources.',
+      'Pick how you travel and you already have the right kit — the RV list can’t be forgotten, and there’s no redundant “Start from” step to second-guess.'),
     v('v29', '2026-07-29 · 19:10 UTC', false, 'RV transport & the “full kit” template made clearer',
       'Two controls named the same trip types (Car / Plane / RV) but did different jobs, which was confusing. Now: the <b>“Start from”</b> template buttons read <b>“… — full kit”</b> so it’s clear they load a whole packing list, not just set a mode; and <b>choosing “RV” in the “Way of transport” radio offers to add the full “RV Granden (base)” motorhome list</b> for you (say yes to tick it, no to just tag the trip). The <b>How it works</b> guide gains a section spelling out the difference: the transport radio is a <em>filter</em> that only touches items with a transport condition, while the template is a <em>starter preset</em> that ticks the RV base + Travel lists and sets sensible defaults.',
       'The transport setting and the RV template now lead to the same place, so you can’t accidentally pick “RV” and end up without the motorhome gear.'),
