@@ -1,7 +1,7 @@
 // app.js — screens, navigation and wiring for AMS Packing List.
 import {
   CATEGORIES, CONTAINERS, PHASES, PHASE_IDS, phase, phaseLabel, SEASONS, TRANSPORTS, CONTEXTS,
-  CATERING, cateringLabel, GROUPS, GROUP_IDS, groupLabel, id, newItem, newList, newEvent,
+  CATERING, cateringLabel, CHARGE_TYPES, chargeTypeShort, chargeTypeLabel, GROUPS, GROUP_IDS, groupLabel, id, newItem, newList, newEvent,
   buildTotalEntries, regenerateEntries, entriesByPhase, groupByContainer, groupByCategory, groupBy,
   progress, packSteps, totalListRows, applyReview, pruneSuggestions,
   effectiveQty, bagLoads, packingFlags, daysUntil, countdownLabel, tripNudge, nightsBetween, endFromNights,
@@ -16,7 +16,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v26';
+const APP_VERSION = 'v27';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -696,7 +696,9 @@ function entryRow(ev, entry, body, showWeight = false) {
   if (entry.note) subBits.push(esc(entry.note));
   if (entry.custom) subBits.push('added');
   const subLine = entry.swedish ? `<span class="e-sv">${esc(entry.swedish)}</span> · ` : '';
-  const badges = `${entry.charging ? '<span class="badge charge" title="Needs charging">⚡</span>' : ''}`
+  const chShort = entry.charging ? chargeTypeShort(entry.chargeType) : '';
+  const chTitle = entry.charging ? `Needs charging${chShort ? ` — ${chargeTypeLabel(entry.chargeType)}` : ''}` : '';
+  const badges = `${entry.charging ? `<span class="badge charge" title="${esc(chTitle)}">⚡${chShort ? ` ${esc(chShort)}` : ''}</span>` : ''}`
     + `${entry.liquid ? '<span class="badge liquid" title="Liquid / 100 ml rule">💧</span>' : ''}`
     + `${entry.restricted ? '<span class="badge restricted" title="Restricted — think before packing (battery / carry-on rules)">⚠️</span>' : ''}`
     + `${isRem ? '<span class="badge rem">reminder</span>' : ''}`;
@@ -766,6 +768,7 @@ function entryEditor(ev, entry, body) {
         <label class="check${entry.restricted ? ' on' : ''}"><input type="checkbox" name="restricted" ${entry.restricted ? 'checked' : ''}>⚠️</label>
       </div>
     </div>
+    <label class="field charge-type-field${entry.charging ? '' : ' hidden'}"><span>Charge type</span>${selectHtml('chargeType', CHARGE_TYPES.map((c) => ({ value: c.id, label: c.label })), entry.chargeType)}</label>
     <label class="field"><span>Note</span><input name="note" value="${esc(entry.note)}"></label>
     <div class="editor-actions">
       <button type="button" class="btn danger ghost" data-x="del">${IC.trash}<span>Remove</span></button>
@@ -773,7 +776,10 @@ function entryEditor(ev, entry, body) {
       <button type="button" class="btn" data-x="cancel">Cancel</button>
       <button type="button" class="btn primary" data-x="save">Save</button>
     </div>`;
-  ed.addEventListener('change', (e) => { if (e.target.type === 'checkbox') e.target.closest('label')?.classList.toggle('on', e.target.checked); });
+  ed.addEventListener('change', (e) => {
+    if (e.target.type === 'checkbox') e.target.closest('label')?.classList.toggle('on', e.target.checked);
+    if (e.target.name === 'charging') $('.charge-type-field', ed)?.classList.toggle('hidden', !e.target.checked);
+  });
   ed.addEventListener('click', async (e) => {
     const x = e.target.closest('[data-x]')?.dataset.x;
     if (!x) return;
@@ -795,6 +801,7 @@ function entryEditor(ev, entry, body) {
       entry.perNight = $('input[name=perNight]', ed).checked;
       entry.liquid = $('input[name=liquid]', ed).checked;
       entry.charging = $('input[name=charging]', ed).checked;
+      entry.chargeType = $('select[name=chargeType]', ed).value;
       entry.restricted = $('input[name=restricted]', ed).checked;
       entry.note = ($('input[name=note]', ed).value || '').trim();
       entry._edited = true;
@@ -981,7 +988,7 @@ function packRow(ev, entry, redraw) {
   const row = h(`<button class="pack-item${entry.checked ? ' done' : ''}" type="button">
     <span class="pack-box">${entry.checked ? IC.check : ''}</span>
     <span class="pack-body">
-      <span class="pack-name">${esc(entry.name)}${entry.qty ? ` <em>×${esc(entry.qty)}</em>` : ''}${entry.charging ? ' <span class="badge charge" title="Needs charging">⚡</span>' : ''}</span>
+      <span class="pack-name">${esc(entry.name)}${entry.qty ? ` <em>×${esc(entry.qty)}</em>` : ''}${entry.charging ? ` <span class="badge charge" title="${esc('Needs charging' + (chargeTypeShort(entry.chargeType) ? ` — ${chargeTypeLabel(entry.chargeType)}` : ''))}">⚡${chargeTypeShort(entry.chargeType) ? ` ${esc(chargeTypeShort(entry.chargeType))}` : ''}</span>` : ''}</span>
       ${meta ? `<span class="pack-meta">${meta}</span>` : ''}
     </span>
   </button>`);
@@ -1308,7 +1315,7 @@ function howtoCard() {
         <ul>
           <li><b>Category</b> (what it is), <b>Container</b> (which bag it goes in), <b>Phase</b> (when to pack it — see the timeline below).</li>
           <li><b>Reminder</b> vs item: a reminder is a to-do prompt (e.g. “charge the Garmin”), not a physical thing to tick off.</li>
-          <li><b>Flags:</b> ⚡ needs charging, short-home-list, 💧 liquid/gel (100 ml rule), ⚠️ restricted — think before packing (battery / carry-on rules), <b>per-night</b> (quantity scales with trip length), and a <b>weight</b> in grams.</li>
+          <li><b>Flags:</b> ⚡ needs charging (with an optional <b>charge type</b> — USB-C, USB-A, Lightning, special charger… shown on the badge, e.g. ⚡ USB-C, so you know which cables to bring), short-home-list, 💧 liquid/gel (100 ml rule), ⚠️ restricted — think before packing (battery / carry-on rules), <b>per-night</b> (quantity scales with trip length), and a <b>weight</b> in grams.</li>
           <li><b>Conditions</b> — “only include when…”: Season, Context (Indoor/Outdoor/Race/Training), Transport (Car/Plane/RV), Catering, and <b>Weather</b> (see below). A blank condition means “always applies”.</li>
           <li><b>Sub-items:</b> optional nested things bundled under one line.</li>
         </ul>
@@ -1401,6 +1408,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v27', '2026-07-29 · 18:34 UTC', false, 'Charge type on charge items',
+      'A ⚡ charge item can now record <b>how it charges</b> — USB-C, USB-A, Micro-USB, Lightning, a special charger, or a wall plug. Tick <b>⚡</b> in an item’s editor and a <b>Charge type</b> dropdown appears; pick the connector and it shows right on the badge in the list, e.g. <b>⚡ USB-C</b>. Now when you round up your chargeables with the ⚡ Charge filter you can see at a glance which cables and bricks you actually need to bring — no more packing three cables to be safe. Leave it “Unspecified” and the badge stays the plain ⚡ as before.',
+      'You can tell which cables and chargers a trip needs from the list itself, instead of guessing at the drawer.'),
     v('v26', '2026-07-29 · 18:25 UTC', false, '🪨 New “Heaviest” icon',
       'Swapped the <b>Sort out → Heaviest</b> chip icon from the balance scale to a <b>🪨 rock</b> — a plainer, more immediate “this is the heavy stuff” cue. Same behaviour as before: tap it to reorder the list heaviest-first with each item’s weight shown.',
       'The weight sort reads at a glance without a fussy little scale symbol.'),

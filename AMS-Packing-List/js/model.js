@@ -85,6 +85,22 @@ export const CATERING = [
 ];
 export function cateringLabel(id) { const c = CATERING.find((x) => x.id === id); return c ? c.label : ''; }
 
+// How a charge item takes power — its connector / charger type. '' = unspecified.
+// `short` is the compact label shown on the ⚡ badge in the list.
+export const CHARGE_TYPES = [
+  { id: '',          label: 'Unspecified',      short: '' },
+  { id: 'usb-c',     label: 'USB-C',            short: 'USB-C' },
+  { id: 'usb-a',     label: 'USB-A',            short: 'USB-A' },
+  { id: 'micro-usb', label: 'Micro-USB',        short: 'Micro' },
+  { id: 'lightning', label: 'Lightning (Apple)', short: 'Lightning' },
+  { id: 'special',   label: 'Special charger',  short: 'Special' },
+  { id: 'mains',     label: 'Wall / mains plug', short: 'Wall' },
+];
+export const CHARGE_TYPE_IDS = CHARGE_TYPES.map((c) => c.id);
+export function chargeType(id) { return CHARGE_TYPES.find((c) => c.id === id) || CHARGE_TYPES[0]; }
+export function chargeTypeLabel(id) { return chargeType(id).label; }
+export function chargeTypeShort(id) { return chargeType(id).short; }
+
 // --- ids & small helpers ---
 
 let _seq = 0;
@@ -110,6 +126,7 @@ export function coerceItem(it) {
   if (typeof it.category !== 'string' || !it.category) it.category = CATEGORY_DEFAULT;
   it.itemType = it.itemType === 'reminder' ? 'reminder' : 'item';
   it.charging = !!it.charging;
+  it.chargeType = CHARGE_TYPE_IDS.includes(it.chargeType) ? it.chargeType : ''; // connector type (USB-C…); only meaningful when charging
   it.shortList = !!it.shortList;
   if (typeof it.swedish !== 'string') it.swedish = '';
   it.stats = normalizeStats(it.stats);
@@ -158,6 +175,7 @@ export function newItem(partial = {}) {
     phase: 'week',
     itemType: 'item',       // 'item' (packable) | 'reminder' (a to-do prompt)
     charging: false,        // needs charging or a charging cable
+    chargeType: '',         // how it charges: USB-C / USB-A / Lightning / special… ('' = unspecified)
     shortList: false,       // part of the minimal "short home list"
     seasons: [],     // empty = any season
     contexts: [],    // empty = any context
@@ -246,6 +264,7 @@ function entryFromItem(item, list) {
     phase: item.phase,
     itemType: item.itemType || 'item',
     charging: !!item.charging,
+    chargeType: item.chargeType || '',
     shortList: !!item.shortList,
     weight: Number.isFinite(item.weight) ? item.weight : 0,
     liquid: !!item.liquid,
