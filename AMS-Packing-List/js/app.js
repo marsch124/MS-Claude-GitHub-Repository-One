@@ -489,7 +489,7 @@ function logisticsSummary(ev) {
   const bits = [];
   if (f.totalKg > 0) bits.push(`${f.totalKg} kg`);
   if (f.liquids) bits.push(`💧 ${f.liquids} liquid`);
-  if (f.restricted) bits.push(`🔋 ${f.restricted} restricted`);
+  if (f.restricted) bits.push(`⚠️ ${f.restricted} restricted`);
   if (ev.nights) bits.push(`${ev.nights} night${ev.nights === 1 ? '' : 's'}`);
   const head = bits.length ? bits.join(' · ') : 'Add weights & flags to items to track bag loads';
 
@@ -694,7 +694,7 @@ function entryRow(ev, entry, body, showWeight = false) {
   const subLine = entry.swedish ? `<span class="e-sv">${esc(entry.swedish)}</span> · ` : '';
   const badges = `${entry.charging ? '<span class="badge charge" title="Needs charging">⚡</span>' : ''}`
     + `${entry.liquid ? '<span class="badge liquid" title="Liquid / 100 ml rule">💧</span>' : ''}`
-    + `${entry.restricted ? '<span class="badge restricted" title="Battery / restricted in carry-on">🔋</span>' : ''}`
+    + `${entry.restricted ? '<span class="badge restricted" title="Restricted — think before packing (battery / carry-on rules)">⚠️</span>' : ''}`
     + `${isRem ? '<span class="badge rem">reminder</span>' : ''}`;
   // Scaled quantity: per-night items show × trip nights; otherwise the explicit qty.
   const eq = effectiveQty(entry, ev.nights);
@@ -759,7 +759,7 @@ function entryEditor(ev, entry, body) {
         <label class="check${entry.perNight ? ' on' : ''}"><input type="checkbox" name="perNight" ${entry.perNight ? 'checked' : ''}>Per night</label>
         <label class="check${entry.liquid ? ' on' : ''}"><input type="checkbox" name="liquid" ${entry.liquid ? 'checked' : ''}>💧</label>
         <label class="check${entry.charging ? ' on' : ''}"><input type="checkbox" name="charging" ${entry.charging ? 'checked' : ''}>⚡</label>
-        <label class="check${entry.restricted ? ' on' : ''}"><input type="checkbox" name="restricted" ${entry.restricted ? 'checked' : ''}>🔋</label>
+        <label class="check${entry.restricted ? ' on' : ''}"><input type="checkbox" name="restricted" ${entry.restricted ? 'checked' : ''}>⚠️</label>
       </div>
     </div>
     <label class="field"><span>Note</span><input name="note" value="${esc(entry.note)}"></label>
@@ -1231,7 +1231,7 @@ function itemEditor(list, it, setOpen, draw) {
     <div class="checks">
       <label class="check${it.perNight ? ' on' : ''}"><input type="checkbox" name="perNight" ${it.perNight ? 'checked' : ''}>Per night (scales qty)</label>
       <label class="check${it.liquid ? ' on' : ''}"><input type="checkbox" name="liquid" ${it.liquid ? 'checked' : ''}>💧 Liquid</label>
-      <label class="check${it.restricted ? ' on' : ''}"><input type="checkbox" name="restricted" ${it.restricted ? 'checked' : ''}>🔋 Restricted</label>
+      <label class="check${it.restricted ? ' on' : ''}"><input type="checkbox" name="restricted" ${it.restricted ? 'checked' : ''}>⚠️ Restricted</label>
     </div>
     <p class="hint">Only include this item when… (leave a row untouched = always applies)</p>
     <fieldset class="mini"><legend>Season</legend>${checkRow('seasons', SEASONS, it.seasons)}</fieldset>
@@ -1304,7 +1304,7 @@ function howtoCard() {
         <ul>
           <li><b>Category</b> (what it is), <b>Container</b> (which bag it goes in), <b>Phase</b> (when to pack it — see the timeline below).</li>
           <li><b>Reminder</b> vs item: a reminder is a to-do prompt (e.g. “charge the Garmin”), not a physical thing to tick off.</li>
-          <li><b>Flags:</b> ⚡ needs charging, short-home-list, 💧 liquid/gel (100 ml rule), 🔋 battery/restricted (carry-on rules), <b>per-night</b> (quantity scales with trip length), and a <b>weight</b> in grams.</li>
+          <li><b>Flags:</b> ⚡ needs charging, short-home-list, 💧 liquid/gel (100 ml rule), ⚠️ restricted — think before packing (battery / carry-on rules), <b>per-night</b> (quantity scales with trip length), and a <b>weight</b> in grams.</li>
           <li><b>Conditions</b> — “only include when…”: Season, Context (Indoor/Outdoor/Race/Training), Transport (Car/Plane/RV), Catering, and <b>Weather</b> (see below). A blank condition means “always applies”.</li>
           <li><b>Sub-items:</b> optional nested things bundled under one line.</li>
         </ul>
@@ -1352,7 +1352,7 @@ function howtoCard() {
         </ul>
 
         <h3>Bags &amp; weight</h3>
-        <p>The <b>Bags &amp; weight</b> panel totals each container's weight against typical airline limits (carry-on 8 kg, checked 23 kg…), warns when a bag is over, and counts 💧 liquids and 🔋 restricted items. Totals only cover items you've given a weight.</p>
+        <p>The <b>Bags &amp; weight</b> panel totals each container's weight against typical airline limits (carry-on 8 kg, checked 23 kg…), warns when a bag is over, and counts 💧 liquids and ⚠️ restricted items. Totals only cover items you've given a weight.</p>
 
         <h3>Countdown &amp; “pack now” nudges</h3>
         <p>With a start date set, each event shows a countdown, and a ⏰ banner surfaces the earliest phase that's due (based on how many days each phase is normally packed before departure). These are on-open reminders — the app can't push background notifications.</p>
