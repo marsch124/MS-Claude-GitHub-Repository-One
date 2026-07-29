@@ -131,7 +131,7 @@ async function renderHome() {
     </a>`));
   }
 
-  wrap.appendChild(h('<p class="muted pad">Tick what you’re packing for and set the trip details, then press <b>Create Total List</b> to build one combined list to pack from.</p>'));
+  wrap.appendChild(h('<p class="muted pad">Tick what you’re packing for and set the trip details, then press <b>Create Event List</b> to build one combined list to pack from.</p>'));
 
   // The builder card — a fresh event, generated on submit.
   const card = h('<div class="card builder"></div>');
@@ -239,7 +239,8 @@ function eventForm(ev, lists, isEdit) {
     </fieldset>
 
     <div class="actions">
-      <button type="submit" class="btn primary lg">${isEdit ? 'Save & regenerate list' : 'Create Total List'}</button>
+      ${isEdit ? `<a class="btn lg" href="#/event/${ev.id}">Cancel</a>` : ''}
+      <button type="submit" class="btn primary lg">${isEdit ? 'Save & regenerate list' : 'Create Event List'}</button>
     </div>`;
 
   // Keep segmented/checkbox visual state in sync.
@@ -1209,7 +1210,7 @@ function howtoCard() {
         </ul>
 
         <h3>Creating a trip</h3>
-        <p>The <b>Home</b> tab is the builder. Tick the activities you're doing, set the trip's conditions, and press <b>Create Total List</b> — it generates an editable event that then lives under the <b>Events</b> tab.</p>
+        <p>The <b>Home</b> tab is the builder. Tick the activities you're doing, set the trip's conditions, and press <b>Create Event List</b> — it generates an editable event that then lives under the <b>Events</b> tab.</p>
         <ul>
           <li><b>Start from a template</b> to pre-fill the builder (e.g. Travel, RV “Granden”).</li>
           <li><b>Name, start date, nights, destination</b> (destination is optional and only used for weather).</li>
@@ -1273,6 +1274,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v19', '2026-07-29 · 10:20 UTC', false, 'Clearer builder button & a Cancel on edit',
+      'Renamed the Home builder’s main button from <b>Create Total List</b> to <b>Create Event List</b>, so it names exactly what you get — a new entry under the <b>Events</b> tab — and matches the app’s language for reusable <b>packing lists</b> vs. per-trip <b>event lists</b>. (The composed list inside a trip is still called the Total List.) Separately, the trip <b>settings/edit</b> screen now has a <b>Cancel</b> button beside <b>Save &amp; regenerate list</b>, so backing out without changing anything is obvious — not just the small back-arrow. The Home builder has no Cancel by design: Home <em>is</em> the builder and resets itself when you leave.',
+      'The build button says what it makes, and editing a trip’s settings has a clear, safe way to back out unchanged.'),
     v('v18', '2026-07-29 · 09:25 UTC', false, 'Colour-coded workflow stages',
       'The whole interface now shifts accent colour to signal which stage of the packing flow you’re in, so a glance tells you what you’re doing: <b>indigo</b> while <b>defining</b> a trip (Home builder &amp; trip settings), <b>teal</b> while <b>looking</b> at a trip’s list, <b>amber</b> while <b>adding/editing</b> an item, and <b>green</b> during focused <b>Packing Mode</b>. Buttons, tabs, chips and progress bars all retint together, in both light and dark themes, with a soft transition on the switch. Implemented by tinting two brand variables per mode; every other colour derives from them automatically.',
       'You always know at a glance which stage you’re in — planning, viewing, editing, or packing.'),
