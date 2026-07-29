@@ -4,7 +4,7 @@ import {
   CATERING, cateringLabel, GROUPS, GROUP_IDS, groupLabel, id, newItem, newList, newEvent,
   buildTotalEntries, regenerateEntries, entriesByPhase, groupByContainer, groupByCategory, groupBy,
   progress, packSteps, totalListRows, applyReview, pruneSuggestions,
-  effectiveQty, bagLoads, packingFlags, daysUntil, countdownLabel, tripNudge,
+  effectiveQty, bagLoads, packingFlags, daysUntil, countdownLabel, tripNudge, nightsBetween, endFromNights,
   buildTripBundle, encodeTripLink, fromBase64Url,
   deriveWeather, weatherSuggestions, weatherGear, WEATHER_CONDITIONS,
 } from './model.js';
@@ -217,15 +217,18 @@ async function renderEvents() {
 // ============================================================
 function eventForm(ev, lists, isEdit) {
   const form = h('<form class="form"></form>');
+  // Older events stored only `nights`; show an end date derived from start + nights.
+  const endVal = ev.endDate || endFromNights(ev.startDate, ev.nights);
   form.innerHTML = `
     <label class="field"><span>Event name</span>
       <input name="name" value="${esc(ev.name)}" placeholder="e.g. Dolomites road trip" autocomplete="off"></label>
     <div class="row2">
       <label class="field"><span>Start date <em>(optional)</em></span>
         <input type="date" name="startDate" value="${esc(ev.startDate)}"></label>
-      <label class="field"><span>Nights <em>(scales qty)</em></span>
-        <input type="number" name="nights" min="0" inputmode="numeric" value="${ev.nights || ''}" placeholder="0"></label>
+      <label class="field"><span>End date <em>(optional)</em></span>
+        <input type="date" name="endDate" value="${esc(endVal)}" min="${esc(ev.startDate || '')}"></label>
     </div>
+    <p class="nights-hint muted" data-nights-hint></p>
     <label class="field"><span>Destination <em>(optional — for weather)</em></span>
       <input name="destination" value="${esc(ev.destination)}" placeholder="e.g. Chamonix" autocomplete="off"></label>
 
@@ -250,6 +253,25 @@ function eventForm(ev, lists, isEdit) {
     if (t.type === 'checkbox') t.closest('label')?.classList.toggle('on', t.checked);
   });
 
+  // Live nights readout: the trip length is derived from start -> end, and still
+  // shown explicitly because it drives per-night quantities.
+  const startInput = form.querySelector('input[name=startDate]');
+  const endInput = form.querySelector('input[name=endDate]');
+  const nightsHint = form.querySelector('[data-nights-hint]');
+  function refreshNights() {
+    if (startInput.value) endInput.min = startInput.value;  // can't come home before you leave
+    const n = nightsBetween(startInput.value, endInput.value);
+    let msg; let warn = false;
+    if (!startInput.value || !endInput.value) msg = 'Add an end date to count the nights — it scales per-night quantities.';
+    else if (n == null) { msg = '⚠ End date is before the start date.'; warn = true; }
+    else msg = n === 0 ? '🌙 Day trip — 0 nights' : `🌙 ${n} night${n === 1 ? '' : 's'}`;
+    nightsHint.textContent = msg;
+    nightsHint.classList.toggle('warn', warn);
+  }
+  startInput.addEventListener('change', refreshNights);
+  endInput.addEventListener('change', refreshNights);
+  refreshNights();
+
   // Per-group "select all / none" for the activity picker.
   form.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-selall]');
@@ -267,13 +289,14 @@ function eventForm(ev, lists, isEdit) {
     const fd = new FormData(form);
     ev.name = (fd.get('name') || '').toString().trim() || 'Untitled event';
     ev.startDate = (fd.get('startDate') || '').toString();
+    ev.endDate = (fd.get('endDate') || '').toString();
     const newDest = (fd.get('destination') || '').toString().trim();
     if (newDest !== ev.destination) ev.weather = null;  // place changed -> stale forecast
     ev.destination = newDest;
     ev.transport = fd.get('transport') || 'Car';
     ev.season = fd.get('season') || 'Summer';
     ev.catering = fd.get('catering') || 'mixed';
-    ev.nights = Math.max(0, parseInt(fd.get('nights'), 10) || 0);
+    ev.nights = nightsBetween(ev.startDate, ev.endDate) || 0;  // derived from start -> end date
     ev.contexts = fd.getAll('contexts');
     ev.activities = fd.getAll('activities');
     if (!ev.activities.length && !confirm('No activities ticked — create an empty list you’ll fill in yourself?')) return;
@@ -1213,8 +1236,8 @@ function howtoCard() {
         <p>The <b>Home</b> tab is the builder. Tick the activities you're doing, set the trip's conditions, and press <b>Create Event List</b> — it generates an editable event that then lives under the <b>Events</b> tab.</p>
         <ul>
           <li><b>Start from a template</b> to pre-fill the builder (e.g. Travel, RV “Granden”).</li>
-          <li><b>Name, start date, nights, destination</b> (destination is optional and only used for weather).</li>
-          <li><b>Transport, time of year, catering, context</b> narrow the list; <b>nights</b> drives per-night quantities.</li>
+          <li><b>Name, start date, end date, destination</b> (end date and destination are optional). You give the <b>end date</b> — the return day — rather than counting nights yourself; the app works out the nights and shows them live below the dates.</li>
+          <li><b>Transport, time of year, catering, context</b> narrow the list; the <b>nights between your start and end date</b> drive per-night quantities (e.g. socks ×6 for six nights).</li>
           <li>The <b>start date</b> also decides where a trip sorts on Home and the Events tab — nearest upcoming first, then undated drafts, then past trips.</li>
         </ul>
 
@@ -1274,6 +1297,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v20', '2026-07-29 · 10:20 UTC', false, 'Set the end date, not the night count',
+      'The trip builder now asks for an <b>end date</b> (your return day) instead of a number of nights — because you usually know when you’re coming home, not the night count off the top of your head. The app derives the <b>nights</b> from your start and end dates and shows them live right under the fields (“🌙 7 nights”, or “Day trip” for same-day), so the number that scales per-night quantities is always visible. It warns if the end date is before the start, and older trips that only stored a night count still open correctly — their end date is filled in from start + nights.',
+      'You enter the date you already know (going-home day) and still see exactly how many nights the packing quantities are based on.'),
     v('v19', '2026-07-29 · 10:20 UTC', false, 'Clearer builder button & a Cancel on edit',
       'Renamed the Home builder’s main button from <b>Create Total List</b> to <b>Create Event List</b>, so it names exactly what you get — a new entry under the <b>Events</b> tab — and matches the app’s language for reusable <b>packing lists</b> vs. per-trip <b>event lists</b>. (The composed list inside a trip is still called the Total List.) Separately, the trip <b>settings/edit</b> screen now has a <b>Cancel</b> button beside <b>Save &amp; regenerate list</b>, so backing out without changing anything is obvious — not just the small back-arrow. The Home builder has no Cancel by design: Home <em>is</em> the builder and resets itself when you leave.',
       'The build button says what it makes, and editing a trip’s settings has a clear, safe way to back out unchanged.'),

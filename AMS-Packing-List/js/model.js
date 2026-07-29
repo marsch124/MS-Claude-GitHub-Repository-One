@@ -139,6 +139,7 @@ export function coerceEvent(e) {
   e.status = e.status === 'done' ? 'done' : 'active';   // 'active' | 'done' (reviewed)
   if (typeof e.reviewedAt !== 'string') e.reviewedAt = '';
   e.nights = Number.isFinite(e.nights) && e.nights >= 0 ? Math.floor(e.nights) : 0;  // trip length; drives per-night scaling
+  if (typeof e.endDate !== 'string') e.endDate = '';   // return date; `nights` derives from start->end
   if (typeof e.destination !== 'string') e.destination = '';  // free text -> geocoded for weather
   e.weather = coerceWeather(e.weather);  // cached Open-Meteo snapshot, or null
   return e;
@@ -196,6 +197,7 @@ export function newEvent(partial = {}) {
     contexts: [],
     catering: 'mixed',
     startDate: '',
+    endDate: '',          // return date; trip length in nights derives from start->end
     nights: 0,            // trip length in nights (drives per-night quantity scaling)
     destination: '',      // optional place name for the weather forecast
     weather: null,        // cached Open-Meteo snapshot (set when fetched online)
@@ -451,6 +453,28 @@ export function countdownLabel(d) {
   if (d === 1) return 'Tomorrow';
   if (d === -1) return 'Yesterday';
   return d > 0 ? `in ${d} days` : `${-d} days ago`;
+}
+
+// Whole nights between a start and end date (end minus start, in days). Returns
+// null when either date is missing/invalid or the end falls before the start.
+// Same-day start and end = 0 nights (a day trip).
+export function nightsBetween(startDate, endDate) {
+  if (!startDate || !endDate) return null;
+  const a = Date.parse(`${startDate.slice(0, 10)}T00:00:00Z`);
+  const b = Date.parse(`${endDate.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(a) || Number.isNaN(b)) return null;
+  const nights = Math.round((b - a) / 86400000);
+  return nights >= 0 ? nights : null;
+}
+
+// The end date implied by a start date plus a number of nights — used to show an
+// end-date field for older events that only stored `nights`. '' with no start date.
+export function endFromNights(startDate, nights) {
+  if (!startDate) return '';
+  const start = Date.parse(`${startDate.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(start)) return '';
+  const n = Number.isFinite(nights) && nights > 0 ? Math.floor(nights) : 0;
+  return new Date(start + n * 86400000).toISOString().slice(0, 10);
 }
 
 // Order events for the Home preview and the Events tab: nearest upcoming trip
