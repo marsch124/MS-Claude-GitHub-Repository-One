@@ -627,13 +627,15 @@ export function seedLists() {
 export function seedTemplates() {
   return [
     {
-      id: 'tmpl-travel', name: 'Travel', transport: 'Plane', season: 'Summer', catering: 'eatout',
-      description: 'City / flight travel — the full Travel base. Add GA/WET activities as needed.',
+      id: 'tmpl-travel', name: 'Travel', label: 'Travel — full kit',
+      transport: 'Plane', season: 'Summer', catering: 'eatout',
+      description: 'Loads the whole Travel base list and sets Plane · Summer · eat-out. Add GA/WET activities as needed.',
       activities: ['Travel'],
     },
     {
-      id: 'tmpl-rv', name: 'RV “Granden”', transport: 'RV', season: 'Summer', catering: 'self',
-      description: 'Motorhome trip — RV base + the Travel base. Tick the activities you’ll do.',
+      id: 'tmpl-rv', name: 'RV “Granden”', label: 'RV “Granden” — full kit',
+      transport: 'RV', season: 'Summer', catering: 'self',
+      description: 'Loads the whole RV Granden motorhome list + the Travel base and sets RV · Summer · self-catering. Tick any extra activities you’ll do.',
       activities: ['RV Granden (base)', 'Travel'],
     },
   ];
