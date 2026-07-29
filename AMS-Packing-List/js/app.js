@@ -15,7 +15,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v30';
+const APP_VERSION = 'v31';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -170,7 +170,9 @@ function cateringShort(id) { return id === 'self' ? 'Self-sufficient' : id === '
 // One saved-event card — shared by the Home preview and the Events tab.
 function eventCardHTML(e) {
   const p = progress(e.entries);
-  const meta = [e.transport, e.season, cateringShort(e.catering), ...(e.contexts || [])].filter(Boolean);
+  const meta = (e.mode === 'quick'
+    ? ['⚡ Quick', e.season, ...(e.contexts || [])]
+    : [e.transport, e.season, cateringShort(e.catering), ...(e.contexts || [])]).filter(Boolean);
   const dToGo = daysUntil(e.startDate);
   const dateLabel = dToGo != null ? `🗓 ${esc(countdownLabel(dToGo))}` : '';
   return `<a class="card ev" href="#/event/${e.id}">
@@ -228,6 +230,12 @@ function eventForm(ev, lists, isEdit) {
     ? ` Choosing <b>${esc(transportsWithKit.join(' / '))}</b> also adds that transport’s own kit${transportsWithKit.includes('RV') ? ' (the full motorhome list)' : ''}.`
     : '';
   form.innerHTML = `
+    <fieldset class="mode-pick"><legend>List type</legend>${radioRow('mode', [
+    { value: 'trip', label: '🧳 Full trip' },
+    { value: 'quick', label: '⚡ Quick activity' },
+  ], ev.mode || 'trip')}
+      <p class="grp-hint" data-mode-hint></p></fieldset>
+
     <label class="field"><span>Event name</span>
       <input name="name" value="${esc(ev.name)}" placeholder="e.g. Dolomites road trip" autocomplete="off"></label>
     <div class="row2">
@@ -240,14 +248,14 @@ function eventForm(ev, lists, isEdit) {
     <label class="field"><span>Destination <em>(optional — for weather)</em></span>
       <input name="destination" value="${esc(ev.destination)}" placeholder="e.g. Chamonix" autocomplete="off"></label>
 
-    <fieldset><legend>Way of transport</legend>${radioRow('transport', TRANSPORTS, ev.transport)}
+    <fieldset data-trip-only><legend>Way of transport</legend>${radioRow('transport', TRANSPORTS, ev.transport)}
       ${baseHint || transportHint ? `<p class="grp-hint">${baseHint}${transportHint}</p>` : ''}</fieldset>
     <fieldset><legend>Time of year</legend>${radioRow('season', SEASONS, ev.season)}</fieldset>
-    <fieldset><legend>Catering</legend>${radioRow('catering', CATERING.map((c) => ({ value: c.id, label: c.label })), ev.catering)}</fieldset>
+    <fieldset data-trip-only><legend>Catering</legend>${radioRow('catering', CATERING.map((c) => ({ value: c.id, label: c.label })), ev.catering)}</fieldset>
     <fieldset><legend>Context <em>(optional — narrows the list)</em></legend>${checkRow('contexts', CONTEXTS, ev.contexts)}</fieldset>
 
-    <fieldset><legend>Extra activities to pack for</legend>
-      <p class="grp-hint">Your common base and transport kit are already in — tick only the extra activities you’ll do.</p>
+    <fieldset><legend data-activities-legend>Extra activities to pack for</legend>
+      <p class="grp-hint" data-activities-hint></p>
       ${activitiesPicker(lists, ev.activities)}
     </fieldset>
 
@@ -256,12 +264,31 @@ function eventForm(ev, lists, isEdit) {
       <button type="submit" class="btn primary lg">${isEdit ? 'Save & regenerate list' : 'Create Event List'}</button>
     </div>`;
 
+  // Full trip vs Quick activity: quick mode drops the base + transport kit, so hide
+  // the trip-only choices and re-word the activity picker to match.
+  function syncMode() {
+    const quick = form.querySelector('input[name=mode]:checked')?.value === 'quick';
+    form.querySelectorAll('[data-trip-only]').forEach((el) => el.classList.toggle('hidden', quick));
+    const legend = form.querySelector('[data-activities-legend]');
+    const aHint = form.querySelector('[data-activities-hint]');
+    const mHint = form.querySelector('[data-mode-hint]');
+    if (legend) legend.textContent = quick ? 'Activities to pack for' : 'Extra activities to pack for';
+    if (aHint) aHint.innerHTML = quick
+      ? 'Just the gear for what you tick — set <b>Context</b> (Indoor / Outdoor) to trim it to the essentials.'
+      : 'Your common base and transport kit are already in — tick only the extra activities you’ll do.';
+    if (mHint) mHint.textContent = quick
+      ? 'Just a bag for one or more activities — no base, no transport kit. Great for a swim or a run.'
+      : 'Everything for a real trip: your common base + transport kit + the activities you tick.';
+  }
+
   // Keep segmented/checkbox visual state in sync.
   form.addEventListener('change', (e) => {
     const t = e.target;
     if (t.type === 'radio') $$(`.seg`, t.closest('fieldset')).forEach((s) => s.classList.toggle('on', s.querySelector('input').checked));
     if (t.type === 'checkbox') t.closest('label')?.classList.toggle('on', t.checked);
+    if (t.name === 'mode') syncMode();
   });
+  syncMode();
 
   // Live nights readout: the trip length is derived from start -> end, and still
   // shown explicitly because it drives per-night quantities.
@@ -303,6 +330,7 @@ function eventForm(ev, lists, isEdit) {
     e.preventDefault();
     const fd = new FormData(form);
     ev.name = (fd.get('name') || '').toString().trim() || 'Untitled event';
+    ev.mode = fd.get('mode') === 'quick' ? 'quick' : 'trip';
     ev.startDate = (fd.get('startDate') || '').toString();
     ev.endDate = (fd.get('endDate') || '').toString();
     const newDest = (fd.get('destination') || '').toString().trim();
@@ -314,7 +342,9 @@ function eventForm(ev, lists, isEdit) {
     ev.nights = nightsBetween(ev.startDate, ev.endDate) || 0;  // derived from start -> end date
     ev.contexts = fd.getAll('contexts');
     ev.activities = fd.getAll('activities');
-    if (!ev.activities.length && !confirm('No activities ticked — create an empty list you’ll fill in yourself?')) return;
+    // In quick mode there's no base to fall back on, so no ticks means an empty list.
+    if (ev.mode === 'quick' && !ev.activities.length
+      && !confirm('No activities ticked — a Quick list needs at least one. Create an empty list anyway?')) return;
 
     const freshLists = await db.getLists();
     ev.entries = isEdit ? regenerateEntries(ev, freshLists) : buildTotalEntries(ev, freshLists);
@@ -350,7 +380,9 @@ async function renderEvent(eventId) {
   if (!ev) { location.assign('#/'); return h('<section></section>'); }
   if (flagFilterFor !== eventId) { flagFilter = new Set(); weightSort = false; flagFilterFor = eventId; } // fresh per trip
   const p = progress(ev.entries);
-  const meta = [ev.transport, ev.season, cateringShort(ev.catering), ...(ev.contexts || [])].filter(Boolean);
+  const meta = (ev.mode === 'quick'
+    ? ['⚡ Quick', ev.season, ...(ev.contexts || [])]
+    : [ev.transport, ev.season, cateringShort(ev.catering), ...(ev.contexts || [])]).filter(Boolean);
 
   const wrap = h('<section class="screen"></section>');
   wrap.appendChild(h(`<div class="topbar">
@@ -1349,13 +1381,20 @@ function howtoCard() {
         <p>Every trip's list is built from three sources — you never start from a blank page, and you never have to remember the basics:</p>
         <ul>
           <li><b>1. Your common base — always included.</b> There's one always-on base list (currently named <b>“Travel”</b>) holding everything you need on <em>any</em> trip: clothes, toiletries, documents, everyday electronics and chargers. It's added to every list automatically, so you can't forget your underwear because you picked the wrong option. You never tick it; to change what's in it, edit the <b>Travel</b> list in the <b>Lists</b> tab.</li>
-          <li><b>2. Your transport's own kit — added by the “Way of transport” radio.</b> Each of <b>Car / Plane / RV</b> has its own base list, and picking one <b>automatically pulls its whole list in</b>. Choose <b>RV</b> and the full motorhome kit (levelling chocks, water hose, gas, awning, kitchen…) comes along — no extra step, no separate tick. Right now the <b>RV</b> list is the filled-in one; <b>Car</b> and <b>Plane</b> start empty, ready for you to add their specifics (e.g. a flight liquids bag or travel documents) in the <b>Lists</b> tab whenever you like. This replaces the old “Start from” shortcut: the transport radio <em>is</em> the shortcut now.</li>
+          <li><b>2. Your transport's own kit — added by the “Way of transport” radio.</b> Each of <b>Car / Plane / RV</b> has its own base list, and picking one <b>automatically pulls its whole list in</b>. Choose <b>RV</b> and the full motorhome kit (levelling chocks, water hose, gas, awning, kitchen…) comes along — no extra step, no separate tick. <b>Plane</b> adds the carry-on-rules stuff (liquids bag, travel documents, power bank / spare batteries that must fly in the cabin); <b>Car</b> adds a few road extras (car charger, phone mount, snacks). Each list is editable in the <b>Lists</b> tab, so you can grow them over time. This replaces the old “Start from” shortcut: the transport radio <em>is</em> the shortcut now.</li>
           <li><b>3. The extra activities you tick.</b> Under <b>Extra activities to pack for</b> you tick your <b>GA</b> (Goal Activity — Golf, Hiking, Diving…) and <b>WET</b> (Workout, Exercise &amp; Training — Swim, Bike, Run…) lists. Only these need ticking; the base and transport lists are already in, which is why they don't appear in that picker.</li>
         </ul>
         <p>So a plain RV holiday needs <em>zero</em> ticks — just pick <b>RV</b> — and you get the common base + the whole RV kit. Add a round of golf by ticking <b>Golf</b>, and its clubs and shoes join the same list.</p>
 
+        <h3>Full trip vs. Quick activity</h3>
+        <p>At the top of the builder is a <b>List type</b> switch, because sometimes you don't want a whole trip — you just want to grab a bag for one activity:</p>
+        <ul>
+          <li><b>🧳 Full trip</b> <em>(default)</em> — the three sources above: common base + transport kit + the activities you tick. For real trips.</li>
+          <li><b>⚡ Quick activity</b> — <b>only the activities you tick</b>, with <b>no common base and no transport kit</b>. The transport and catering choices disappear because they don't apply. Tick <b>Swim</b> (or <b>Run</b>, or both) and you get just those 5–20 items — perfect for “I'm off for a swim.” Set <b>Context</b> to <b>Indoor</b> or <b>Outdoor</b> to trim it further (e.g. an outdoor run adds a headlamp and sunscreen; indoor doesn't). Quick lists show a small <b>⚡ Quick</b> tag on their card.</li>
+        </ul>
+
         <h3>How the Total List is composed</h3>
-        <p>The app takes the union of every item from those three sources — <b>common base + your transport's list + the activities you ticked</b> — drops anything whose remaining conditions (season, catering, context) don't match the trip, and de-duplicates by name + container (the common base wins any clash). Weather-conditional items are held back (see below). The result is your editable Total List — add, edit, tick, or remove any line.</p>
+        <p>The app takes the union of every item from the sources for your chosen <b>List type</b> — a <b>Full trip</b> uses common base + transport list + ticked activities; a <b>Quick activity</b> uses only the ticked activities — then drops anything whose conditions (season, catering, context) don't match the trip, and de-duplicates by name + container (earlier sources win a clash, so the common base takes priority). Weather-conditional items are held back (see below). The result is your editable Total List — add, edit, tick, or remove any line.</p>
 
         <h3>Reading &amp; organising the list</h3>
         <ul>
@@ -1412,6 +1451,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v31', '2026-07-29 · 20:30 UTC', false, 'Quick activity lists + Car / Plane kits',
+      'Two additions. <b>(1) A “List type” switch</b> at the top of the builder: <b>🧳 Full trip</b> (the usual common base + transport kit + activities) or <b>⚡ Quick activity</b> — <b>just the activities you tick, with no base and no transport kit</b>. Tick Swim or Run, set Context to Indoor/Outdoor, and you get the 5–20 items for that one bag instead of a whole trip’s worth; the transport and catering choices hide because they don’t apply, and quick lists carry a small ⚡ Quick tag. <b>(2) The Car and Plane transport lists are now filled in</b>: Plane brings the carry-on-rules items (liquids bag, travel documents, power bank &amp; spare batteries flagged carry-on-only), Car brings road extras (car charger, phone mount, sunglasses, snacks) — both still fully editable in the Lists tab.',
+      'Pack a single swim or run bag in seconds without the full trip list — and flights and road trips now start with their obvious extras already in.'),
     v('v30', '2026-07-29 · 19:45 UTC', false, 'Transport now builds the list — “Start from” removed',
       'Big simplification of how a trip’s list is generated, from three clear sources: <b>(1) a common base that’s always included</b> (the “Travel” list — clothes, toiletries, documents, everyday electronics), <b>(2) your transport’s own kit, added automatically by the “Way of transport” radio</b> — pick <b>RV</b> and the full motorhome list comes with it, no separate step — and <b>(3) the extra GA/WET activities you tick</b>. The old <b>“Start from”</b> templates and the RV prompt are gone: the transport radio <em>is</em> the shortcut now, so a plain RV trip needs zero ticks. The base and transport lists no longer clutter the activity picker (they’re automatic), and each still lives in the <b>Lists</b> tab for editing. <b>Car</b> and <b>Plane</b> base lists are created but left empty for you to fill; the <b>How it works</b> guide is rewritten to explain the three sources.',
       'Pick how you travel and you already have the right kit — the RV list can’t be forgotten, and there’s no redundant “Start from” step to second-guess.'),

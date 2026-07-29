@@ -21,6 +21,7 @@ function it(name, o = {}) {
     phase: o.ph || 'week',
     itemType: o.rem ? 'reminder' : 'item',
     charging: !!o.charge,
+    chargeType: o.chargeType || '',
     shortList: !!o.short,
     seasons: o.seas || [],
     contexts: o.ctx || [],
@@ -29,6 +30,8 @@ function it(name, o = {}) {
     weather: o.we || [],
     sub: o.sub || [],
     note: o.note || '',
+    liquid: !!o.liquid,
+    restricted: !!o.restricted,
   });
 }
 const CL = 'Clothing', ADV = 'Adventure clothing', FW = 'Footwear', SG = 'Sport gear',
@@ -535,6 +538,27 @@ const TRAVEL = [
   it('Plastic bags, snack bag etc. for the golf course', { sv: 'Några plastpåsar, Jausesäck etc. till golfbanan', cat: REM, rem: true }),
 ];
 
+// ---------------------------------------------------------------- Plane (base)
+// The flight-specific extras a car/RV trip doesn't need: the carry-on rules stuff.
+const PLANE = [
+  it('Passport / ID', { sv: 'Pass / ID', cat: DOC, con: CO, ph: 'door', short: true }),
+  it('Boarding pass', { sv: 'Boardingkort', cat: DOC, con: CO, ph: 'door' }),
+  it('Travel documents (bookings, insurance)', { sv: 'Resedokument (bokningar, försäkring)', cat: DOC, con: CO, ph: 'door' }),
+  it('Liquids bag (clear, ≤100 ml)', { sv: 'Vätskepåse (genomskinlig, ≤100 ml)', cat: TO, con: CO, ph: 'daybefore', liquid: true, note: 'Max 100 ml per item, in one clear resealable bag' }),
+  it('Power bank (carry-on only)', { sv: 'Powerbank (endast handbagage)', cat: EL, con: CO, ph: 'daybefore', charge: true, restricted: true, note: 'Must travel in carry-on, never checked' }),
+  it('Spare batteries (carry-on only)', { sv: 'Reservbatterier (endast handbagage)', cat: EL, con: CO, ph: 'daybefore', restricted: true, note: 'Loose lithium batteries must be in carry-on' }),
+  it('Medication (in carry-on)', { sv: 'Mediciner (i handbagaget)', cat: RX, con: CO, ph: 'door' }),
+];
+
+// ---------------------------------------------------------------- Car (base)
+// The handful of extras that make sense specifically for a road trip.
+const CAR = [
+  it('Car charger / USB adapter', { sv: 'Billaddare / USB-adapter', cat: EL, con: 'Day pack', charge: true, chargeType: 'usb-a' }),
+  it('Phone mount', { sv: 'Mobilhållare', cat: EL, con: 'Day pack' }),
+  it('Sunglasses', { sv: 'Solglasögon', cat: MI, con: 'Day pack' }),
+  it('Snacks & drinks for the road', { sv: 'Fika & dryck för resan', cat: FD, con: 'Cool box' }),
+];
+
 // ---------------------------------------------------------------- RV "Granden" (base)
 const BELL = 'Bellroy backpack', RVBOX = 'RV storage box';
 const RVBASE = [
@@ -605,10 +629,10 @@ export function seedLists() {
   return tagSeed([
     // Common base — always included on every trip, whatever the transport / activities.
     L('Travel', '', TRAVEL, { role: 'base' }),
-    // Transport bases — auto-included by the trip's "Way of transport". Car & Plane
-    // start empty (fill them in the Lists tab); RV carries the full motorhome kit.
-    L('Car (base)', '', [], { role: 'transport', transport: 'Car' }),
-    L('Plane (base)', '', [], { role: 'transport', transport: 'Plane' }),
+    // Transport bases — auto-included by the trip's "Way of transport": Car brings a
+    // few road extras, Plane the carry-on-rules stuff, RV the full motorhome kit.
+    L('Car (base)', '', CAR, { role: 'transport', transport: 'Car' }),
+    L('Plane (base)', '', PLANE, { role: 'transport', transport: 'Plane' }),
     L('RV Granden (base)', '', RVBASE, { role: 'transport', transport: 'RV' }),
     // GA — Goal Activity
     L('Golf', 'GA', GOLF),

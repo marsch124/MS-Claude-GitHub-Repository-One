@@ -10,7 +10,7 @@ const DB_VERSION = 1;
 const LISTS = 'lists';
 const EVENTS = 'events';
 // Bump when the built-in seed data changes, to refresh the built-in lists on next load.
-const SEED_VERSION = 7;
+const SEED_VERSION = 8;
 const SEED_KEY = 'ams-seed-version';
 
 function open() {

@@ -156,6 +156,7 @@ export function coerceList(l) {
 }
 export function coerceEvent(e) {
   if (!e || typeof e !== 'object') return e;
+  e.mode = e.mode === 'quick' ? 'quick' : 'trip';   // 'quick' skips the common base + transport kit
   e.activities = asArray(e.activities);
   e.contexts = asArray(e.contexts);
   e.entries = asArray(e.entries).map(coerceItem);
@@ -217,6 +218,7 @@ export function newEvent(partial = {}) {
   return coerceEvent({
     id: id(),
     name: '',
+    mode: 'trip',         // 'trip' (common base + transport + activities) | 'quick' (ticked activities only)
     activities: [],       // packing-list ids chosen for this trip
     transport: 'Car',
     season: 'Summer',
@@ -296,13 +298,20 @@ function entryFromItem(item, list) {
 // Earlier lists win on a name+container clash, so the common base takes priority.
 export function listsForEvent(event, lists) {
   const all = asArray(lists).map(coerceList);
-  const base = all.filter((l) => l.role === 'base');
-  const transport = all.filter((l) => l.role === 'transport' && l.transport === event.transport);
   const tickable = new Map(all.filter((l) => !l.role).map((l) => [l.id, l]));
   const ticked = asArray(event.activities).map((lid) => tickable.get(lid)).filter(Boolean);
+  // Quick mode: just the ticked activity lists — no common base, no transport kit.
+  // (Items are still narrowed by the trip's Indoor/Outdoor context, season, etc.)
+  const chosen = event.mode === 'quick'
+    ? ticked
+    : [
+      ...all.filter((l) => l.role === 'base'),
+      ...all.filter((l) => l.role === 'transport' && l.transport === event.transport),
+      ...ticked,
+    ];
   const out = [];
   const seen = new Set();
-  for (const l of [...base, ...transport, ...ticked]) {
+  for (const l of chosen) {
     if (seen.has(l.id)) continue;
     seen.add(l.id);
     out.push(l);
