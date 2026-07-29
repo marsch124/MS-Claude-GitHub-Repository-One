@@ -16,7 +16,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v23';
+const APP_VERSION = 'v24';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -358,11 +358,12 @@ function setTotalView(v) { try { localStorage.setItem(VIEW_KEY, v); } catch {} }
 let expandedEntry = null; // id of the entry whose inline editor is open
 let flagFilter = new Set(); // active "sort out" filters on the Total List: 'liquid' and/or 'charge'
 let flagFilterFor = null;   // the event id the filter belongs to (cleared when you switch trips)
+let weightSort = false;     // "Heaviest first" ordering toggle on the Total List
 
 async function renderEvent(eventId) {
   const ev = await db.getEvent(eventId);
   if (!ev) { location.assign('#/'); return h('<section></section>'); }
-  if (flagFilterFor !== eventId) { flagFilter = new Set(); flagFilterFor = eventId; } // fresh per trip
+  if (flagFilterFor !== eventId) { flagFilter = new Set(); weightSort = false; flagFilterFor = eventId; } // fresh per trip
   const p = progress(ev.entries);
   const meta = [ev.transport, ev.season, cateringShort(ev.catering), ...(ev.contexts || [])].filter(Boolean);
 
@@ -425,25 +426,30 @@ async function renderEvent(eventId) {
   // so they can be gathered — the wash bag, the cable pouch. Reuses the same rows.
   const liquidCount = ev.entries.filter((e) => e.liquid).length;
   const chargeCount = ev.entries.filter((e) => e.charging).length;
-  if (liquidCount || chargeCount) {
+  const weightedCount = ev.entries.filter((e) => Number(e.weight) > 0).length;
+  if (liquidCount || chargeCount || weightedCount) {
     const fchip = (key, label, n) => `<button class="fchip${flagFilter.has(key) ? ' on' : ''}" data-filter="${key}">${label} <em>${n}</em></button>`;
     const filterbar = h(`<div class="filterbar">
       <span class="filterbar-lbl">Sort out</span>
       ${liquidCount ? fchip('liquid', '💧 Liquids', liquidCount) : ''}
       ${chargeCount ? fchip('charge', '⚡ Charge', chargeCount) : ''}
+      ${weightedCount ? `<button class="fchip${weightSort ? ' on' : ''}" data-filter="__weight">⚖️ Heaviest</button>` : ''}
       <button class="fchip clear" data-filter="__clear" hidden>Show all</button>
     </div>`);
     wrap.insertBefore(filterbar, body);
     const syncChips = () => {
       $$('.fchip[data-filter]', filterbar).forEach((c) => {
-        if (c.dataset.filter !== '__clear') c.classList.toggle('on', flagFilter.has(c.dataset.filter));
+        const k = c.dataset.filter;
+        if (k === '__clear') return;
+        c.classList.toggle('on', k === '__weight' ? weightSort : flagFilter.has(k));
       });
-      $('.fchip.clear', filterbar).hidden = flagFilter.size === 0;
+      $('.fchip.clear', filterbar).hidden = flagFilter.size === 0 && !weightSort;
     };
     filterbar.addEventListener('click', (e) => {
       const key = e.target.closest('[data-filter]')?.dataset.filter;
       if (!key) return;
-      if (key === '__clear') flagFilter.clear();
+      if (key === '__clear') { flagFilter.clear(); weightSort = false; }
+      else if (key === '__weight') weightSort = !weightSort;
       else if (flagFilter.has(key)) flagFilter.delete(key); else flagFilter.add(key);
       syncChips();
       rerender();
@@ -631,6 +637,7 @@ function renderTotalBody(body, ev) {
     </div>`));
     return;
   }
+  if (weightSort) { renderHeaviest(body, ev, entries); return; }
   const mode = totalView();
   // Secondary sub-grouping: When→by container, Where→by phase, Category→by phase.
   const subOf = mode === 'when'
@@ -649,7 +656,32 @@ function renderTotalBody(body, ev) {
   }
 }
 
-function entryRow(ev, entry, body) {
+// The total contribution of an entry to the load: per-unit weight × how many are
+// actually taken (per-night items scale with the trip length).
+function entryGrams(entry, nights) { return (Number(entry.weight) || 0) * effectiveQty(entry, nights); }
+function formatGrams(g) { return g >= 1000 ? `${Math.round(g / 100) / 10} kg` : `${Math.round(g)} g`; }
+
+// "Heaviest first": a flat, weight-ranked list (ignores Group by) with each item's
+// weight shown, so the heavy things to reconsider are right at the top. Unweighed
+// items fall to the bottom under their own sub-header.
+function renderHeaviest(body, ev, entries) {
+  const g = (e) => entryGrams(e, ev.nights);
+  const weighed = entries.filter((e) => g(e) > 0).sort((a, b) => g(b) - g(a) || a.name.localeCompare(b.name));
+  const unweighed = entries.filter((e) => g(e) <= 0).sort((a, b) => a.name.localeCompare(b.name));
+  const totalG = weighed.reduce((s, e) => s + g(e), 0);
+  const hint = weighed.length
+    ? `${formatGrams(totalG)} across ${weighed.length} weighed item${weighed.length === 1 ? '' : 's'}`
+    : 'No weights recorded here yet';
+  const sec = h(`<div class="group"><div class="group-h"><span class="ph">Heaviest first</span><span class="ph-hint">${esc(hint)}</span></div></div>`);
+  for (const entry of weighed) sec.appendChild(entryRow(ev, entry, body, true));
+  if (unweighed.length) {
+    sec.appendChild(h(`<div class="sub">No weight recorded (${unweighed.length}) — add a weight in an item’s editor to rank it</div>`));
+    for (const entry of unweighed) sec.appendChild(entryRow(ev, entry, body, true));
+  }
+  body.appendChild(sec);
+}
+
+function entryRow(ev, entry, body, showWeight = false) {
   const isRem = entry.itemType === 'reminder';
   const mode = totalView();
   // Show the dimensions NOT used as the current grouping, so the row stays informative.
@@ -668,6 +700,9 @@ function entryRow(ev, entry, body) {
   const eq = effectiveQty(entry, ev.nights);
   const qtyLabel = isRem ? '' : (entry.perNight && ev.nights ? ` <em title="scaled to ${ev.nights} nights">×${eq}</em>` : (entry.qty ? ` <em>×${esc(entry.qty)}</em>` : ''));
   const subItems = (entry.sub && entry.sub.length) ? `<span class="e-subitems">${entry.sub.map(esc).join(' · ')}</span>` : '';
+  // In "Heaviest first" view, show each item's weight (— when none recorded).
+  const g = showWeight ? entryGrams(entry, ev.nights) : 0;
+  const weightPill = showWeight ? `<span class="e-weight${g > 0 ? '' : ' none'}">${g > 0 ? esc(formatGrams(g)) : '—'}</span>` : '';
   const row = h(`<div class="entry${entry.checked ? ' done' : ''}${isRem ? ' reminder' : ''}">
     <label class="ck"><input type="checkbox"${entry.checked ? ' checked' : ''}><span class="box"></span></label>
     <button class="entry-main" type="button">
@@ -675,6 +710,7 @@ function entryRow(ev, entry, body) {
       <span class="e-sub">${subLine}${subBits.join(' · ')}</span>
       ${subItems}
     </button>
+    ${weightPill}
     <button class="iconbtn sm" type="button" data-edit aria-label="Edit">${IC.edit}</button>
   </div>`);
 
@@ -1310,6 +1346,7 @@ function howtoCard() {
         <ul>
           <li><b>Group by</b> When / Where / Category — same list, three lenses.</li>
           <li><b>Sort out</b> — quick filters above the list isolate all <b>💧 Liquids</b> (for the wash bag / 100 ml rule) or all <b>⚡ Charge</b> items (to round up cables and chargers). Tap a chip to show only those; tap <b>Show all</b> to bring the full list back. Ticking and editing work the same in the filtered view. Mark an item as a liquid or charge item with the 💧 / ⚡ toggles in its editor.</li>
+          <li><b>⚖️ Heaviest</b> — reorders the list heaviest-first with each item’s weight shown, so when a bag is over its limit you can see at a glance what to leave behind. It uses the real load (weight × quantity, including per-night scaling); items without a weight sit at the bottom. Combine it with a Liquids/Charge filter to rank just those. Add a weight to an item in its editor to make it count.</li>
           <li>Badges show flags at a glance; quantities marked per-night show the scaled count (e.g. Socks ×6 for a 6-night trip).</li>
           <li><b>Regenerate</b> refreshes the list from your building-block lists while keeping your ticks, edits and manually-added items.</li>
         </ul>
@@ -1360,6 +1397,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v24', '2026-07-29 · 10:59 UTC', false, '“Heaviest first” weight sort',
+      'Added a third <b>Sort out</b> chip: <b>⚖️ Heaviest</b>. Tap it and the list reorders heaviest-first, ignoring the usual grouping, with each item’s <b>weight shown on its row</b> and a running total in the header — so when a bag is over its limit you can see straight away what’s worth leaving behind. It ranks by the real load (weight × quantity, including per-night scaling), and items without a weight drop to the bottom under their own heading. It combines with the 💧/⚡ filters to rank just those, and resets when you switch trips. Weights are set per item in its editor.',
+      'When you need to shed grams, the biggest offenders are right at the top instead of scattered through the list.'),
     v('v23', '2026-07-29 · 10:51 UTC', false, '“Sort out” liquids &amp; charge items',
       'Added quick filters above a trip’s list: <b>💧 Liquids</b> and <b>⚡ Charge</b>, each showing a count. Tap one to isolate just those items — all your liquids together for the wash bag and the 100 ml rule, or everything that needs a cable/charger rounded up in one place — and <b>Show all</b> to return to the full list. Ticking and editing behave exactly as normal in the filtered view, and an item you’re editing stays visible even while a filter is on. The item editor now also has a <b>⚡</b> toggle (next to 💧 and 🔋) so you can mark anything as a charge item. Filters reset when you switch trips.',
       'When it’s time to pack, you can gather every liquid or every chargeable in one tap instead of hunting through the whole list.'),
