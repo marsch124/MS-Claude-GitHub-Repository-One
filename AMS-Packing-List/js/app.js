@@ -16,7 +16,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v27';
+const APP_VERSION = 'v28';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -1207,9 +1207,13 @@ async function renderList(listId) {
 
 function listItemRow(list, it, getOpen, setOpen, draw) {
   const tags = [it.container, ...(it.seasons || []), ...(it.contexts || []), ...(it.transports || [])].filter(Boolean);
+  const chShort = it.charging ? chargeTypeShort(it.chargeType) : '';
+  const badges = `${it.charging ? `<span class="badge charge" title="${esc('Needs charging' + (chShort ? ` — ${chargeTypeLabel(it.chargeType)}` : ''))}">⚡${chShort ? ` ${esc(chShort)}` : ''}</span>` : ''}`
+    + `${it.liquid ? '<span class="badge liquid" title="Liquid / 100 ml rule">💧</span>' : ''}`
+    + `${it.restricted ? '<span class="badge restricted" title="Restricted — think before packing (battery / carry-on rules)">⚠️</span>' : ''}`;
   const row = h(`<div class="entry">
     <button class="entry-main" type="button">
-      <span class="e-name">${esc(it.name || '(unnamed)')}${it.qty ? ` <em>×${esc(it.qty)}</em>` : ''}</span>
+      <span class="e-name">${esc(it.name || '(unnamed)')}${it.qty ? ` <em>×${esc(it.qty)}</em>` : ''} ${badges}</span>
       <span class="e-sub">${esc(phaseLabel(it.phase))}${tags.length ? ' · ' + tags.map(esc).join(' · ') : ''}</span>
     </button>
     <button class="iconbtn sm" type="button" data-edit aria-label="Edit">${IC.edit}</button>
@@ -1241,9 +1245,11 @@ function itemEditor(list, it, setOpen, draw) {
     </div>
     <div class="checks">
       <label class="check${it.perNight ? ' on' : ''}"><input type="checkbox" name="perNight" ${it.perNight ? 'checked' : ''}>Per night (scales qty)</label>
+      <label class="check${it.charging ? ' on' : ''}"><input type="checkbox" name="charging" ${it.charging ? 'checked' : ''}>⚡ Charging</label>
       <label class="check${it.liquid ? ' on' : ''}"><input type="checkbox" name="liquid" ${it.liquid ? 'checked' : ''}>💧 Liquid</label>
       <label class="check${it.restricted ? ' on' : ''}"><input type="checkbox" name="restricted" ${it.restricted ? 'checked' : ''}>⚠️ Restricted</label>
     </div>
+    <label class="field charge-type-field${it.charging ? '' : ' hidden'}"><span>Charge type</span>${selectHtml('chargeType', CHARGE_TYPES.map((c) => ({ value: c.id, label: c.label })), it.chargeType)}</label>
     <p class="hint">Only include this item when… (leave a row untouched = always applies)</p>
     <fieldset class="mini"><legend>Season</legend>${checkRow('seasons', SEASONS, it.seasons)}</fieldset>
     <fieldset class="mini"><legend>Context</legend>${checkRow('contexts', CONTEXTS, it.contexts)}</fieldset>
@@ -1257,7 +1263,10 @@ function itemEditor(list, it, setOpen, draw) {
       <button type="button" class="btn" data-x="cancel">Cancel</button>
       <button type="button" class="btn primary" data-x="save">Save</button>
     </div>`;
-  ed.addEventListener('change', (e) => { if (e.target.type === 'checkbox') e.target.closest('label')?.classList.toggle('on', e.target.checked); });
+  ed.addEventListener('change', (e) => {
+    if (e.target.type === 'checkbox') e.target.closest('label')?.classList.toggle('on', e.target.checked);
+    if (e.target.name === 'charging') $('.charge-type-field', ed)?.classList.toggle('hidden', !e.target.checked);
+  });
   ed.addEventListener('click', async (e) => {
     const x = e.target.closest('[data-x]')?.dataset.x;
     if (!x) return;
@@ -1275,6 +1284,8 @@ function itemEditor(list, it, setOpen, draw) {
       it.phase = $('select[name=phase]', ed).value;
       it.weight = Math.max(0, parseInt($('input[name=weight]', ed).value, 10) || 0);
       it.perNight = $('input[name=perNight]', ed).checked;
+      it.charging = $('input[name=charging]', ed).checked;
+      it.chargeType = $('select[name=chargeType]', ed).value;
       it.liquid = $('input[name=liquid]', ed).checked;
       it.restricted = $('input[name=restricted]', ed).checked;
       it.note = ($('input[name=note]', ed).value || '').trim();
@@ -1408,6 +1419,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v28', '2026-07-29 · 18:40 UTC', false, 'Charging + charge type on your saved items',
+      'The <b>⚡ Charging</b> flag and its <b>Charge type</b> (USB-C, USB-A, Lightning, special charger…) can now be set on a <b>building-block item</b> in your <b>Lists</b>, not just on a trip’s Total List. Set it once on, say, your head-torch or Garmin, and every trip that item lands in already carries the charging flag and connector — no re-tagging per trip. The Lists view now shows the same ⚡/💧/⚠️ badges on each item so you can see the flags at a glance, and the ⚡ badge includes the connector (e.g. ⚡ USB-C).',
+      'Tag how a gadget charges once, on the item itself, and it follows the item into every packing list automatically.'),
     v('v27', '2026-07-29 · 18:34 UTC', false, 'Charge type on charge items',
       'A ⚡ charge item can now record <b>how it charges</b> — USB-C, USB-A, Micro-USB, Lightning, a special charger, or a wall plug. Tick <b>⚡</b> in an item’s editor and a <b>Charge type</b> dropdown appears; pick the connector and it shows right on the badge in the list, e.g. <b>⚡ USB-C</b>. Now when you round up your chargeables with the ⚡ Charge filter you can see at a glance which cables and bricks you actually need to bring — no more packing three cables to be safe. Leave it “Unspecified” and the badge stays the plain ⚡ as before.',
       'You can tell which cables and chargers a trip needs from the list itself, instead of guessing at the drawer.'),
