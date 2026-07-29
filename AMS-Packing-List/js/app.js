@@ -16,7 +16,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v25';
+const APP_VERSION = 'v26';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -435,7 +435,7 @@ async function renderEvent(eventId) {
       ${liquidCount ? fchip('liquid', '💧 Liquids', liquidCount) : ''}
       ${chargeCount ? fchip('charge', '⚡ Charge', chargeCount) : ''}
       ${restrictedCount ? fchip('restricted', '⚠️ Restricted', restrictedCount) : ''}
-      ${weightedCount ? `<button class="fchip${weightSort ? ' on' : ''}" data-filter="__weight">⚖️ Heaviest</button>` : ''}
+      ${weightedCount ? `<button class="fchip${weightSort ? ' on' : ''}" data-filter="__weight">🪨 Heaviest</button>` : ''}
       <button class="fchip clear" data-filter="__clear" hidden>Show all</button>
     </div>`);
     wrap.insertBefore(filterbar, body);
@@ -1350,7 +1350,7 @@ function howtoCard() {
         <ul>
           <li><b>Group by</b> When / Where / Category — same list, three lenses.</li>
           <li><b>Sort out</b> — quick filters above the list isolate all <b>💧 Liquids</b> (for the wash bag / 100 ml rule) or all <b>⚡ Charge</b> items (to round up cables and chargers). Tap a chip to show only those; tap <b>Show all</b> to bring the full list back. Ticking and editing work the same in the filtered view. Mark an item as a liquid or charge item with the 💧 / ⚡ toggles in its editor.</li>
-          <li><b>⚖️ Heaviest</b> — reorders the list heaviest-first with each item’s weight shown, so when a bag is over its limit you can see at a glance what to leave behind. It uses the real load (weight × quantity, including per-night scaling); items without a weight sit at the bottom. Combine it with a Liquids/Charge filter to rank just those. Add a weight to an item in its editor to make it count.</li>
+          <li><b>🪨 Heaviest</b> — reorders the list heaviest-first with each item’s weight shown, so when a bag is over its limit you can see at a glance what to leave behind. It uses the real load (weight × quantity, including per-night scaling); items without a weight sit at the bottom. Combine it with a Liquids/Charge filter to rank just those. Add a weight to an item in its editor to make it count.</li>
           <li>Badges show flags at a glance; quantities marked per-night show the scaled count (e.g. Socks ×6 for a 6-night trip).</li>
           <li><b>Regenerate</b> refreshes the list from your building-block lists while keeping your ticks, edits and manually-added items.</li>
         </ul>
@@ -1401,6 +1401,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v26', '2026-07-29 · 18:25 UTC', false, '🪨 New “Heaviest” icon',
+      'Swapped the <b>Sort out → Heaviest</b> chip icon from the balance scale to a <b>🪨 rock</b> — a plainer, more immediate “this is the heavy stuff” cue. Same behaviour as before: tap it to reorder the list heaviest-first with each item’s weight shown.',
+      'The weight sort reads at a glance without a fussy little scale symbol.'),
     v('v25', '2026-07-29 · 18:11 UTC', false, '⚠️ Restricted icon &amp; “Sort out” filter',
       'The restricted-item flag now shows a red <b>⚠️ warning triangle</b> instead of the battery symbol — a clearer “stop and think before you pack this” cue for anything with carry-on rules (power banks, drones, spare batteries). And <b>Sort out</b> gains a matching <b>⚠️ Restricted</b> chip alongside 💧 Liquids and ⚡ Charge: tap it to isolate just the restricted items with their count, so you can review everything that needs a second thought in one place. The chip only appears when a trip actually has restricted items.',
       'The items that can get held up at security stand out at a glance, and you can round them all up in one tap before a flight.'),
