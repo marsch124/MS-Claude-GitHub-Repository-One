@@ -262,9 +262,14 @@ function eventForm(ev, lists, isEdit) {
     if (startInput.value) endInput.min = startInput.value;  // can't come home before you leave
     const n = nightsBetween(startInput.value, endInput.value);
     let msg; let warn = false;
-    if (!startInput.value || !endInput.value) msg = 'Add an end date to count the nights — it scales per-night quantities.';
+    if (!startInput.value || !endInput.value) msg = 'Add an end date to count the days — nights scale per-night quantities.';
     else if (n == null) { msg = '⚠ End date is before the start date.'; warn = true; }
-    else msg = n === 0 ? '🌙 Day trip — 0 nights' : `🌙 ${n} night${n === 1 ? '' : 's'}`;
+    else {
+      const days = n + 1;  // inclusive calendar days: start and end day both count
+      msg = n === 0
+        ? '🗓 1 day · 🌙 0 nights (day trip)'
+        : `🗓 ${days} days · 🌙 ${n} night${n === 1 ? '' : 's'}`;
+    }
     nightsHint.textContent = msg;
     nightsHint.classList.toggle('warn', warn);
   }
@@ -1297,6 +1302,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v21', '2026-07-29 · 10:34 UTC', false, 'Show days as well as nights',
+      'The live trip-length readout under the dates now shows the <b>number of days</b> alongside the nights — e.g. “🗓 8 days · 🌙 7 nights” for a 2–9 Aug trip, or “1 day · 0 nights (day trip)” for a same-day outing. Days count both the start and end day (inclusive), so it matches how you’d say the trip out loud, while nights still drives per-night quantities.',
+      'You can see the trip length the way you think of it — total days — without losing the nights count that scales quantities.'),
     v('v20', '2026-07-29 · 10:20 UTC', false, 'Set the end date, not the night count',
       'The trip builder now asks for an <b>end date</b> (your return day) instead of a number of nights — because you usually know when you’re coming home, not the night count off the top of your head. The app derives the <b>nights</b> from your start and end dates and shows them live right under the fields (“🌙 7 nights”, or “Day trip” for same-day), so the number that scales per-night quantities is always visible. It warns if the end date is before the start, and older trips that only stored a night count still open correctly — their end date is filled in from start + nights.',
       'You enter the date you already know (going-home day) and still see exactly how many nights the packing quantities are based on.'),
