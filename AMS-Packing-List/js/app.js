@@ -16,7 +16,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v24';
+const APP_VERSION = 'v25';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -426,13 +426,15 @@ async function renderEvent(eventId) {
   // so they can be gathered — the wash bag, the cable pouch. Reuses the same rows.
   const liquidCount = ev.entries.filter((e) => e.liquid).length;
   const chargeCount = ev.entries.filter((e) => e.charging).length;
+  const restrictedCount = ev.entries.filter((e) => e.restricted).length;
   const weightedCount = ev.entries.filter((e) => Number(e.weight) > 0).length;
-  if (liquidCount || chargeCount || weightedCount) {
+  if (liquidCount || chargeCount || restrictedCount || weightedCount) {
     const fchip = (key, label, n) => `<button class="fchip${flagFilter.has(key) ? ' on' : ''}" data-filter="${key}">${label} <em>${n}</em></button>`;
     const filterbar = h(`<div class="filterbar">
       <span class="filterbar-lbl">Sort out</span>
       ${liquidCount ? fchip('liquid', '💧 Liquids', liquidCount) : ''}
       ${chargeCount ? fchip('charge', '⚡ Charge', chargeCount) : ''}
+      ${restrictedCount ? fchip('restricted', '⚠️ Restricted', restrictedCount) : ''}
       ${weightedCount ? `<button class="fchip${weightSort ? ' on' : ''}" data-filter="__weight">⚖️ Heaviest</button>` : ''}
       <button class="fchip clear" data-filter="__clear" hidden>Show all</button>
     </div>`);
@@ -627,10 +629,12 @@ function renderTotalBody(body, ev) {
   const entries = flagFilter.size
     ? ev.entries.filter((e) => e.id === expandedEntry
         || (flagFilter.has('liquid') && e.liquid)
-        || (flagFilter.has('charge') && e.charging))
+        || (flagFilter.has('charge') && e.charging)
+        || (flagFilter.has('restricted') && e.restricted))
     : ev.entries;
   if (!entries.length) {
-    const labels = [...flagFilter].map((k) => (k === 'liquid' ? 'liquids' : 'charge items')).join(' or ');
+    const labelFor = { liquid: 'liquids', charge: 'charge items', restricted: 'restricted items' };
+    const labels = [...flagFilter].map((k) => labelFor[k] || k).join(' or ');
     body.appendChild(h(`<div class="empty">
       <p class="empty-t">No ${esc(labels)} in this list</p>
       <p class="empty-s">Tap “Show all” above to see every item again.</p>
@@ -1397,6 +1401,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v25', '2026-07-29 · 18:11 UTC', false, '⚠️ Restricted icon &amp; “Sort out” filter',
+      'The restricted-item flag now shows a red <b>⚠️ warning triangle</b> instead of the battery symbol — a clearer “stop and think before you pack this” cue for anything with carry-on rules (power banks, drones, spare batteries). And <b>Sort out</b> gains a matching <b>⚠️ Restricted</b> chip alongside 💧 Liquids and ⚡ Charge: tap it to isolate just the restricted items with their count, so you can review everything that needs a second thought in one place. The chip only appears when a trip actually has restricted items.',
+      'The items that can get held up at security stand out at a glance, and you can round them all up in one tap before a flight.'),
     v('v24', '2026-07-29 · 10:59 UTC', false, '“Heaviest first” weight sort',
       'Added a third <b>Sort out</b> chip: <b>⚖️ Heaviest</b>. Tap it and the list reorders heaviest-first, ignoring the usual grouping, with each item’s <b>weight shown on its row</b> and a running total in the header — so when a bag is over its limit you can see straight away what’s worth leaving behind. It ranks by the real load (weight × quantity, including per-night scaling), and items without a weight drop to the bottom under their own heading. It combines with the 💧/⚡ filters to rank just those, and resets when you switch trips. Weights are set per item in its editor.',
       'When you need to shed grams, the biggest offenders are right at the top instead of scattered through the list.'),
