@@ -14,6 +14,9 @@ import { seedTemplates } from './seed.js';
 import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 
 const app = document.getElementById('app');
+// Single source of truth for the shown release. Bump alongside the service-worker
+// cache tag and the newest version-history entry.
+const APP_VERSION = 'v22';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -164,6 +167,10 @@ async function renderHome() {
     for (const e of events.slice(0, HOME_EVENT_PREVIEW)) list.appendChild(h(eventCardHTML(e)));
     wrap.appendChild(list);
   }
+
+  // A very subtle build marker — findable when you go looking, ignorable otherwise.
+  // Tapping it opens the full version history in Settings.
+  wrap.appendChild(h(`<a class="app-version" href="#/settings" title="AMS Packing List ${APP_VERSION} — tap for version history">AMS Packing List · ${APP_VERSION}</a>`));
   return wrap;
 }
 const HOME_EVENT_PREVIEW = 3;
@@ -1302,6 +1309,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v22', '2026-07-29 · 10:42 UTC', false, 'Version marker on the Home screen',
+      'Added a very subtle build marker at the very bottom of the <b>Home</b> screen — “AMS Packing List · v22” in small, faint text. It stays out of the way day-to-day but is easy to find when you want to know exactly which version you’re running (handy after an update). Tapping it jumps straight to this version history in Settings.',
+      'You can always confirm at a glance which release is live, without it cluttering the screen.'),
     v('v21', '2026-07-29 · 10:34 UTC', false, 'Show days as well as nights',
       'The live trip-length readout under the dates now shows the <b>number of days</b> alongside the nights — e.g. “🗓 8 days · 🌙 7 nights” for a 2–9 Aug trip, or “1 day · 0 nights (day trip)” for a same-day outing. Days count both the start and end day (inclusive), so it matches how you’d say the trip out loud, while nights still drives per-night quantities.',
       'You can see the trip length the way you think of it — total days — without losing the nights count that scales quantities.'),
