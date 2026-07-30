@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v33';
+const APP_VERSION = 'v34';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -106,6 +106,7 @@ const IC = {
   wrench: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.2 5.1L4 16.9 7.1 20l5.5-5.5a4 4 0 0 0 5.1-5.2l-2.4 2.4-2.1-.6-.6-2.1Z"/></svg>',
   camera: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.2"/></svg>',
   cal: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/></svg>',
+  search: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>',
 };
 
 // Weather glyphs, keyed by the symbolic icon keys model.js emits.
@@ -1242,7 +1243,7 @@ async function renderLists() {
   return wrap;
 }
 
-async function renderList(listId) {
+async function renderList(listId, openItemId) {
   const list = await db.getList(listId);
   if (!list) { location.assign('#/lists'); return h('<section></section>'); }
   STORAGES = collectStorages(await db.getLists()); // for the storage-location autocomplete
@@ -1267,13 +1268,17 @@ async function renderList(listId) {
     list.group = e.target.value;
     await saveGuard(db.saveList(list));
   });
-  let openItem = null;
+  // When arriving from the Care page's "All items" browser, open that item's
+  // editor straight away (and expand its 🧰 care panel).
+  let openItem = (openItemId && list.items.some((x) => x.id === openItemId)) ? openItemId : null;
+  if (openItem) careForceOpenItemId = openItem;
   const draw = () => {
     body.innerHTML = '';
     if (!list.items.length) { body.appendChild(h('<div class="empty"><p class="empty-s">No items yet — add the things this list should contribute.</p></div>')); return; }
     for (const it of list.items) body.appendChild(listItemRow(list, it, () => openItem, (v) => { openItem = v; }, draw));
   };
   draw();
+  if (openItem) requestAnimationFrame(() => $('.item-editor', body)?.scrollIntoView({ block: 'center' }));
 
   wrap.querySelector('[data-add]').addEventListener('click', () => {
     const it = newItem({ name: '' });
@@ -1335,7 +1340,8 @@ function itemEditor(list, it, setOpen, draw) {
   const intervalIsPreset = MAINTENANCE_INTERVALS.some((p) => p.days === curInterval);
   const intervalSel = intervalIsPreset ? String(curInterval) : (curInterval ? 'custom' : '0');
   const intervalOpts = [...MAINTENANCE_INTERVALS.map((p) => ({ value: String(p.days), label: p.label })), { value: 'custom', label: 'Custom…' }];
-  const careOpen = hasCare(it) || !!it.storage || !!it.photo;
+  const careOpen = hasCare(it) || !!it.storage || !!it.photo || careForceOpenItemId === it.id;
+  if (careForceOpenItemId === it.id) careForceOpenItemId = null;
 
   ed.innerHTML = `
     <label class="field"><span>Item</span><input name="name" value="${esc(it.name)}"></label>
@@ -1500,6 +1506,8 @@ function itemEditor(list, it, setOpen, draw) {
 let careView = 'list';            // 'list' | 'calendar'
 let careExpanded = null;          // item id whose detail panel is open (list mode)
 let careMonth = null;             // 'YYYY-MM' shown in the calendar (defaults to this month)
+let careForceOpenItemId = null;   // when set, the item's editor opens with its 🧰 care panel expanded
+let careItemSearch = '';          // current text in the "All items" search box on the Care page
 const monthOf = (ymd) => ymd.slice(0, 7);
 
 async function renderMaintenance() {
@@ -1511,58 +1519,151 @@ async function renderMaintenance() {
   const rows = maintenanceList(lists);
   const summary = maintenanceSummary(lists);
 
-  if (!rows.length) {
-    wrap.appendChild(h(`<div class="empty">
-      <p class="empty-t">Nothing to look after yet</p>
-      <p class="empty-s">Open any item in the <b>Lists</b> tab, expand <b>🧰 Storage, photo &amp; maintenance</b>, and add a service interval or care notes. Your gear that needs upkeep — wetsuit, bike, tent, drone — shows up here.</p>
-      <a class="btn primary" href="#/lists">Go to Lists</a>
+  // ---- Top: what needs looking after (list / calendar) --------------------
+  if (rows.length) {
+    // Headline: overdue / due-soon counts.
+    const sc = [];
+    if (summary.overdue) sc.push(`<span class="care-stat overdue">🔴 ${summary.overdue} overdue</span>`);
+    if (summary.soon) sc.push(`<span class="care-stat soon">🟡 ${summary.soon} due soon</span>`);
+    if (!summary.due) sc.push(`<span class="care-stat ok">🟢 All up to date</span>`);
+    wrap.appendChild(h(`<div class="care-stats">${sc.join('')}</div>`));
+
+    // List / Calendar toggle.
+    const seg = (val, label) => `<label class="seg${careView === val ? ' on' : ''}"><input type="radio" name="careview" value="${val}"${careView === val ? ' checked' : ''}>${label}</label>`;
+    const toolbar = h(`<div class="toolbar"><div class="segmented small">${seg('list', 'List')}${seg('calendar', 'Calendar')}</div></div>`);
+    wrap.appendChild(toolbar);
+
+    const body = h('<div class="care-wrap"></div>');
+    wrap.appendChild(body);
+
+    // Mark an item maintained today, from any view.
+    const markDone = async (listId, itemId) => {
+      const list = listById.get(listId);
+      const item = list && list.items.find((x) => x.id === itemId);
+      if (!item) return;
+      logMaintenance(item, todayISO());
+      if (await saveGuard(db.saveList(list))) render();
+    };
+
+    const draw = () => {
+      body.innerHTML = '';
+      if (careView === 'calendar') drawCareCalendar(body, rows, markDone);
+      else drawCareList(body, rows, markDone);
+    };
+    draw();
+
+    toolbar.addEventListener('change', (e) => {
+      if (e.target.name !== 'careview') return;
+      careView = e.target.value;
+      $$('.segmented .seg', toolbar).forEach((s) => s.classList.toggle('on', s.querySelector('input').checked));
+      draw();
+    });
+    body.addEventListener('click', async (e) => {
+      const done = e.target.closest('[data-done]');
+      if (done) { e.preventDefault(); await markDone(done.dataset.list, done.dataset.done); return; }
+    });
+  } else {
+    wrap.appendChild(h(`<div class="care-none">
+      <p class="empty-s">Nothing is scheduled for upkeep yet. Find an item below, open it, and fill in its <b>🧰 Storage, photo &amp; maintenance</b> panel — a service interval or care notes will bring it here with reminders.</p>
     </div>`));
-    return wrap;
   }
 
-  // Headline: overdue / due-soon counts.
-  const sc = [];
-  if (summary.overdue) sc.push(`<span class="care-stat overdue">🔴 ${summary.overdue} overdue</span>`);
-  if (summary.soon) sc.push(`<span class="care-stat soon">🟡 ${summary.soon} due soon</span>`);
-  if (!summary.due) sc.push(`<span class="care-stat ok">🟢 All up to date</span>`);
-  wrap.appendChild(h(`<div class="care-stats">${sc.join('')}</div>`));
-
-  // List / Calendar toggle.
-  const seg = (val, label) => `<label class="seg${careView === val ? ' on' : ''}"><input type="radio" name="careview" value="${val}"${careView === val ? ' checked' : ''}>${label}</label>`;
-  const toolbar = h(`<div class="toolbar"><div class="segmented small">${seg('list', 'List')}${seg('calendar', 'Calendar')}</div></div>`);
-  wrap.appendChild(toolbar);
-
-  const body = h('<div class="care-wrap"></div>');
-  wrap.appendChild(body);
-
-  // Mark an item maintained today, from any view.
-  const markDone = async (listId, itemId) => {
-    const list = listById.get(listId);
-    const item = list && list.items.find((x) => x.id === itemId);
-    if (!item) return;
-    logMaintenance(item, todayISO());
-    if (await saveGuard(db.saveList(list))) render();
-  };
-
-  const draw = () => {
-    body.innerHTML = '';
-    if (careView === 'calendar') drawCareCalendar(body, rows, markDone);
-    else drawCareList(body, rows, markDone);
-  };
-  draw();
-
-  toolbar.addEventListener('change', (e) => {
-    if (e.target.name !== 'careview') return;
-    careView = e.target.value;
-    $$('.segmented .seg', toolbar).forEach((s) => s.classList.toggle('on', s.querySelector('input').checked));
-    draw();
-  });
-  body.addEventListener('click', async (e) => {
-    const done = e.target.closest('[data-done]');
-    if (done) { e.preventDefault(); await markDone(done.dataset.list, done.dataset.done); return; }
-  });
+  // ---- Below: browse every item and jump straight to its editor ----------
+  wrap.appendChild(allItemsSection(lists));
 
   return wrap;
+}
+
+// The "All items" browser on the Care page: search all items across every
+// list, tap one to jump to its editor (with the 🧰 care panel expanded), or
+// add a brand-new item to any list and edit it right away.
+function allItemsSection(lists) {
+  const sec = h('<div class="allitems"></div>');
+  const flat = [];
+  for (const l of lists) for (const it of (l.items || [])) flat.push({ it, list: l });
+  flat.sort((a, b) => (a.it.name || '').localeCompare(b.it.name || '', undefined, { sensitivity: 'base' }));
+  const listOpts = lists.map((l) => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
+
+  sec.innerHTML = `
+    <div class="ai-head">
+      <h2>${IC.list}<span>All items</span></h2>
+      <button class="btn ghost sm" type="button" data-ai-add>${IC.plus}<span>New item</span></button>
+    </div>
+    <p class="ai-hint">Jump to any item to set where it’s stored, add a photo, or plan its maintenance.</p>
+    <form class="ai-addform hidden" data-ai-form>
+      <div class="row2">
+        <label class="field"><span>Add to list</span>${selectHtml('ai-list', lists.map((l) => ({ value: l.id, label: l.name })), lists[0] && lists[0].id)}</label>
+        <label class="field"><span>Item name</span><input name="ai-name" placeholder="e.g. Wetsuit" autocomplete="off"></label>
+      </div>
+      <div class="ai-addactions">
+        <button type="button" class="btn" data-ai-cancel>Cancel</button>
+        <button type="submit" class="btn primary">Create &amp; edit</button>
+      </div>
+    </form>
+    <label class="ai-searchbox">${IC.search}<input type="search" class="ai-search" placeholder="Search all items…" value="${esc(careItemSearch)}" autocomplete="off"></label>
+    <div class="ai-count"></div>
+    <div class="ai-list"></div>`;
+
+  const listEl = $('.ai-list', sec);
+  const countEl = $('.ai-count', sec);
+  const searchEl = $('.ai-search', sec);
+  const form = $('[data-ai-form]', sec);
+
+  const drawItems = () => {
+    const q = careItemSearch.trim().toLowerCase();
+    const shown = q
+      ? flat.filter(({ it, list }) => (it.name || '').toLowerCase().includes(q)
+        || (it.storage || '').toLowerCase().includes(q)
+        || (list.name || '').toLowerCase().includes(q))
+      : flat;
+    countEl.textContent = q ? `${shown.length} of ${flat.length} items` : `${flat.length} items`;
+    listEl.innerHTML = '';
+    if (!shown.length) { listEl.appendChild(h('<div class="empty"><p class="empty-s">No items match your search.</p></div>')); return; }
+    for (const { it, list } of shown) listEl.appendChild(aiRow(it, list));
+  };
+  drawItems();
+
+  searchEl.addEventListener('input', () => { careItemSearch = searchEl.value; drawItems(); });
+
+  $('[data-ai-add]', sec).addEventListener('click', () => {
+    form.classList.toggle('hidden');
+    if (!form.classList.contains('hidden')) $('input[name=ai-name]', form).focus();
+  });
+  $('[data-ai-cancel]', sec).addEventListener('click', () => form.classList.add('hidden'));
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const listId = $('select[name=ai-list]', form).value;
+    const list = lists.find((l) => l.id === listId);
+    if (!list) return;
+    const name = ($('input[name=ai-name]', form).value || '').trim();
+    const it = newItem({ name });
+    list.items.unshift(it);
+    careForceOpenItemId = it.id;
+    careItemSearch = '';
+    if (await saveGuard(db.saveList(list))) location.assign(`#/list/${list.id}/item/${it.id}`);
+  });
+
+  return sec;
+}
+
+function aiRow(it, list) {
+  const care = maintenanceStatus(it);
+  const thumb = it.photo
+    ? `<img class="ai-thumb" src="${esc(it.photo)}" alt="">`
+    : `<span class="ai-thumb ph">${IC.wrench}</span>`;
+  const bits = [esc(list.name)];
+  if (it.storage) bits.push(`📍 ${esc(it.storage)}`);
+  const badge = care
+    ? `<span class="ai-badge ${care.state}" title="${esc('Maintenance: ' + dueLabel(care))}">${CARE_EMOJI[care.state]}</span>`
+    : (it.photo ? '<span class="ai-badge" title="Has a photo">📷</span>' : '');
+  return h(`<a class="ai-item" href="#/list/${esc(list.id)}/item/${esc(it.id)}">
+    ${thumb}
+    <span class="ai-main">
+      <span class="ai-name">${esc(it.name || '(unnamed)')}</span>
+      <span class="ai-sub">${bits.join(' · ')}</span>
+    </span>
+    ${badge}${IC.fwd}
+  </a>`);
 }
 
 const CARE_SECTIONS = [
@@ -1803,7 +1904,8 @@ function howtoCard() {
           <li><b>List</b> — grouped by urgency: <b>🔴 Overdue</b>, <b>🟡 Due soon</b> (within three weeks), <b>🟢 Upcoming</b>, and <b>🧰 Reference only</b> (care notes but no schedule). Each row shows the photo, where it's stored and when it's next due; tap it to read the how-to notes, open the manufacturer link, and see its service history. Hit <b>✓ Done</b> to log a service in one tap.</li>
           <li><b>Calendar</b> — a month view with each scheduled service on its due date, colour-coded by urgency and dotted with a count; tap a day to see (and tick off) what's due. Overdue items are flagged above the grid.</li>
         </ul>
-        <p>Only items you give care info to appear here — your everyday clothes and toiletries stay out of it. When something's overdue or due soon, a <b>🧰 reminder</b> also shows on the <b>Home</b> screen.</p>
+        <p>Only items you give care info to appear in those two views — your everyday clothes and toiletries stay out of it. When something's overdue or due soon, a <b>🧰 reminder</b> also shows on the <b>Home</b> screen.</p>
+        <p>Below that sits <b>All items</b> — a searchable index of <b>every item in every list</b>. Type a name (or a storage place) to filter, then tap a result to jump <b>straight into that item's editor</b> with its <b>🧰 Storage, photo &amp; maintenance</b> panel already open — the quickest way to add or update care info without hunting through the Lists tab. The <b>＋ New item</b> button creates an item in any list you pick and drops you into editing it right away.</p>
 
         <h3>Countdown &amp; “pack now” nudges</h3>
         <p>With a start date set, each event shows a countdown, and a ⏰ banner surfaces the earliest phase that's due (based on how many days each phase is normally packed before departure). These are on-open reminders — the app can't push background notifications.</p>
@@ -1848,6 +1950,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v34', '2026-07-30 · 15:30 UTC', false, 'Care page: browse & add any item',
+      'The <b>Care</b> tab gains a second section below the reminders: <b>All items</b>. It lists <b>every item across every list</b> with a <b>search box</b>, so you can type “wetsuit”, “drone”, “tent”… and jump <b>straight into that item’s editor</b> with its <b>🧰 Storage, photo &amp; maintenance</b> panel already open — no more hunting through Lists to add care info. Each row shows where it lives (📍) and a maintenance dot if it has a schedule. There’s also a <b>＋ New item</b> button: pick a list, give it a name, and you’re dropped straight into editing it. This makes the Care tab the one place to set up and look after all your gear.',
+      'Add or update storage, photos and maintenance for any item in seconds — search, tap, done — without digging through your lists.'),
     v('v33', '2026-07-30 · 14:00 UTC', false, 'Quick activity gets its own icon',
       'Small polish: the <b>⏱️ Quick activity</b> list type had been sharing the ⚡ lightning bolt with the <b>⚡ Charging</b> flag, which was confusing at a glance. Quick activity now uses a <b>⏱️ stopwatch</b> everywhere — in the “List type” switch and on the small <b>⏱️ Quick</b> tag on a trip’s card — so the two are never mixed up. Nothing else changed.',
       'One glance tells Quick-activity lists and charging items apart — no more double-duty lightning bolt.'),
@@ -2112,6 +2217,8 @@ async function renderRoute() {
   if (eventPack) return renderPackMode(eventPack);
   const eventId = m(/^#\/event\/([^/]+)$/);
   if (eventId) return renderEvent(eventId);
+  const listItem = location.hash.match(/^#\/list\/([^/]+)\/item\/([^/]+)$/);
+  if (listItem) return renderList(listItem[1], listItem[2]);
   const listId = m(/^#\/list\/([^/]+)$/);
   if (listId) return renderList(listId);
   return renderEvents();
