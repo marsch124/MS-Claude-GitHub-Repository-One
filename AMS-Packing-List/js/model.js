@@ -111,6 +111,9 @@ export function id() {
 const asArray = (v) => (Array.isArray(v) ? v : []);
 const nowISO = () => new Date().toISOString();
 export const normName = (s) => String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+// A calendar date in YYYY-MM-DD form (the shape all care dates are stored in).
+const isYMD = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+const todayYMD = (todayISO) => (todayISO || new Date().toISOString()).slice(0, 10);
 
 // --- Shape guards (applied when reading from storage) ---
 
@@ -134,7 +137,26 @@ export function coerceItem(it) {
   it.liquid = !!it.liquid;        // liquid / gel — 100 ml hand-luggage rule
   it.restricted = !!it.restricted; // battery / restricted — carry-on rules
   it.perNight = !!it.perNight;    // quantity scales with trip length (nights)
+  it.storage = typeof it.storage === 'string' ? it.storage : '';   // where it lives at home (free text)
+  it.photo = typeof it.photo === 'string' ? it.photo : '';         // a picture of the item (resized data URL)
+  it.maintenance = normalizeMaintenance(it.maintenance);           // care record, or null when unused
   return it;
+}
+// A care record: how to look after the physical thing, plus an optional recurring
+// schedule and a log of what was done when. Kept null unless it holds real content,
+// so the 200+ everyday items (socks, toothpaste) carry no dead weight.
+export function normalizeMaintenance(m) {
+  if (!m || typeof m !== 'object') return null;
+  const notes = typeof m.notes === 'string' ? m.notes : '';
+  const link = typeof m.link === 'string' ? m.link : '';
+  const intervalDays = Number.isFinite(m.intervalDays) && m.intervalDays > 0 ? Math.floor(m.intervalDays) : 0;
+  const lastDone = isYMD(m.lastDone) ? m.lastDone : '';
+  const log = asArray(m.log)
+    .map((e) => ({ date: isYMD(e && e.date) ? e.date : '', note: typeof (e && e.note) === 'string' ? e.note : '' }))
+    .filter((e) => e.date)
+    .sort((a, b) => a.date.localeCompare(b.date)); // oldest first
+  const empty = !notes && !link && !intervalDays && !lastDone && !log.length;
+  return empty ? null : { notes, link, intervalDays, lastDone, log };
 }
 // Usage learning: how often a building-block item was packed vs actually used.
 function normalizeStats(s) {
@@ -195,6 +217,9 @@ export function newItem(partial = {}) {
     liquid: false,   // liquid/gel (100 ml rule)
     restricted: false, // battery / restricted (carry-on)
     perNight: false, // quantity scales with trip nights
+    storage: '',     // where the physical item is kept at home (free text)
+    photo: '',       // a picture of the item, as a resized data URL
+    maintenance: null, // care record (notes/link/schedule/log) — see normalizeMaintenance
     ...partial,
   });
 }
@@ -280,6 +305,7 @@ function entryFromItem(item, list) {
     liquid: !!item.liquid,
     restricted: !!item.restricted,
     perNight: !!item.perNight,
+    storage: item.storage || '', // carried onto the trip so packing shows where to grab it
     sub: asArray(item.sub).slice(),
     note: item.note || '',
     sourceListId: list ? list.id : null,
@@ -656,6 +682,118 @@ export function encodeTripLink(event, whenISO = nowISO()) {
 }
 export function decodeTripLink(data) {
   return parseTripBundle(fromBase64Url(data));
+}
+
+// --- Care & maintenance ---
+// A physical item can carry a care record: how to look after it (notes + a
+// manufacturer/how-to link), an optional recurring service interval, when it was
+// last done, and a history log. The building-block item (in a List) is the
+// canonical record of the real thing, so care lives there — not on trip entries.
+
+// Friendly interval presets offered in the editor. 0 = no recurring schedule
+// (reference-only care: notes/link but nothing to remind about).
+export const MAINTENANCE_INTERVALS = [
+  { days: 0, label: 'No schedule (reference only)' },
+  { days: 30, label: 'Every month' },
+  { days: 90, label: 'Every 3 months' },
+  { days: 182, label: 'Every 6 months' },
+  { days: 365, label: 'Every year' },
+  { days: 730, label: 'Every 2 years' },
+];
+// A due date within this many days counts as "due soon" (amber, not yet overdue).
+export const MAINTENANCE_SOON_DAYS = 21;
+
+// YYYY-MM-DD arithmetic, done in UTC so it never drifts by a day across timezones.
+export function addDays(ymd, days) {
+  const t = Date.parse(`${ymd}T00:00:00Z`);
+  if (Number.isNaN(t)) return '';
+  return new Date(t + days * 86400000).toISOString().slice(0, 10);
+}
+export function daysBetween(fromYMD, toYMD) {
+  const a = Date.parse(`${fromYMD}T00:00:00Z`);
+  const b = Date.parse(`${toYMD}T00:00:00Z`);
+  if (Number.isNaN(a) || Number.isNaN(b)) return null;
+  return Math.round((b - a) / 86400000);
+}
+
+// Does this item hold any care info worth surfacing (schedule, notes, link, or history)?
+export function hasCare(item) {
+  const m = item && item.maintenance;
+  return !!(m && (m.intervalDays || m.notes || m.link || m.lastDone || (m.log && m.log.length)));
+}
+
+// Where an item's maintenance stands today. Returns null for items with no care
+// record. `state` is one of: 'overdue' | 'soon' | 'ok' (scheduled), or 'reference'
+// (care notes/link but no recurring schedule). A scheduled item never logged as
+// done is treated as due today, and flagged `neverDone` so the UI can say so.
+export function maintenanceStatus(item, todayISO) {
+  const m = item && item.maintenance;
+  if (!m) return null;
+  const today = todayYMD(todayISO);
+  if (!m.intervalDays) {
+    return { scheduled: false, state: 'reference', nextDue: '', days: null, lastDone: m.lastDone || '', neverDone: !m.lastDone, intervalDays: 0 };
+  }
+  const neverDone = !m.lastDone;
+  const nextDue = neverDone ? today : addDays(m.lastDone, m.intervalDays);
+  const days = daysBetween(today, nextDue); // negative = overdue by that many days
+  const state = days < 0 ? 'overdue' : days <= MAINTENANCE_SOON_DAYS ? 'soon' : 'ok';
+  return { scheduled: true, state, nextDue, days, lastDone: m.lastDone || '', neverDone, intervalDays: m.intervalDays };
+}
+
+const MAINT_RANK = { overdue: 0, soon: 1, ok: 2, reference: 3 };
+
+// Every item across all lists that carries care info, each with its list context
+// and current status, ordered by urgency (overdue → due soon → upcoming → reference).
+export function maintenanceList(lists, todayISO) {
+  const today = todayYMD(todayISO);
+  const out = [];
+  for (const l of asArray(lists)) {
+    for (const it of asArray(l.items)) {
+      if (!hasCare(it)) continue;
+      out.push({ listId: l.id, listName: l.name || '', item: it, status: maintenanceStatus(it, today) });
+    }
+  }
+  out.sort((a, b) => {
+    const ra = MAINT_RANK[a.status.state] ?? 9;
+    const rb = MAINT_RANK[b.status.state] ?? 9;
+    if (ra !== rb) return ra - rb;
+    if (a.status.nextDue && b.status.nextDue && a.status.nextDue !== b.status.nextDue) {
+      return a.status.nextDue.localeCompare(b.status.nextDue); // soonest due first
+    }
+    return (a.item.name || '').localeCompare(b.item.name || '');
+  });
+  return out;
+}
+
+// Headline counts for the Care tab and the Home reminder.
+export function maintenanceSummary(lists, todayISO) {
+  const all = maintenanceList(lists, todayISO);
+  const count = (s) => all.filter((x) => x.status.state === s).length;
+  const overdue = count('overdue');
+  const soon = count('soon');
+  return { overdue, soon, ok: count('ok'), reference: count('reference'), scheduled: overdue + soon + count('ok'), total: all.length, due: overdue + soon };
+}
+
+// Scheduled items bucketed by their next-due date (YYYY-MM-DD) — powers the calendar.
+export function maintenanceByDate(lists, todayISO) {
+  const map = new Map();
+  for (const row of maintenanceList(lists, todayISO)) {
+    if (!row.status.scheduled || !row.status.nextDue) continue;
+    if (!map.has(row.status.nextDue)) map.set(row.status.nextDue, []);
+    map.get(row.status.nextDue).push(row);
+  }
+  return map;
+}
+
+// Record that an item was maintained on `dateYMD` (default today), appending to
+// its history and resetting the schedule. Mutates and returns the item; creates
+// the care record if the item didn't have one. Pure enough to unit-test.
+export function logMaintenance(item, dateYMD, note = '', todayISO) {
+  const date = isYMD(dateYMD) ? dateYMD : todayYMD(todayISO);
+  const base = normalizeMaintenance(item.maintenance) || { notes: '', link: '', intervalDays: 0, lastDone: '', log: [] };
+  const log = [...base.log, { date, note: typeof note === 'string' ? note : '' }].sort((a, b) => a.date.localeCompare(b.date));
+  item.maintenance = normalizeMaintenance({ ...base, lastDone: date, log });
+  return item;
 }
 
 // --- Weather (opt-in, Open-Meteo) ---

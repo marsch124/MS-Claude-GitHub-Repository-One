@@ -7,6 +7,8 @@ import {
   effectiveQty, bagLoads, packingFlags, daysUntil, countdownLabel, tripNudge, nightsBetween, endFromNights,
   buildTripBundle, encodeTripLink, fromBase64Url,
   deriveWeather, weatherSuggestions, weatherGear, WEATHER_CONDITIONS,
+  MAINTENANCE_INTERVALS, MAINTENANCE_SOON_DAYS, hasCare, maintenanceStatus, normalizeMaintenance,
+  maintenanceList, maintenanceSummary, maintenanceByDate, logMaintenance, addDays, daysBetween,
 } from './model.js';
 import * as db from './db.js';
 import * as weather from './weather.js';
@@ -15,12 +17,62 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v31';
+const APP_VERSION = 'v32';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const todayISO = () => new Date().toISOString().slice(0, 10);
+
+// Read a picked image file, downscale it to a sensible max edge and re-encode as a
+// compact JPEG data URL — so an item photo is a few tens of KB in IndexedDB, not
+// several MB. Runs entirely on-device; the file never leaves the browser.
+function readImageResized(file, maxEdge = 900, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const hgt = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = hgt;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, hgt);
+      try { resolve(canvas.toDataURL('image/jpeg', quality)); }
+      catch (err) { reject(err); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read that image.')); };
+    img.src = url;
+  });
+}
+
+// Known storage locations across all lists — powers the <datalist> autocomplete so
+// "Garage shelf 3" stays consistent instead of being retyped slightly differently.
+let STORAGES = [];
+function collectStorages(lists) {
+  const set = new Set();
+  for (const l of lists) for (const it of l.items) if (it.storage) set.add(it.storage.trim());
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+// A human phrase for where an item's maintenance stands ("Overdue by 5 days", "in 12
+// days", "Due today", "No schedule").
+function dueLabel(status) {
+  if (!status) return '';
+  if (!status.scheduled) return 'No schedule';
+  const d = status.days;
+  if (d < 0) return `Overdue by ${-d} day${-d === 1 ? '' : 's'}`;
+  if (d === 0) return status.neverDone ? 'Due now (never logged)' : 'Due today';
+  if (d === 1) return 'Due tomorrow';
+  return `Due in ${d} days`;
+}
+const CARE_EMOJI = { overdue: '🔴', soon: '🟡', ok: '🟢', reference: '🧰' };
+function prettyDate(ymd) {
+  const t = Date.parse(`${ymd}T00:00:00Z`);
+  if (Number.isNaN(t)) return ymd || '';
+  return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
 
 // Await a save; surface failures instead of failing silently.
 async function saveGuard(promise) {
@@ -51,6 +103,9 @@ const IC = {
   share: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M8.5 7.5 12 4l3.5 3.5"/><path d="M6 12v6a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-6"/></svg>',
   link: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg>',
   pin: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.6"/></svg>',
+  wrench: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.2 5.1L4 16.9 7.1 20l5.5-5.5a4 4 0 0 0 5.1-5.2l-2.4 2.4-2.1-.6-.6-2.1Z"/></svg>',
+  camera: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.2"/></svg>',
+  cal: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/></svg>',
 };
 
 // Weather glyphs, keyed by the symbolic icon keys model.js emits.
@@ -134,6 +189,17 @@ async function renderHome() {
     wrap.appendChild(h(`<a class="nudge" href="#/event/${e.id}/pack">
       <span class="nudge-ic">⏰</span>
       <span class="nudge-body"><b>${esc(e.name || 'Trip')} ${esc(n.label)}</b> — ${n.dueCount} item${n.dueCount === 1 ? '' : 's'} to pack now<span class="nudge-sub">${esc(n.focusLabel)}</span></span>
+      <span class="nudge-go">${IC.fwd}</span>
+    </a>`));
+  }
+
+  // Care reminder: gear that's overdue or due soon for maintenance.
+  const care = maintenanceSummary(lists);
+  if (care.due > 0) {
+    const parts = [care.overdue ? `${care.overdue} overdue` : '', care.soon ? `${care.soon} due soon` : ''].filter(Boolean).join(' · ');
+    wrap.appendChild(h(`<a class="nudge care" href="#/maintenance">
+      <span class="nudge-ic">🧰</span>
+      <span class="nudge-body"><b>Maintenance due</b> — ${care.due} item${care.due === 1 ? ' needs' : 's need'} looking after<span class="nudge-sub">${esc(parts)}</span></span>
       <span class="nudge-go">${IC.fwd}</span>
     </a>`));
   }
@@ -707,6 +773,7 @@ function entryRow(ev, entry, body, showWeight = false) {
   const mode = totalView();
   // Show the dimensions NOT used as the current grouping, so the row stays informative.
   const subBits = [];
+  if (entry.storage) subBits.push(`📍 ${esc(entry.storage)}`);
   if (mode !== 'container' && entry.container) subBits.push(esc(entry.container));
   if (mode !== 'category' && entry.category) subBits.push(esc(entry.category));
   if (mode !== 'when') subBits.push(esc(phaseLabel(entry.phase)));
@@ -786,6 +853,7 @@ function entryEditor(ev, entry, body) {
       </div>
     </div>
     <label class="field charge-type-field${entry.charging ? '' : ' hidden'}"><span>Charge type</span>${selectHtml('chargeType', CHARGE_TYPES.map((c) => ({ value: c.id, label: c.label })), entry.chargeType)}</label>
+    <label class="field"><span>Stored at <em>(where to grab it)</em></span><input name="storage" value="${esc(entry.storage)}" placeholder="e.g. Garage shelf 3" autocomplete="off"></label>
     <label class="field"><span>Note</span><input name="note" value="${esc(entry.note)}"></label>
     <div class="editor-actions">
       <button type="button" class="btn danger ghost" data-x="del">${IC.trash}<span>Remove</span></button>
@@ -820,6 +888,7 @@ function entryEditor(ev, entry, body) {
       entry.charging = $('input[name=charging]', ed).checked;
       entry.chargeType = $('select[name=chargeType]', ed).value;
       entry.restricted = $('input[name=restricted]', ed).checked;
+      entry.storage = ($('input[name=storage]', ed).value || '').trim();
       entry.note = ($('input[name=note]', ed).value || '').trim();
       entry._edited = true;
       expandedEntry = null;
@@ -1001,7 +1070,7 @@ async function renderPackMode(eventId) {
 }
 
 function packRow(ev, entry, redraw) {
-  const meta = [entry.swedish, entry.container, entry.note].filter(Boolean).map(esc).join(' · ');
+  const meta = [entry.swedish, entry.storage ? `📍 ${entry.storage}` : '', entry.container, entry.note].filter(Boolean).map(esc).join(' · ');
   const row = h(`<button class="pack-item${entry.checked ? ' done' : ''}" type="button">
     <span class="pack-box">${entry.checked ? IC.check : ''}</span>
     <span class="pack-body">
@@ -1176,6 +1245,7 @@ async function renderLists() {
 async function renderList(listId) {
   const list = await db.getList(listId);
   if (!list) { location.assign('#/lists'); return h('<section></section>'); }
+  STORAGES = collectStorages(await db.getLists()); // for the storage-location autocomplete
   const wrap = h('<section class="screen"></section>');
   wrap.appendChild(h(`<div class="topbar">
     <a class="iconbtn" href="#/lists" aria-label="Back">${IC.back}</a>
@@ -1223,12 +1293,17 @@ async function renderList(listId) {
 }
 
 function listItemRow(list, it, getOpen, setOpen, draw) {
-  const tags = [it.container, ...(it.seasons || []), ...(it.contexts || []), ...(it.transports || [])].filter(Boolean);
+  const tags = [it.storage ? `📍 ${it.storage}` : '', it.container, ...(it.seasons || []), ...(it.contexts || []), ...(it.transports || [])].filter(Boolean);
   const chShort = it.charging ? chargeTypeShort(it.chargeType) : '';
+  const care = maintenanceStatus(it);
   const badges = `${it.charging ? `<span class="badge charge" title="${esc('Needs charging' + (chShort ? ` — ${chargeTypeLabel(it.chargeType)}` : ''))}">⚡${chShort ? ` ${esc(chShort)}` : ''}</span>` : ''}`
     + `${it.liquid ? '<span class="badge liquid" title="Liquid / 100 ml rule">💧</span>' : ''}`
-    + `${it.restricted ? '<span class="badge restricted" title="Restricted — think before packing (battery / carry-on rules)">⚠️</span>' : ''}`;
+    + `${it.restricted ? '<span class="badge restricted" title="Restricted — think before packing (battery / carry-on rules)">⚠️</span>' : ''}`
+    + `${it.photo ? '<span class="badge photo" title="Has a photo">📷</span>' : ''}`
+    + `${care ? `<span class="badge maint ${care.state}" title="${esc(`Maintenance: ${dueLabel(care)}`)}">${CARE_EMOJI[care.state]}</span>` : ''}`;
+  const thumb = it.photo ? `<img class="row-thumb" src="${esc(it.photo)}" alt="">` : '';
   const row = h(`<div class="entry">
+    ${thumb}
     <button class="entry-main" type="button">
       <span class="e-name">${esc(it.name || '(unnamed)')}${it.qty ? ` <em>×${esc(it.qty)}</em>` : ''} ${badges}</span>
       <span class="e-sub">${esc(phaseLabel(it.phase))}${tags.length ? ' · ' + tags.map(esc).join(' · ') : ''}</span>
@@ -1250,6 +1325,18 @@ function listItemRow(list, it, getOpen, setOpen, draw) {
 
 function itemEditor(list, it, setOpen, draw) {
   const ed = h('<div class="editor item-editor"></div>');
+  // Care state that can't be read straight back from the DOM on save:
+  //  - the photo is held here and only committed to the item on Save (so Cancel discards it),
+  //  - the maintenance history log is edited via "Log done" and committed on Save.
+  let photo = it.photo || '';
+  const m = it.maintenance || { notes: '', link: '', intervalDays: 0, lastDone: '', log: [] };
+  let careLog = (m.log || []).slice();
+  const curInterval = m.intervalDays || 0;
+  const intervalIsPreset = MAINTENANCE_INTERVALS.some((p) => p.days === curInterval);
+  const intervalSel = intervalIsPreset ? String(curInterval) : (curInterval ? 'custom' : '0');
+  const intervalOpts = [...MAINTENANCE_INTERVALS.map((p) => ({ value: String(p.days), label: p.label })), { value: 'custom', label: 'Custom…' }];
+  const careOpen = hasCare(it) || !!it.storage || !!it.photo;
+
   ed.innerHTML = `
     <label class="field"><span>Item</span><input name="name" value="${esc(it.name)}"></label>
     <div class="row2">
@@ -1274,21 +1361,97 @@ function itemEditor(list, it, setOpen, draw) {
     <fieldset class="mini"><legend>Catering</legend>${checkRow('catering', CATERING.map((c) => ({ value: c.id, label: c.label })), it.catering)}</fieldset>
     <fieldset class="mini"><legend>Weather <em>(only suggest when the forecast calls for it)</em></legend>${checkRow('weather', WEATHER_CONDITIONS.map((w) => ({ value: w.id, label: w.label })), it.weather)}</fieldset>
     <label class="field"><span>Note</span><input name="note" value="${esc(it.note)}"></label>
+
+    <details class="care"${careOpen ? ' open' : ''}>
+      <summary><span class="care-h">🧰 Storage, photo &amp; maintenance</span><span class="care-sum">Where it lives, a picture, and how &amp; when to look after it</span></summary>
+      <div class="care-body">
+        <label class="field"><span>Where it's stored</span>
+          <input name="storage" list="ams-storages" value="${esc(it.storage)}" placeholder="e.g. Garage shelf 3 · RV box · Hall closet" autocomplete="off"></label>
+
+        <div class="care-photo" data-photo>
+          <div class="care-photo-preview">${photo ? `<img src="${esc(photo)}" alt="${esc(it.name)}">` : `<span class="care-photo-empty">${IC.camera}<span>No photo</span></span>`}</div>
+          <div class="care-photo-actions">
+            <button type="button" class="btn ghost sm" data-care="pick">${IC.camera}<span>${photo ? 'Replace' : 'Add photo'}</span></button>
+            <button type="button" class="btn danger ghost sm" data-care="rmphoto"${photo ? '' : ' hidden'}>${IC.trash}<span>Remove</span></button>
+          </div>
+          <input type="file" accept="image/*" hidden data-care-file>
+        </div>
+
+        <div class="row2">
+          <label class="field"><span>Maintain</span>${selectHtml('interval', intervalOpts, intervalSel)}</label>
+          <label class="field care-lastdone"><span>Last done</span><input type="date" name="lastDone" value="${esc(m.lastDone)}" max="${todayISO()}"></label>
+        </div>
+        <label class="field care-custom${intervalSel === 'custom' ? '' : ' hidden'}"><span>Custom interval (days)</span>
+          <input type="number" name="customDays" min="1" inputmode="numeric" value="${curInterval && !intervalIsPreset ? curInterval : ''}" placeholder="e.g. 120"></label>
+
+        <label class="field"><span>How to maintain <em>(steps, products, settings)</em></span>
+          <textarea name="mnotes" rows="3" placeholder="e.g. Rinse in fresh water, dry inside-out, re-wax zip yearly.">${esc(m.notes)}</textarea></label>
+        <label class="field"><span>Manufacturer / how-to link</span>
+          <input type="url" name="mlink" value="${esc(m.link)}" placeholder="https://…" autocomplete="off"></label>
+
+        <div class="care-donerow">
+          <button type="button" class="btn sm" data-care="donetoday">${IC.check}<span>Log maintenance done today</span></button>
+        </div>
+        <div class="care-history" data-history></div>
+      </div>
+    </details>
+
     <div class="editor-actions">
       <button type="button" class="btn danger ghost" data-x="del">${IC.trash}<span>Remove</span></button>
       <div class="spacer"></div>
       <button type="button" class="btn" data-x="cancel">Cancel</button>
       <button type="button" class="btn primary" data-x="save">Save</button>
-    </div>`;
-  ed.addEventListener('change', (e) => {
+    </div>
+    <datalist id="ams-storages">${STORAGES.map((s) => `<option value="${esc(s)}"></option>`).join('')}</datalist>`;
+
+  const fileInput = $('[data-care-file]', ed);
+  const drawHistory = () => {
+    const box = $('[data-history]', ed);
+    if (!careLog.length) { box.innerHTML = ''; return; }
+    const rows = careLog.slice().reverse().map((e) => `<div class="care-hrow"><span class="care-hdate">${esc(prettyDate(e.date))}</span>${e.note ? `<span class="care-hnote">${esc(e.note)}</span>` : ''}</div>`).join('');
+    box.innerHTML = `<div class="care-hhead">History</div>${rows}`;
+  };
+  drawHistory();
+
+  ed.addEventListener('change', async (e) => {
     if (e.target.type === 'checkbox') e.target.closest('label')?.classList.toggle('on', e.target.checked);
     if (e.target.name === 'charging') $('.charge-type-field', ed)?.classList.toggle('hidden', !e.target.checked);
+    if (e.target.name === 'interval') $('.care-custom', ed)?.classList.toggle('hidden', e.target.value !== 'custom');
+    if (e.target === fileInput) {
+      const f = fileInput.files[0]; if (!f) return;
+      try {
+        photo = await readImageResized(f);
+        const prev = $('.care-photo-preview', ed);
+        prev.innerHTML = `<img src="${esc(photo)}" alt="${esc(it.name)}">`;
+        $('[data-care="rmphoto"]', ed).hidden = false;
+        $('[data-care="pick"] span', ed).textContent = 'Replace';
+      } catch { alert('Sorry — that image could not be read.'); }
+      fileInput.value = '';
+    }
   });
+
   ed.addEventListener('click', async (e) => {
+    const care = e.target.closest('[data-care]')?.dataset.care;
+    if (care === 'pick') { fileInput.click(); return; }
+    if (care === 'rmphoto') {
+      photo = '';
+      $('.care-photo-preview', ed).innerHTML = `<span class="care-photo-empty">${IC.camera}<span>No photo</span></span>`;
+      e.target.closest('[data-care="rmphoto"]').hidden = true;
+      $('[data-care="pick"] span', ed).textContent = 'Add photo';
+      return;
+    }
+    if (care === 'donetoday') {
+      const today = todayISO();
+      careLog = [...careLog, { date: today, note: '' }];
+      $('input[name=lastDone]', ed).value = today;
+      drawHistory();
+      return;
+    }
     const x = e.target.closest('[data-x]')?.dataset.x;
     if (!x) return;
     if (x === 'cancel') { setOpen(null); draw(); return; }
     if (x === 'del') {
+      if (!confirm(`Remove “${it.name || 'this item'}” from the ${list.name} list?`)) return;
       list.items = list.items.filter((z) => z.id !== it.id);
       setOpen(null);
       if (await saveGuard(db.saveList(list))) draw();
@@ -1311,11 +1474,230 @@ function itemEditor(list, it, setOpen, draw) {
       it.transports = $$('input[name=transports]:checked', ed).map((n) => n.value);
       it.catering = $$('input[name=catering]:checked', ed).map((n) => n.value);
       it.weather = $$('input[name=weather]:checked', ed).map((n) => n.value);
+      // Care & storage
+      it.storage = ($('input[name=storage]', ed).value || '').trim();
+      it.photo = photo;
+      const isel = $('select[name=interval]', ed).value;
+      const intervalDays = isel === 'custom' ? Math.max(0, parseInt($('input[name=customDays]', ed).value, 10) || 0) : (parseInt(isel, 10) || 0);
+      it.maintenance = normalizeMaintenance({
+        notes: ($('textarea[name=mnotes]', ed).value || '').trim(),
+        link: ($('input[name=mlink]', ed).value || '').trim(),
+        intervalDays,
+        lastDone: $('input[name=lastDone]', ed).value || '',
+        log: careLog,
+      });
       setOpen(null);
       if (await saveGuard(db.saveList(list))) draw();
     }
   });
   return ed;
+}
+
+// ============================================================
+// Care & maintenance — one place to see what needs looking after,
+// as an urgency-ordered list or a month calendar.
+// ============================================================
+let careView = 'list';            // 'list' | 'calendar'
+let careExpanded = null;          // item id whose detail panel is open (list mode)
+let careMonth = null;             // 'YYYY-MM' shown in the calendar (defaults to this month)
+const monthOf = (ymd) => ymd.slice(0, 7);
+
+async function renderMaintenance() {
+  const wrap = h('<section class="screen"></section>');
+  wrap.appendChild(h('<div class="topbar"><h1>Care &amp; maintenance</h1></div>'));
+
+  const lists = await db.getLists();
+  const listById = new Map(lists.map((l) => [l.id, l]));
+  const rows = maintenanceList(lists);
+  const summary = maintenanceSummary(lists);
+
+  if (!rows.length) {
+    wrap.appendChild(h(`<div class="empty">
+      <p class="empty-t">Nothing to look after yet</p>
+      <p class="empty-s">Open any item in the <b>Lists</b> tab, expand <b>🧰 Storage, photo &amp; maintenance</b>, and add a service interval or care notes. Your gear that needs upkeep — wetsuit, bike, tent, drone — shows up here.</p>
+      <a class="btn primary" href="#/lists">Go to Lists</a>
+    </div>`));
+    return wrap;
+  }
+
+  // Headline: overdue / due-soon counts.
+  const sc = [];
+  if (summary.overdue) sc.push(`<span class="care-stat overdue">🔴 ${summary.overdue} overdue</span>`);
+  if (summary.soon) sc.push(`<span class="care-stat soon">🟡 ${summary.soon} due soon</span>`);
+  if (!summary.due) sc.push(`<span class="care-stat ok">🟢 All up to date</span>`);
+  wrap.appendChild(h(`<div class="care-stats">${sc.join('')}</div>`));
+
+  // List / Calendar toggle.
+  const seg = (val, label) => `<label class="seg${careView === val ? ' on' : ''}"><input type="radio" name="careview" value="${val}"${careView === val ? ' checked' : ''}>${label}</label>`;
+  const toolbar = h(`<div class="toolbar"><div class="segmented small">${seg('list', 'List')}${seg('calendar', 'Calendar')}</div></div>`);
+  wrap.appendChild(toolbar);
+
+  const body = h('<div class="care-wrap"></div>');
+  wrap.appendChild(body);
+
+  // Mark an item maintained today, from any view.
+  const markDone = async (listId, itemId) => {
+    const list = listById.get(listId);
+    const item = list && list.items.find((x) => x.id === itemId);
+    if (!item) return;
+    logMaintenance(item, todayISO());
+    if (await saveGuard(db.saveList(list))) render();
+  };
+
+  const draw = () => {
+    body.innerHTML = '';
+    if (careView === 'calendar') drawCareCalendar(body, rows, markDone);
+    else drawCareList(body, rows, markDone);
+  };
+  draw();
+
+  toolbar.addEventListener('change', (e) => {
+    if (e.target.name !== 'careview') return;
+    careView = e.target.value;
+    $$('.segmented .seg', toolbar).forEach((s) => s.classList.toggle('on', s.querySelector('input').checked));
+    draw();
+  });
+  body.addEventListener('click', async (e) => {
+    const done = e.target.closest('[data-done]');
+    if (done) { e.preventDefault(); await markDone(done.dataset.list, done.dataset.done); return; }
+  });
+
+  return wrap;
+}
+
+const CARE_SECTIONS = [
+  { state: 'overdue', label: 'Overdue' },
+  { state: 'soon', label: 'Due soon' },
+  { state: 'ok', label: 'Upcoming' },
+  { state: 'reference', label: 'Reference only (no schedule)' },
+];
+
+function drawCareList(body, rows, markDone) {
+  for (const { state, label } of CARE_SECTIONS) {
+    const group = rows.filter((r) => r.status.state === state);
+    if (!group.length) continue;
+    body.appendChild(h(`<div class="care-sech ${state}">${CARE_EMOJI[state]} ${esc(label)} <em>${group.length}</em></div>`));
+    for (const row of group) body.appendChild(careRow(row, markDone));
+  }
+}
+
+function careRow(row, markDone) {
+  const { item, listId, listName, status } = row;
+  const m = item.maintenance || {};
+  const thumb = item.photo
+    ? `<img class="care-thumb" src="${esc(item.photo)}" alt="">`
+    : `<span class="care-thumb ph ${status.state}">${CARE_EMOJI[status.state]}</span>`;
+  const bits = [esc(listName)];
+  if (item.storage) bits.push(`📍 ${esc(item.storage)}`);
+  const nextBit = status.scheduled && status.nextDue ? ` · next ${esc(prettyDate(status.nextDue))}` : '';
+  const wrapEl = h(`<div class="care-item ${status.state}${careExpanded === item.id ? ' open' : ''}">
+    <div class="care-row">
+      ${thumb}
+      <button class="care-main" type="button" data-expand>
+        <span class="care-name">${esc(item.name || '(unnamed)')}</span>
+        <span class="care-sub">${bits.join(' · ')}</span>
+        <span class="care-due ${status.state}">${esc(dueLabel(status))}${nextBit}</span>
+      </button>
+      ${status.scheduled ? `<button class="btn sm care-donebtn" data-done="${esc(item.id)}" data-list="${esc(listId)}">${IC.check}<span>Done</span></button>` : ''}
+    </div>
+  </div>`);
+
+  if (careExpanded === item.id) {
+    const link = m.link ? `<a class="care-link" href="${esc(m.link)}" target="_blank" rel="noopener noreferrer">${IC.link}<span>Manufacturer / how-to</span></a>` : '';
+    const notes = m.notes ? `<div class="care-notes">${esc(m.notes)}</div>` : '';
+    const sched = status.scheduled
+      ? `<div class="care-fact">Every ${status.intervalDays} days${status.lastDone ? ` · last done ${esc(prettyDate(status.lastDone))}` : ' · never logged'}</div>`
+      : '';
+    const hist = (m.log && m.log.length)
+      ? `<div class="care-hist"><div class="care-hhead">History</div>${m.log.slice().reverse().map((e) => `<div class="care-hrow"><span class="care-hdate">${esc(prettyDate(e.date))}</span>${e.note ? `<span class="care-hnote">${esc(e.note)}</span>` : ''}</div>`).join('')}</div>`
+      : '';
+    const detail = h(`<div class="care-detail">
+      ${sched}${notes}${link}${hist}
+      <a class="care-edit" href="#/list/${esc(listId)}">Edit “${esc(item.name || 'item')}” in ${esc(listName)} ${IC.fwd}</a>
+    </div>`);
+    wrapEl.appendChild(detail);
+  }
+
+  wrapEl.querySelector('[data-expand]').addEventListener('click', () => {
+    careExpanded = careExpanded === item.id ? null : item.id;
+    render();
+  });
+  return wrapEl;
+}
+
+function drawCareCalendar(body, rows, markDone) {
+  const today = todayISO();
+  if (!careMonth) careMonth = monthOf(today);
+  const [y, mo] = careMonth.split('-').map(Number);
+  const byDate = new Map();
+  for (const r of rows) {
+    if (!r.status.scheduled || !r.status.nextDue) continue;
+    if (!byDate.has(r.status.nextDue)) byDate.set(r.status.nextDue, []);
+    byDate.get(r.status.nextDue).push(r);
+  }
+
+  const monthLabel = new Date(Date.UTC(y, mo - 1, 1)).toLocaleDateString(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const head = h(`<div class="cal-head">
+    <button class="iconbtn" data-cal="prev" aria-label="Previous month">${IC.back}</button>
+    <div class="cal-title">${esc(monthLabel)}</div>
+    <button class="iconbtn" data-cal="next" aria-label="Next month">${IC.fwd}</button>
+  </div>`);
+  body.appendChild(head);
+
+  const overdue = rows.filter((r) => r.status.state === 'overdue');
+  if (overdue.length) {
+    body.appendChild(h(`<div class="cal-overdue">🔴 ${overdue.length} item${overdue.length === 1 ? '' : 's'} overdue — see the <b>List</b> view to catch up.</div>`));
+  }
+
+  const dows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const grid = h('<div class="cal-grid"></div>');
+  for (const d of dows) grid.appendChild(h(`<div class="cal-dow">${d}</div>`));
+  const firstDow = (new Date(Date.UTC(y, mo - 1, 1)).getUTCDay() + 6) % 7; // Mon = 0
+  const daysInMonth = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+  for (let i = 0; i < firstDow; i++) grid.appendChild(h('<div class="cal-cell blank"></div>'));
+  let selected = null;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ymd = `${careMonth}-${String(d).padStart(2, '0')}`;
+    const items = byDate.get(ymd) || [];
+    const isToday = ymd === today;
+    const worst = items.some((r) => r.status.state === 'overdue') ? 'overdue' : items.length ? 'soon-or-ok' : '';
+    const state = items.length ? (items.some((r) => r.status.state === 'overdue') ? 'overdue' : items.some((r) => r.status.state === 'soon') ? 'soon' : 'ok') : '';
+    void worst;
+    const cell = h(`<button class="cal-cell${isToday ? ' today' : ''}${items.length ? ' has' : ''}${state ? ' ' + state : ''}" type="button"${items.length ? ` data-day="${ymd}"` : ' disabled'}>
+      <span class="cal-num">${d}</span>
+      ${items.length ? `<span class="cal-dot">${items.length}</span>` : ''}
+    </button>`);
+    grid.appendChild(cell);
+  }
+  body.appendChild(grid);
+
+  const dayList = h('<div class="cal-daylist"></div>');
+  body.appendChild(dayList);
+  const showDay = (ymd) => {
+    const items = byDate.get(ymd) || [];
+    dayList.innerHTML = `<div class="care-sech">${esc(prettyDate(ymd))} <em>${items.length}</em></div>`;
+    for (const r of items) dayList.appendChild(careRow(r, markDone));
+    selected = ymd;
+    $$('.cal-cell', grid).forEach((c) => c.classList.toggle('sel', c.dataset.day === ymd));
+  };
+  // Default: today if it has items, else the first day that does.
+  const firstWithItems = [...byDate.keys()].filter((k) => monthOf(k) === careMonth).sort()[0];
+  if (byDate.has(today) && monthOf(today) === careMonth) showDay(today);
+  else if (firstWithItems) showDay(firstWithItems);
+
+  head.addEventListener('click', (e) => {
+    const dir = e.target.closest('[data-cal]')?.dataset.cal;
+    if (!dir) return;
+    const base = new Date(Date.UTC(y, mo - 1, 1));
+    base.setUTCMonth(base.getUTCMonth() + (dir === 'next' ? 1 : -1));
+    careMonth = base.toISOString().slice(0, 7);
+    render();
+  });
+  grid.addEventListener('click', (e) => {
+    const day = e.target.closest('[data-day]')?.dataset.day;
+    if (day) showDay(day);
+  });
+  void selected;
 }
 
 // A deep, collapsible "How it works" — the full manual for the app, kept in sync
@@ -1352,11 +1734,12 @@ function howtoCard() {
         <p>Items are packed in stages, in this order: <b>Preparations</b> (book/cancel/charge, done ahead) → <b>≥1 week ahead</b> (things you don't use at home) → <b>Day before</b> (stage / move to the RV) → <b>Morning of</b> → <b>At the front door</b> (last check as you leave) → <b>Wear / carry</b> on the day → <b>After / recovery</b> (shower, change, recovery).</p>
 
         <h3>Getting around</h3>
-        <p>Four tabs along the bottom:</p>
+        <p>Five tabs along the bottom:</p>
         <ul>
           <li><b>Home</b> — the builder for starting a new trip, plus a compact preview of your few most recent event lists.</li>
           <li><b>Events</b> — every event list you've made, grouped <b>Upcoming</b> → <b>No date set</b> → <b>Past trips</b>, with the nearest trip on top. Home's “See all” link lands here.</li>
           <li><b>Lists</b> — your reusable activity lists (the building blocks).</li>
+          <li><b>Care</b> — everything that needs looking after, as an urgency-ordered list or a month calendar (see <b>Care, storage &amp; maintenance</b> below).</li>
           <li><b>Settings</b> — backup/restore, trip import, this guide and the version history.</li>
         </ul>
 
@@ -1408,6 +1791,20 @@ function howtoCard() {
         <h3>Bags &amp; weight</h3>
         <p>The <b>Bags &amp; weight</b> panel totals each container's weight against typical airline limits (carry-on 8 kg, checked 23 kg…), warns when a bag is over, and counts 💧 liquids and ⚠️ restricted items. Totals only cover items you've given a weight.</p>
 
+        <h3>Care, storage &amp; maintenance</h3>
+        <p>Every item can carry three extra things about the <em>physical object</em>, set in its editor under <b>🧰 Storage, photo &amp; maintenance</b> (in the <b>Lists</b> tab):</p>
+        <ul>
+          <li><b>Where it's stored</b> — a free-text home for the thing (“Garage shelf 3”, “RV box”, “Hall closet”). It shows on the item, travels onto any trip it lands in, and appears in <b>Packing Mode</b> with a 📍 pin so you know exactly where to grab it. Previous locations autocomplete so the wording stays consistent.</li>
+          <li><b>A photo</b> — snap or pick a picture of the item; it's shrunk and stored <b>on your device</b> (never uploaded). Handy to recognise the right gear, and shown as a thumbnail in the Care list.</li>
+          <li><b>Maintenance</b> — how and how often to look after it: a <b>service interval</b> (monthly … every 2 years, or a custom number of days), when it was <b>last done</b>, free-text <b>how-to notes</b> (steps, products, settings), and a <b>manufacturer / how-to link</b>. Tap <b>Log maintenance done today</b> to record a service — it resets the schedule and adds a dated entry to the item's history.</li>
+        </ul>
+        <p>The <b>Care</b> tab then gathers everything with care info across all your lists, two ways:</p>
+        <ul>
+          <li><b>List</b> — grouped by urgency: <b>🔴 Overdue</b>, <b>🟡 Due soon</b> (within three weeks), <b>🟢 Upcoming</b>, and <b>🧰 Reference only</b> (care notes but no schedule). Each row shows the photo, where it's stored and when it's next due; tap it to read the how-to notes, open the manufacturer link, and see its service history. Hit <b>✓ Done</b> to log a service in one tap.</li>
+          <li><b>Calendar</b> — a month view with each scheduled service on its due date, colour-coded by urgency and dotted with a count; tap a day to see (and tick off) what's due. Overdue items are flagged above the grid.</li>
+        </ul>
+        <p>Only items you give care info to appear here — your everyday clothes and toiletries stay out of it. When something's overdue or due soon, a <b>🧰 reminder</b> also shows on the <b>Home</b> screen.</p>
+
         <h3>Countdown &amp; “pack now” nudges</h3>
         <p>With a start date set, each event shows a countdown, and a ⏰ banner surfaces the earliest phase that's due (based on how many days each phase is normally packed before departure). These are on-open reminders — the app can't push background notifications.</p>
 
@@ -1451,6 +1848,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v32', '2026-07-30 · 12:00 UTC', false, 'Care, storage &amp; maintenance',
+      'A new dimension for the <em>physical things</em> you own. Each item now has a <b>🧰 Storage, photo &amp; maintenance</b> section in its editor: <b>(1) where it’s stored</b> at home (free text with autocomplete) — it travels onto trips and shows with a 📍 pin in Packing Mode so you know where to grab it; <b>(2) a photo</b> of the item, shrunk and kept on-device (never uploaded); and <b>(3) maintenance</b> — a service interval (monthly … every 2 years, or custom days), a last-done date, how-to notes, and a manufacturer/how-to link, with a one-tap <b>Log maintenance done</b> that keeps a dated history. A new <b>Care</b> tab gathers everything needing upkeep across all lists, as an urgency-ordered <b>list</b> (🔴 overdue / 🟡 due soon / 🟢 upcoming / 🧰 reference) with tap-to-read how-tos and ✓ Done, or a month <b>calendar</b> with each service on its due date. Overdue or due-soon gear also raises a 🧰 reminder on Home. Everyday items you don’t tag stay out of it entirely.',
+      'Your gear now looks after itself: the app remembers where each thing lives, what it looks like, and reminds you — with the how-to right there — when the wetsuit, bike or tent is due for a service.'),
     v('v31', '2026-07-29 · 20:30 UTC', false, 'Quick activity lists + Car / Plane kits',
       'Two additions. <b>(1) A “List type” switch</b> at the top of the builder: <b>🧳 Full trip</b> (the usual common base + transport kit + activities) or <b>⚡ Quick activity</b> — <b>just the activities you tick, with no base and no transport kit</b>. Tick Swim or Run, set Context to Indoor/Outdoor, and you get the 5–20 items for that one bag instead of a whole trip’s worth; the transport and catering choices hide because they don’t apply, and quick lists carry a small ⚡ Quick tag. <b>(2) The Car and Plane transport lists are now filled in</b>: Plane brings the carry-on-rules items (liquids bag, travel documents, power bank &amp; spare batteries flagged carry-on-only), Car brings road extras (car charger, phone mount, sunglasses, snacks) — both still fully editable in the Lists tab.',
       'Pack a single swim or run bag in seconds without the full trip list — and flights and road trips now start with their obvious extras already in.'),
@@ -1696,6 +2096,7 @@ async function renderRoute() {
   if (hash === '#/new') { location.replace('#/'); return renderHome(); }
   if (hash === '#/events') return renderEvents();
   if (hash === '#/lists') return renderLists();
+  if (hash === '#/maintenance') return renderMaintenance();
   if (hash === '#/refine') return renderRefine();
   if (hash === '#/settings') return renderSettings();
   const tripLink = m(/^#\/t\/(.+)$/);
@@ -1734,6 +2135,7 @@ function setActiveTab() {
   const hash = location.hash || '#/';
   const base = hash.startsWith('#/events') || hash.startsWith('#/event/') ? '#/events'
     : hash.startsWith('#/list') || hash === '#/refine' ? '#/lists'
+    : hash.startsWith('#/maintenance') ? '#/maintenance'
     : hash.startsWith('#/settings') ? '#/settings' : '#/';
   $$('.tabbar a').forEach((a) => a.classList.toggle('active', a.getAttribute('href') === base));
 }
