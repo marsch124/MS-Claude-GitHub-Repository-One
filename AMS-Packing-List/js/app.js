@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v32';
+const APP_VERSION = 'v33';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -237,7 +237,7 @@ function cateringShort(id) { return id === 'self' ? 'Self-sufficient' : id === '
 function eventCardHTML(e) {
   const p = progress(e.entries);
   const meta = (e.mode === 'quick'
-    ? ['⚡ Quick', e.season, ...(e.contexts || [])]
+    ? ['⏱️ Quick', e.season, ...(e.contexts || [])]
     : [e.transport, e.season, cateringShort(e.catering), ...(e.contexts || [])]).filter(Boolean);
   const dToGo = daysUntil(e.startDate);
   const dateLabel = dToGo != null ? `🗓 ${esc(countdownLabel(dToGo))}` : '';
@@ -298,7 +298,7 @@ function eventForm(ev, lists, isEdit) {
   form.innerHTML = `
     <fieldset class="mode-pick"><legend>List type</legend>${radioRow('mode', [
     { value: 'trip', label: '🧳 Full trip' },
-    { value: 'quick', label: '⚡ Quick activity' },
+    { value: 'quick', label: '⏱️ Quick activity' },
   ], ev.mode || 'trip')}
       <p class="grp-hint" data-mode-hint></p></fieldset>
 
@@ -447,7 +447,7 @@ async function renderEvent(eventId) {
   if (flagFilterFor !== eventId) { flagFilter = new Set(); weightSort = false; flagFilterFor = eventId; } // fresh per trip
   const p = progress(ev.entries);
   const meta = (ev.mode === 'quick'
-    ? ['⚡ Quick', ev.season, ...(ev.contexts || [])]
+    ? ['⏱️ Quick', ev.season, ...(ev.contexts || [])]
     : [ev.transport, ev.season, cateringShort(ev.catering), ...(ev.contexts || [])]).filter(Boolean);
 
   const wrap = h('<section class="screen"></section>');
@@ -1773,7 +1773,7 @@ function howtoCard() {
         <p>At the top of the builder is a <b>List type</b> switch, because sometimes you don't want a whole trip — you just want to grab a bag for one activity:</p>
         <ul>
           <li><b>🧳 Full trip</b> <em>(default)</em> — the three sources above: common base + transport kit + the activities you tick. For real trips.</li>
-          <li><b>⚡ Quick activity</b> — <b>only the activities you tick</b>, with <b>no common base and no transport kit</b>. The transport and catering choices disappear because they don't apply. Tick <b>Swim</b> (or <b>Run</b>, or both) and you get just those 5–20 items — perfect for “I'm off for a swim.” Set <b>Context</b> to <b>Indoor</b> or <b>Outdoor</b> to trim it further (e.g. an outdoor run adds a headlamp and sunscreen; indoor doesn't). Quick lists show a small <b>⚡ Quick</b> tag on their card.</li>
+          <li><b>⏱️ Quick activity</b> — <b>only the activities you tick</b>, with <b>no common base and no transport kit</b>. The transport and catering choices disappear because they don't apply. Tick <b>Swim</b> (or <b>Run</b>, or both) and you get just those 5–20 items — perfect for “I'm off for a swim.” Set <b>Context</b> to <b>Indoor</b> or <b>Outdoor</b> to trim it further (e.g. an outdoor run adds a headlamp and sunscreen; indoor doesn't). Quick lists show a small <b>⏱️ Quick</b> tag on their card.</li>
         </ul>
 
         <h3>How the Total List is composed</h3>
@@ -1848,6 +1848,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v33', '2026-07-30 · 14:00 UTC', false, 'Quick activity gets its own icon',
+      'Small polish: the <b>⏱️ Quick activity</b> list type had been sharing the ⚡ lightning bolt with the <b>⚡ Charging</b> flag, which was confusing at a glance. Quick activity now uses a <b>⏱️ stopwatch</b> everywhere — in the “List type” switch and on the small <b>⏱️ Quick</b> tag on a trip’s card — so the two are never mixed up. Nothing else changed.',
+      'One glance tells Quick-activity lists and charging items apart — no more double-duty lightning bolt.'),
     v('v32', '2026-07-30 · 12:00 UTC', false, 'Care, storage &amp; maintenance',
       'A new dimension for the <em>physical things</em> you own. Each item now has a <b>🧰 Storage, photo &amp; maintenance</b> section in its editor: <b>(1) where it’s stored</b> at home (free text with autocomplete) — it travels onto trips and shows with a 📍 pin in Packing Mode so you know where to grab it; <b>(2) a photo</b> of the item, shrunk and kept on-device (never uploaded); and <b>(3) maintenance</b> — a service interval (monthly … every 2 years, or custom days), a last-done date, how-to notes, and a manufacturer/how-to link, with a one-tap <b>Log maintenance done</b> that keeps a dated history. A new <b>Care</b> tab gathers everything needing upkeep across all lists, as an urgency-ordered <b>list</b> (🔴 overdue / 🟡 due soon / 🟢 upcoming / 🧰 reference) with tap-to-read how-tos and ✓ Done, or a month <b>calendar</b> with each service on its due date. Overdue or due-soon gear also raises a 🧰 reminder on Home. Everyday items you don’t tag stay out of it entirely.',
       'Your gear now looks after itself: the app remembers where each thing lives, what it looks like, and reminds you — with the how-to right there — when the wetsuit, bike or tent is due for a service.'),
