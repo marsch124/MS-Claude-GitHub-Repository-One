@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v35';
+const APP_VERSION = 'v36';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -54,6 +54,17 @@ function collectStorages(lists) {
   const set = new Set();
   for (const l of lists) for (const it of l.items) if (it.storage) set.add(it.storage.trim());
   return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+// All building-block lists, kept so the item editor can show which lists an
+// item (matched by name) currently appears in. Refreshed whenever a list opens.
+let ALL_LISTS = [];
+function listsWithItemNamed(name) {
+  const key = (name || '').trim().toLowerCase();
+  if (!key) return [];
+  return ALL_LISTS
+    .filter((l) => (l.items || []).some((it) => (it.name || '').trim().toLowerCase() === key))
+    .map((l) => ({ id: l.id, name: l.name }));
 }
 
 // A human phrase for where an item's maintenance stands ("Overdue by 5 days", "in 12
@@ -1246,7 +1257,8 @@ async function renderLists() {
 async function renderList(listId, openItemId) {
   const list = await db.getList(listId);
   if (!list) { location.assign('#/lists'); return h('<section></section>'); }
-  STORAGES = collectStorages(await db.getLists()); // for the storage-location autocomplete
+  ALL_LISTS = await db.getLists();
+  STORAGES = collectStorages(ALL_LISTS); // for the storage-location dropdown
   const wrap = h('<section class="screen"></section>');
   wrap.appendChild(h(`<div class="topbar">
     <a class="iconbtn" href="#/lists" aria-label="Back">${IC.back}</a>
@@ -1343,8 +1355,16 @@ function itemEditor(list, it, setOpen, draw) {
   const careOpen = hasCare(it) || !!it.storage || !!it.photo || careForceOpenItemId === it.id;
   if (careForceOpenItemId === it.id) careForceOpenItemId = null;
 
+  // Which building-block lists this item (matched by name) currently appears in.
+  const inListsHTML = (() => {
+    if (!it.name || !it.name.trim()) return '<p class="inlists-empty">Name the item and save — the lists it belongs to will show here.</p>';
+    const rows = listsWithItemNamed(it.name);
+    if (!rows.length) return '<p class="inlists-empty">Not saved in any list yet.</p>';
+    return rows.map((r) => `<a class="inlists-chip${r.id === list.id ? ' cur' : ''}" href="#/list/${esc(r.id)}">${esc(r.name)}</a>`).join('');
+  })();
+
   ed.innerHTML = `
-    <label class="field"><span>Item</span><input name="name" value="${esc(it.name)}"></label>
+    <label class="field item-name"><span>Item name</span><input name="name" value="${esc(it.name)}"></label>
     <div class="row2">
       <label class="field"><span>Qty</span><input name="qty" value="${esc(it.qty)}" placeholder="optional"></label>
       <label class="field"><span>Container</span>${selectHtml('container', ['', ...CONTAINERS].map((c) => ({ value: c, label: c || '— none (task) —' })), it.container)}</label>
@@ -1360,13 +1380,22 @@ function itemEditor(list, it, setOpen, draw) {
       <label class="check${it.restricted ? ' on' : ''}"><input type="checkbox" name="restricted" ${it.restricted ? 'checked' : ''}>⚠️ Restricted</label>
     </div>
     <label class="field charge-type-field${it.charging ? '' : ' hidden'}"><span>Charge type</span>${selectHtml('chargeType', CHARGE_TYPES.map((c) => ({ value: c.id, label: c.label })), it.chargeType)}</label>
-    <p class="hint">Only include this item when… (leave a row untouched = always applies)</p>
-    <fieldset class="mini"><legend>Season</legend>${checkRow('seasons', SEASONS, it.seasons)}</fieldset>
-    <fieldset class="mini"><legend>Context</legend>${checkRow('contexts', CONTEXTS, it.contexts)}</fieldset>
-    <fieldset class="mini"><legend>Transport</legend>${checkRow('transports', TRANSPORTS, it.transports)}</fieldset>
-    <fieldset class="mini"><legend>Catering</legend>${checkRow('catering', CATERING.map((c) => ({ value: c.id, label: c.label })), it.catering)}</fieldset>
-    <fieldset class="mini"><legend>Weather <em>(only suggest when the forecast calls for it)</em></legend>${checkRow('weather', WEATHER_CONDITIONS.map((w) => ({ value: w.id, label: w.label })), it.weather)}</fieldset>
+    <div class="cond-group">
+      <div class="cond-head">Only include this item when…<em>Leave a row untouched and it always applies. Tick options to narrow when this item is added.</em></div>
+      <fieldset class="mini"><legend>Season</legend>${checkRow('seasons', SEASONS, it.seasons)}</fieldset>
+      <fieldset class="mini"><legend>Context</legend>${checkRow('contexts', CONTEXTS, it.contexts)}</fieldset>
+      <fieldset class="mini"><legend>Transport</legend>${checkRow('transports', TRANSPORTS, it.transports)}</fieldset>
+      <fieldset class="mini"><legend>Catering</legend>${checkRow('catering', CATERING.map((c) => ({ value: c.id, label: c.label })), it.catering)}</fieldset>
+      <fieldset class="mini"><legend>Weather</legend>${checkRow('weather', WEATHER_CONDITIONS.map((w) => ({ value: w.id, label: w.label })), it.weather)}
+        <p class="cond-note">Tick a condition and this item is <b>held back until the trip’s forecast calls for it</b> — e.g. tick <b>Rain</b> and it’s only added when rain is forecast. Leave them all unticked and the item is <b>always included</b>, like the rest of the list.</p>
+      </fieldset>
+    </div>
     <label class="field"><span>Note</span><input name="note" value="${esc(it.note)}"></label>
+
+    <div class="inlists">
+      <div class="inlists-h">${IC.list}<span>In these lists</span></div>
+      <div class="inlists-body">${inListsHTML}</div>
+    </div>
 
     <details class="care"${careOpen ? ' open' : ''}>
       <summary><span class="care-h">🧰 Storage, photo &amp; maintenance</span><span class="care-sum">Where it lives, a picture, and how &amp; when to look after it</span></summary>
@@ -1963,6 +1992,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v36', '2026-07-30 · 17:30 UTC', false, 'Clearer item editor',
+      'Four touches to make editing an item easier to read. <b>(1)</b> The <b>item name</b> is now big and bold so you always know what you’re editing. <b>(2)</b> The five condition rows (Season, Context, Transport, Catering, Weather) are wrapped in a <b>boxed group</b> under one heading — <em>“Only include this item when…”</em> — so it’s obvious the heading governs those rows and nothing else. <b>(3)</b> A plain-language <b>note under the Weather boxes</b> explains the rule: tick a condition and the item is held back until the trip’s forecast calls for it (tick Rain → only added when rain is forecast); leave them unticked and it’s always included. <b>(4)</b> A new <b>“In these lists”</b> panel shows every packing list that already contains this item (by name) as tap-through chips — it grows on its own as you add the item to more lists.',
+      'You can see at a glance what you’re editing, what the condition rows do, and everywhere the item is already used.'),
     v('v35', '2026-07-30 · 16:30 UTC', false, 'Storage is now a dropdown',
       'In an item’s <b>🧰 Storage, photo &amp; maintenance</b> panel, <b>Where it’s stored</b> is now a proper <b>dropdown</b> that lists every place you’ve used before — tap and pick, instead of retyping “Garage shelf 3” each time (and no more accidental duplicates like “Garage” vs “garage”). Need somewhere new? Choose <b>＋ Add a new place…</b> and a box appears to type it; it then joins the dropdown for every other item. This also replaces the old type-to-suggest box that barely showed up on iPhone. <b>Also fixed:</b> a couple of editor fields that should only appear when relevant — <b>Charge type</b> (only with ⚡ Charging ticked) and <b>Custom interval (days)</b> (only when the interval is “Custom”) — had been showing all the time; they now hide until you need them.',
       'Pick a storage place from a tidy list in one tap — consistent names, no retyping, and still free to add new spots.'),

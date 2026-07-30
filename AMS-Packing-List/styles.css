@@ -585,3 +585,37 @@ details.care[open] .care-h::before { content: '▾'; }
 .ai-badge { font-size: .95rem; flex: none; }
 .ai-item > .ic { width: 18px; height: 18px; color: var(--muted); flex: none; }
 .care-none { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin: 4px 0 2px; }
+
+/* ============================================================
+   Item editor — name, condition group, "in these lists"
+   ============================================================ */
+.item-editor .item-name input {
+  font-size: 1.2rem; font-weight: 700; padding-top: 10px; padding-bottom: 10px;
+}
+/* the whole "only include when…" block, grouped so the heading clearly owns
+   the condition fieldsets below it */
+.cond-group {
+  border: 1px solid var(--line); border-radius: 14px;
+  background: var(--line-2); padding: 12px; margin-top: 4px;
+  display: grid; gap: 8px;
+}
+.cond-head { font-size: .92rem; font-weight: 700; color: var(--ink); display: grid; gap: 3px; }
+.cond-head em { font-style: normal; font-weight: 500; font-size: .82rem; color: var(--muted); }
+.cond-group fieldset.mini { background: var(--card); }
+.cond-note {
+  margin: 8px 2px 2px; font-size: .82rem; line-height: 1.4; color: var(--muted);
+}
+.cond-note b { color: var(--ink); font-weight: 700; }
+
+/* which lists include this item */
+.inlists { margin-top: 4px; border: 1px solid var(--line); border-radius: 14px; padding: 11px 12px; }
+.inlists-h { display: flex; align-items: center; gap: 7px; font-size: .82rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 9px; }
+.inlists-h .ic { width: 16px; height: 16px; }
+.inlists-body { display: flex; flex-wrap: wrap; gap: 6px; }
+.inlists-chip {
+  display: inline-flex; align-items: center; font-size: .86rem; font-weight: 600;
+  padding: 5px 11px; border-radius: 999px; text-decoration: none;
+  background: var(--line-2); color: var(--ink); border: 1px solid var(--line);
+}
+.inlists-chip.cur { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+.inlists-empty { color: var(--muted); font-size: .86rem; margin: 0; }
