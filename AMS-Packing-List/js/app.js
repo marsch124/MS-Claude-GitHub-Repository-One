@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v36';
+const APP_VERSION = 'v37';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -216,7 +216,7 @@ async function renderHome() {
     </a>`));
   }
 
-  wrap.appendChild(h('<p class="muted pad">Set your trip details — your common base and your transport’s kit come in automatically. Tick any extra activities, then press <b>Create Event List</b> to build one combined list to pack from.</p>'));
+  wrap.appendChild(h('<p class="muted pad">Set your trip details — your common base and your transport’s kit come in automatically. Tick any extra activities, then press <b>Create Event</b> to build one combined <b>Packing List</b> to pack from.</p>'));
 
   // The builder card — a fresh event, generated on submit.
   const card = h('<div class="card builder"></div>');
@@ -229,7 +229,7 @@ async function renderHome() {
   // A compact preview of the most recent trips — the full set lives on the
   // Events tab. Events arrive from db already ordered nearest-upcoming first.
   if (events.length) {
-    const header = h('<div class="section-h-row"><h2 class="section-h">Your event lists</h2></div>');
+    const header = h('<div class="section-h-row"><h2 class="section-h">Your events</h2></div>');
     if (events.length > HOME_EVENT_PREVIEW) header.appendChild(h(`<a class="see-all" href="#/events">See all ${events.length} ${IC.fwd}</a>`));
     wrap.appendChild(header);
     const list = h('<div class="cards"></div>');
@@ -269,7 +269,7 @@ async function renderEvents() {
   const wrap = h('<section class="screen"></section>');
   wrap.appendChild(h('<div class="topbar"><h1>Events</h1><a class="btn primary" href="#/">' + IC.plus + '<span>New</span></a></div>'));
   if (!events.length) {
-    wrap.appendChild(h('<div class="empty"><p class="empty-t">No event lists yet</p><p class="empty-s">Head to Home to build your first trip’s combined packing list.</p></div>'));
+    wrap.appendChild(h('<div class="empty"><p class="empty-t">No events yet</p><p class="empty-s">Head to Home to build your first trip’s combined Packing List.</p></div>'));
     return wrap;
   }
   // Group headers make the nearest-first ordering legible at a glance.
@@ -339,7 +339,7 @@ function eventForm(ev, lists, isEdit) {
 
     <div class="actions">
       ${isEdit ? `<a class="btn lg" href="#/event/${ev.id}">Cancel</a>` : ''}
-      <button type="submit" class="btn primary lg">${isEdit ? 'Save & regenerate list' : 'Create Event List'}</button>
+      <button type="submit" class="btn primary lg">${isEdit ? 'Save & regenerate' : 'Create Event'}</button>
     </div>`;
 
   // Full trip vs Quick activity: quick mode drops the base + transport kit, so hide
@@ -1220,8 +1220,8 @@ async function renderRefine() {
 async function renderLists() {
   const lists = await db.getLists();
   const wrap = h('<section class="screen"></section>');
-  wrap.appendChild(h(`<div class="topbar"><h1>Packing lists</h1><a class="btn ghost" href="#/refine">Refine</a><button class="btn primary" data-new>${IC.plus}<span>New</span></button></div>`));
-  wrap.appendChild(h(`<p class="muted pad">These are your reusable building blocks. An event combines the ones you pick into a single Total Packing List.</p>`));
+  wrap.appendChild(h(`<div class="topbar"><h1>Templates</h1><a class="btn ghost" href="#/refine">Refine</a><button class="btn primary" data-new>${IC.plus}<span>New</span></button></div>`));
+  wrap.appendChild(h(`<p class="muted pad">These are your reusable building blocks. An <b>Event</b> combines the ones you pick into a single <b>Packing List</b> to pack from.</p>`));
 
   const card = (l) => h(`<a class="card lst" href="#/list/${l.id}">
       <span class="lst-name">${esc(l.name)}${l.items.length ? '' : ' <em>(empty)</em>'}</span>
@@ -1239,14 +1239,14 @@ async function renderLists() {
     wrap.appendChild(cards);
   }
   if (ungrouped.length) {
-    wrap.appendChild(h('<h2 class="section-h">Other lists</h2>'));
+    wrap.appendChild(h('<h2 class="section-h">Other templates</h2>'));
     const cards = h('<div class="cards"></div>');
     ungrouped.forEach((l) => cards.appendChild(card(l)));
     wrap.appendChild(cards);
   }
 
   wrap.querySelector('[data-new]').addEventListener('click', async () => {
-    const name = (prompt('Name for the new packing list:') || '').trim();
+    const name = (prompt('Name for the new template:') || '').trim();
     if (!name) return;
     const l = newList({ name });
     if (await saveGuard(db.saveList(l))) location.assign(`#/list/${l.id}`);
@@ -1264,7 +1264,7 @@ async function renderList(listId, openItemId) {
     <a class="iconbtn" href="#/lists" aria-label="Back">${IC.back}</a>
     <h1 class="grow">${esc(list.name)}</h1>
     <button class="iconbtn" data-rename aria-label="Rename">${IC.edit}</button>
-    <button class="iconbtn" data-del aria-label="Delete list">${IC.trash}</button>
+    <button class="iconbtn" data-del aria-label="Delete template">${IC.trash}</button>
   </div>`));
   const groupOpts = [{ value: '', label: '— no group —' }, ...GROUPS.map((g) => ({ value: g.id, label: `${g.id} · ${g.label}` }))];
   wrap.appendChild(h(`<div class="toolbar">
@@ -1286,7 +1286,7 @@ async function renderList(listId, openItemId) {
   if (openItem) careForceOpenItemId = openItem;
   const draw = () => {
     body.innerHTML = '';
-    if (!list.items.length) { body.appendChild(h('<div class="empty"><p class="empty-s">No items yet — add the things this list should contribute.</p></div>')); return; }
+    if (!list.items.length) { body.appendChild(h('<div class="empty"><p class="empty-s">No items yet — add the things this template should contribute.</p></div>')); return; }
     for (const it of list.items) body.appendChild(listItemRow(list, it, () => openItem, (v) => { openItem = v; }, draw));
   };
   draw();
@@ -1298,12 +1298,12 @@ async function renderList(listId, openItemId) {
     const inp = $('.item-editor input[name=name]', body); if (inp) inp.focus();
   });
   wrap.querySelector('[data-rename]').addEventListener('click', async () => {
-    const name = (prompt('Rename list:', list.name) || '').trim();
+    const name = (prompt('Rename template:', list.name) || '').trim();
     if (!name) return; list.name = name;
     if (await saveGuard(db.saveList(list))) render();
   });
   wrap.querySelector('[data-del]').addEventListener('click', async () => {
-    if (!confirm(`Delete the “${list.name}” list? This does not change events already generated.`)) return;
+    if (!confirm(`Delete the “${list.name}” template? This does not change events already generated.`)) return;
     if (await saveGuard(db.deleteList(list.id))) location.assign('#/lists');
   });
   return wrap;
@@ -1357,9 +1357,9 @@ function itemEditor(list, it, setOpen, draw) {
 
   // Which building-block lists this item (matched by name) currently appears in.
   const inListsHTML = (() => {
-    if (!it.name || !it.name.trim()) return '<p class="inlists-empty">Name the item and save — the lists it belongs to will show here.</p>';
+    if (!it.name || !it.name.trim()) return '<p class="inlists-empty">Name the item and save — the templates it belongs to will show here.</p>';
     const rows = listsWithItemNamed(it.name);
-    if (!rows.length) return '<p class="inlists-empty">Not saved in any list yet.</p>';
+    if (!rows.length) return '<p class="inlists-empty">Not in any template yet.</p>';
     return rows.map((r) => `<a class="inlists-chip${r.id === list.id ? ' cur' : ''}" href="#/list/${esc(r.id)}">${esc(r.name)}</a>`).join('');
   })();
 
@@ -1393,7 +1393,7 @@ function itemEditor(list, it, setOpen, draw) {
     <label class="field"><span>Note</span><input name="note" value="${esc(it.note)}"></label>
 
     <div class="inlists">
-      <div class="inlists-h">${IC.list}<span>In these lists</span></div>
+      <div class="inlists-h">${IC.list}<span>In these templates</span></div>
       <div class="inlists-body">${inListsHTML}</div>
     </div>
 
@@ -1496,7 +1496,7 @@ function itemEditor(list, it, setOpen, draw) {
     if (!x) return;
     if (x === 'cancel') { setOpen(null); draw(); return; }
     if (x === 'del') {
-      if (!confirm(`Remove “${it.name || 'this item'}” from the ${list.name} list?`)) return;
+      if (!confirm(`Remove “${it.name || 'this item'}” from the ${list.name} template?`)) return;
       list.items = list.items.filter((z) => z.id !== it.id);
       setOpen(null);
       if (await saveGuard(db.saveList(list))) draw();
@@ -1634,7 +1634,7 @@ function allItemsSection(lists) {
     <p class="ai-hint">Jump to any item to set where it’s stored, add a photo, or plan its maintenance.</p>
     <form class="ai-addform hidden" data-ai-form>
       <div class="row2">
-        <label class="field"><span>Add to list</span>${selectHtml('ai-list', lists.map((l) => ({ value: l.id, label: l.name })), lists[0] && lists[0].id)}</label>
+        <label class="field"><span>Add to template</span>${selectHtml('ai-list', lists.map((l) => ({ value: l.id, label: l.name })), lists[0] && lists[0].id)}</label>
         <label class="field"><span>Item name</span><input name="ai-name" placeholder="e.g. Wetsuit" autocomplete="off"></label>
       </div>
       <div class="ai-addactions">
@@ -1852,16 +1852,17 @@ function howtoCard() {
       <div class="howto-body">
 
         <h3>The idea</h3>
-        <p>Everything here exists to surface <b>the exact packing list for whatever you're about to do</b> — one activity or a combination (a city trip + a run + a hike), under the specific conditions of that trip. You keep small, reusable <b>activity lists</b>; the app composes the ones you pick into a single <b>Total List</b> for a trip and filters it down to what actually applies. Category, where it's packed and when to pack it are just how that result is organised.</p>
+        <p>Everything here exists to surface <b>the exact packing list for whatever you're about to do</b> — one activity or a combination (a city trip + a run + a hike), under the specific conditions of that trip. You keep small, reusable <b>templates</b>; an <b>Event</b> composes the ones you pick into a single <b>Packing List</b> for a trip and filters it down to what actually applies. Category, where it's packed and when to pack it are just how that result is organised.</p>
+        <p class="hint">Three words to keep straight: a <b>Template</b> is a reusable building block (Swim, Run, Travel, Golf…); an <b>Event</b> is one specific trip that combines templates; the <b>Packing List</b> is the single merged list that Event produces — the one you actually pack from.</p>
 
-        <h3>Building blocks: activity lists</h3>
-        <p>Under the <b>Lists</b> tab your reusable lists are grouped three ways:</p>
+        <h3>Building blocks: templates</h3>
+        <p>Under the <b>Templates</b> tab your reusable templates are grouped three ways:</p>
         <ul>
           <li><b>GA — Goal Activity:</b> the activities that matter — Travel, Golf, Hiking, Diving…</li>
           <li><b>WET — Workout, Exercise &amp; Training:</b> Swim, Bike, Run, Strength, Yoga/Mobility, Breath work.</li>
           <li><b>OE — Other Events:</b> small nice things (a coffee, a winter bath, a walk).</li>
         </ul>
-        <p>Open a list to add or edit its items. Each item carries a Swedish alias shown as a subtitle, so your original wording is never lost.</p>
+        <p>Open a template to add or edit its items. Each item carries a Swedish alias shown as a subtitle, so your original wording is never lost.</p>
 
         <h3>Anatomy of an item</h3>
         <p>Every item has three organising dimensions and a set of flags &amp; conditions:</p>
@@ -1879,9 +1880,9 @@ function howtoCard() {
         <h3>Getting around</h3>
         <p>Five tabs along the bottom:</p>
         <ul>
-          <li><b>Home</b> — the builder for starting a new trip, plus a compact preview of your few most recent event lists.</li>
-          <li><b>Events</b> — every event list you've made, grouped <b>Upcoming</b> → <b>No date set</b> → <b>Past trips</b>, with the nearest trip on top. Home's “See all” link lands here.</li>
-          <li><b>Lists</b> — your reusable activity lists (the building blocks).</li>
+          <li><b>Home</b> — the builder for starting a new trip, plus a compact preview of your few most recent events.</li>
+          <li><b>Events</b> — every event you've made, grouped <b>Upcoming</b> → <b>No date set</b> → <b>Past trips</b>, with the nearest trip on top. Home's “See all” link lands here.</li>
+          <li><b>Templates</b> — your reusable templates (the building blocks).</li>
           <li><b>Care</b> — everything that needs looking after, as an urgency-ordered list or a month calendar (see <b>Care, storage &amp; maintenance</b> below).</li>
           <li><b>Settings</b> — backup/restore, trip import, this guide and the version history.</li>
         </ul>
@@ -1896,7 +1897,7 @@ function howtoCard() {
         </ul>
 
         <h3>Creating a trip</h3>
-        <p>The <b>Home</b> tab is the builder. Set the trip's conditions, tick any <b>extra activities</b> you're doing, and press <b>Create Event List</b> — it generates an editable event that then lives under the <b>Events</b> tab.</p>
+        <p>The <b>Home</b> tab is the builder. Set the trip's conditions, tick any <b>extra activities</b> you're doing, and press <b>Create Event</b> — it generates an editable Event (with its own Packing List) that then lives under the <b>Events</b> tab.</p>
         <ul>
           <li><b>Name, start date, end date, destination</b> (end date and destination are optional). You give the <b>end date</b> — the return day — rather than counting nights yourself; the app works out the nights and shows them live below the dates.</li>
           <li><b>Time of year, catering, context</b> narrow the list; the <b>nights between your start and end date</b> drive per-night quantities (e.g. socks ×6 for six nights).</li>
@@ -1906,9 +1907,9 @@ function howtoCard() {
         <h3>Where the packing list comes from <em>(three sources)</em></h3>
         <p>Every trip's list is built from three sources — you never start from a blank page, and you never have to remember the basics:</p>
         <ul>
-          <li><b>1. Your common base — always included.</b> There's one always-on base list (currently named <b>“Travel”</b>) holding everything you need on <em>any</em> trip: clothes, toiletries, documents, everyday electronics and chargers. It's added to every list automatically, so you can't forget your underwear because you picked the wrong option. You never tick it; to change what's in it, edit the <b>Travel</b> list in the <b>Lists</b> tab.</li>
-          <li><b>2. Your transport's own kit — added by the “Way of transport” radio.</b> Each of <b>Car / Plane / RV</b> has its own base list, and picking one <b>automatically pulls its whole list in</b>. Choose <b>RV</b> and the full motorhome kit (levelling chocks, water hose, gas, awning, kitchen…) comes along — no extra step, no separate tick. <b>Plane</b> adds the carry-on-rules stuff (liquids bag, travel documents, power bank / spare batteries that must fly in the cabin); <b>Car</b> adds a few road extras (car charger, phone mount, snacks). Each list is editable in the <b>Lists</b> tab, so you can grow them over time. This replaces the old “Start from” shortcut: the transport radio <em>is</em> the shortcut now.</li>
-          <li><b>3. The extra activities you tick.</b> Under <b>Extra activities to pack for</b> you tick your <b>GA</b> (Goal Activity — Golf, Hiking, Diving…) and <b>WET</b> (Workout, Exercise &amp; Training — Swim, Bike, Run…) lists. Only these need ticking; the base and transport lists are already in, which is why they don't appear in that picker.</li>
+          <li><b>1. Your common base — always included.</b> There's one always-on base template (currently named <b>“Travel”</b>) holding everything you need on <em>any</em> trip: clothes, toiletries, documents, everyday electronics and chargers. It's added to every Packing List automatically, so you can't forget your underwear because you picked the wrong option. You never tick it; to change what's in it, edit the <b>Travel</b> template in the <b>Templates</b> tab.</li>
+          <li><b>2. Your transport's own kit — added by the “Way of transport” radio.</b> Each of <b>Car / Plane / RV</b> has its own base template, and picking one <b>automatically pulls its whole kit in</b>. Choose <b>RV</b> and the full motorhome kit (levelling chocks, water hose, gas, awning, kitchen…) comes along — no extra step, no separate tick. <b>Plane</b> adds the carry-on-rules stuff (liquids bag, travel documents, power bank / spare batteries that must fly in the cabin); <b>Car</b> adds a few road extras (car charger, phone mount, snacks). Each is editable in the <b>Templates</b> tab, so you can grow them over time. This replaces the old “Start from” shortcut: the transport radio <em>is</em> the shortcut now.</li>
+          <li><b>3. The extra activities you tick.</b> Under <b>Extra activities to pack for</b> you tick your <b>GA</b> (Goal Activity — Golf, Hiking, Diving…) and <b>WET</b> (Workout, Exercise &amp; Training — Swim, Bike, Run…) templates. Only these need ticking; the base and transport templates are already in, which is why they don't appear in that picker.</li>
         </ul>
         <p>So a plain RV holiday needs <em>zero</em> ticks — just pick <b>RV</b> — and you get the common base + the whole RV kit. Add a round of golf by ticking <b>Golf</b>, and its clubs and shoes join the same list.</p>
 
@@ -1916,11 +1917,11 @@ function howtoCard() {
         <p>At the top of the builder is a <b>List type</b> switch, because sometimes you don't want a whole trip — you just want to grab a bag for one activity:</p>
         <ul>
           <li><b>🧳 Full trip</b> <em>(default)</em> — the three sources above: common base + transport kit + the activities you tick. For real trips.</li>
-          <li><b>⏱️ Quick activity</b> — <b>only the activities you tick</b>, with <b>no common base and no transport kit</b>. The transport and catering choices disappear because they don't apply. Tick <b>Swim</b> (or <b>Run</b>, or both) and you get just those 5–20 items — perfect for “I'm off for a swim.” Set <b>Context</b> to <b>Indoor</b> or <b>Outdoor</b> to trim it further (e.g. an outdoor run adds a headlamp and sunscreen; indoor doesn't). Quick lists show a small <b>⏱️ Quick</b> tag on their card.</li>
+          <li><b>⏱️ Quick activity</b> — <b>only the activities you tick</b>, with <b>no common base and no transport kit</b>. The transport and catering choices disappear because they don't apply. Tick <b>Swim</b> (or <b>Run</b>, or both) and you get just those 5–20 items — perfect for “I'm off for a swim.” Set <b>Context</b> to <b>Indoor</b> or <b>Outdoor</b> to trim it further (e.g. an outdoor run adds a headlamp and sunscreen; indoor doesn't). Quick events show a small <b>⏱️ Quick</b> tag on their card.</li>
         </ul>
 
-        <h3>How the Total List is composed</h3>
-        <p>The app takes the union of every item from the sources for your chosen <b>List type</b> — a <b>Full trip</b> uses common base + transport list + ticked activities; a <b>Quick activity</b> uses only the ticked activities — then drops anything whose conditions (season, catering, context) don't match the trip, and de-duplicates by name + container (earlier sources win a clash, so the common base takes priority). Weather-conditional items are held back (see below). The result is your editable Total List — add, edit, tick, or remove any line.</p>
+        <h3>How the Packing List is composed</h3>
+        <p>The Event takes the union of every item from the sources for your chosen <b>List type</b> — a <b>Full trip</b> uses common base + transport template + ticked activities; a <b>Quick activity</b> uses only the ticked activities — then drops anything whose conditions (season, catering, context) don't match the trip, and de-duplicates by name + container (earlier sources win a clash, so the common base takes priority). Weather-conditional items are held back (see below). The result is your editable <b>Packing List</b> — add, edit, tick, or remove any line.</p>
 
         <h3>Reading &amp; organising the list</h3>
         <ul>
@@ -1928,14 +1929,14 @@ function howtoCard() {
           <li><b>Sort out</b> — quick filters above the list isolate all <b>💧 Liquids</b> (for the wash bag / 100 ml rule) or all <b>⚡ Charge</b> items (to round up cables and chargers). Tap a chip to show only those; tap <b>Show all</b> to bring the full list back. Ticking and editing work the same in the filtered view. Mark an item as a liquid or charge item with the 💧 / ⚡ toggles in its editor.</li>
           <li><b>🪨 Heaviest</b> — reorders the list heaviest-first with each item’s weight shown, so when a bag is over its limit you can see at a glance what to leave behind. It uses the real load (weight × quantity, including per-night scaling); items without a weight sit at the bottom. Combine it with a Liquids/Charge filter to rank just those. Add a weight to an item in its editor to make it count.</li>
           <li>Badges show flags at a glance; quantities marked per-night show the scaled count (e.g. Socks ×6 for a 6-night trip).</li>
-          <li><b>Regenerate</b> refreshes the list from your building-block lists while keeping your ticks, edits and manually-added items.</li>
+          <li><b>Regenerate</b> refreshes the Packing List from your templates while keeping your ticks, edits and manually-added items.</li>
         </ul>
 
         <h3>Bags &amp; weight</h3>
         <p>The <b>Bags &amp; weight</b> panel totals each container's weight against typical airline limits (carry-on 8 kg, checked 23 kg…), warns when a bag is over, and counts 💧 liquids and ⚠️ restricted items. Totals only cover items you've given a weight.</p>
 
         <h3>Care, storage &amp; maintenance</h3>
-        <p>Every item can carry three extra things about the <em>physical object</em>, set in its editor under <b>🧰 Storage, photo &amp; maintenance</b> (in the <b>Lists</b> tab):</p>
+        <p>Every item can carry three extra things about the <em>physical object</em>, set in its editor under <b>🧰 Storage, photo &amp; maintenance</b> (in the <b>Templates</b> tab):</p>
         <ul>
           <li><b>Where it's stored</b> — a free-text home for the thing (“Garage shelf 3”, “RV box”, “Hall closet”). It shows on the item, travels onto any trip it lands in, and appears in <b>Packing Mode</b> with a 📍 pin so you know exactly where to grab it. Previous locations autocomplete so the wording stays consistent.</li>
           <li><b>A photo</b> — snap or pick a picture of the item; it's shrunk and stored <b>on your device</b> (never uploaded). Handy to recognise the right gear, and shown as a thumbnail in the Care list.</li>
@@ -1947,13 +1948,13 @@ function howtoCard() {
           <li><b>Calendar</b> — a month view with each scheduled service on its due date, colour-coded by urgency and dotted with a count; tap a day to see (and tick off) what's due. Overdue items are flagged above the grid.</li>
         </ul>
         <p>Only items you give care info to appear in those two views — your everyday clothes and toiletries stay out of it. When something's overdue or due soon, a <b>🧰 reminder</b> also shows on the <b>Home</b> screen.</p>
-        <p>Below that sits <b>All items</b> — a searchable index of <b>every item in every list</b>. Type a name (or a storage place) to filter, then tap a result to jump <b>straight into that item's editor</b> with its <b>🧰 Storage, photo &amp; maintenance</b> panel already open — the quickest way to add or update care info without hunting through the Lists tab. The <b>＋ New item</b> button creates an item in any list you pick and drops you into editing it right away.</p>
+        <p>Below that sits <b>All items</b> — a searchable index of <b>every item in every template</b>. Type a name (or a storage place) to filter, then tap a result to jump <b>straight into that item's editor</b> with its <b>🧰 Storage, photo &amp; maintenance</b> panel already open — the quickest way to add or update care info without hunting through the Templates tab. The <b>＋ New item</b> button creates an item in any template you pick and drops you into editing it right away.</p>
 
         <h3>Countdown &amp; “pack now” nudges</h3>
         <p>With a start date set, each event shows a countdown, and a ⏰ banner surfaces the earliest phase that's due (based on how many days each phase is normally packed before departure). These are on-open reminders — the app can't push background notifications.</p>
 
         <h3>Packing Mode</h3>
-        <p>A focused, full-screen flow that walks you through one phase at a time with big tap-to-pack rows, live counters, and an “All packed 🎒” finish. It opens at the first phase that still has unpacked items and shares tick state with the Total List.</p>
+        <p>A focused, full-screen flow that walks you through one phase at a time with big tap-to-pack rows, live counters, and an “All packed 🎒” finish. It opens at the first phase that still has unpacked items and shares tick state with the Packing List.</p>
 
         <h3>Weather (optional, per trip)</h3>
         <p>Add a <b>destination</b> to a trip, then tap <b>Get forecast</b>. The forecast comes from Open-Meteo (free, no account), is cached on the trip so it still shows offline, and only fetches when you ask and you're online.</p>
@@ -1965,7 +1966,7 @@ function howtoCard() {
         </ul>
 
         <h3>Trip review &amp; Refine (learning)</h3>
-        <p>After a trip, open <b>Trip review</b> and mark what you didn't use. The app remembers, per item, how often it was packed vs actually used. <b>Refine</b> (from the Lists tab) then suggests dropping items you keep packing but never use — you decide Keep or Drop.</p>
+        <p>After a trip, open <b>Trip review</b> and mark what you didn't use. The app remembers, per item, how often it was packed vs actually used. <b>Refine</b> (from the Templates tab) then suggests dropping items you keep packing but never use — you decide Keep or Drop.</p>
 
         <h3>Sharing a trip</h3>
         <p>From a trip, tap <b>Share</b>. The whole trip — its full packing list — travels inside a file or a link; nothing is uploaded. The other person opens the link (it imports on its own) or imports the file from Settings. Every import becomes a fresh, unpacked copy.</p>
@@ -1992,6 +1993,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v37', '2026-07-30 · 18:30 UTC', false, 'Clearer names: Templates, Events, Packing List',
+      'A vocabulary tidy-up so the app names each thing for what it really is. The reusable building blocks (Swim, Run, Travel, Golf…) are now called <b>Templates</b> — the bottom tab and its screen are renamed to match. A specific trip that combines templates is an <b>Event</b> (unchanged). And the single merged list an Event produces — the one you actually pack from — is now called the <b>Packing List</b> (it used to be the “Total List”). So the flow reads plainly: <em>pick Templates → an Event combines them → you get a Packing List</em>. The Home button is now <b>Create Event</b>, and the “How it works” guide has been rewritten throughout to use the new words. Nothing about your data or how anything works changed — only the labels.',
+      'The words now match the mental model: reusable Templates, a per-trip Event, and the Packing List you pack from.'),
     v('v36', '2026-07-30 · 17:30 UTC', false, 'Clearer item editor',
       'Four touches to make editing an item easier to read. <b>(1)</b> The <b>item name</b> is now big and bold so you always know what you’re editing. <b>(2)</b> The five condition rows (Season, Context, Transport, Catering, Weather) are wrapped in a <b>boxed group</b> under one heading — <em>“Only include this item when…”</em> — so it’s obvious the heading governs those rows and nothing else. <b>(3)</b> A plain-language <b>note under the Weather boxes</b> explains the rule: tick a condition and the item is held back until the trip’s forecast calls for it (tick Rain → only added when rain is forecast); leave them unticked and it’s always included. <b>(4)</b> A new <b>“In these lists”</b> panel shows every packing list that already contains this item (by name) as tap-through chips — it grows on its own as you add the item to more lists.',
       'You can see at a glance what you’re editing, what the condition rows do, and everywhere the item is already used.'),
@@ -2149,7 +2153,7 @@ async function renderSettings() {
 
   const about = h(`<div class="card block">
     <h2>About</h2>
-    <p class="muted">AMS Packing List — a private, offline packing-list builder. Combine reusable activity lists into one Total Packing List, organised by when to pack and where it goes.</p>
+    <p class="muted">AMS Packing List — a private, offline packing-list builder. Combine reusable templates into one Packing List per event, organised by when to pack and where it goes.</p>
   </div>`);
   wrap.appendChild(about);
 
