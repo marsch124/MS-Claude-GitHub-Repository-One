@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v34';
+const APP_VERSION = 'v35';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -1372,7 +1372,13 @@ function itemEditor(list, it, setOpen, draw) {
       <summary><span class="care-h">🧰 Storage, photo &amp; maintenance</span><span class="care-sum">Where it lives, a picture, and how &amp; when to look after it</span></summary>
       <div class="care-body">
         <label class="field"><span>Where it's stored</span>
-          <input name="storage" list="ams-storages" value="${esc(it.storage)}" placeholder="e.g. Garage shelf 3 · RV box · Hall closet" autocomplete="off"></label>
+          <select name="storage-sel">
+            <option value=""${it.storage ? '' : ' selected'}>— not set —</option>
+            ${STORAGES.map((s) => `<option value="${esc(s)}"${s === it.storage ? ' selected' : ''}>${esc(s)}</option>`).join('')}
+            <option value="__new__">＋ Add a new place…</option>
+          </select></label>
+        <label class="field care-newstorage hidden"><span>New place</span>
+          <input name="storage-new" value="" placeholder="e.g. Garage shelf 3 · RV box · Hall closet" autocomplete="off"></label>
 
         <div class="care-photo" data-photo>
           <div class="care-photo-preview">${photo ? `<img src="${esc(photo)}" alt="${esc(it.name)}">` : `<span class="care-photo-empty">${IC.camera}<span>No photo</span></span>`}</div>
@@ -1407,8 +1413,7 @@ function itemEditor(list, it, setOpen, draw) {
       <div class="spacer"></div>
       <button type="button" class="btn" data-x="cancel">Cancel</button>
       <button type="button" class="btn primary" data-x="save">Save</button>
-    </div>
-    <datalist id="ams-storages">${STORAGES.map((s) => `<option value="${esc(s)}"></option>`).join('')}</datalist>`;
+    </div>`;
 
   const fileInput = $('[data-care-file]', ed);
   const drawHistory = () => {
@@ -1423,6 +1428,11 @@ function itemEditor(list, it, setOpen, draw) {
     if (e.target.type === 'checkbox') e.target.closest('label')?.classList.toggle('on', e.target.checked);
     if (e.target.name === 'charging') $('.charge-type-field', ed)?.classList.toggle('hidden', !e.target.checked);
     if (e.target.name === 'interval') $('.care-custom', ed)?.classList.toggle('hidden', e.target.value !== 'custom');
+    if (e.target.name === 'storage-sel') {
+      const isNew = e.target.value === '__new__';
+      $('.care-newstorage', ed)?.classList.toggle('hidden', !isNew);
+      if (isNew) $('input[name=storage-new]', ed)?.focus();
+    }
     if (e.target === fileInput) {
       const f = fileInput.files[0]; if (!f) return;
       try {
@@ -1481,7 +1491,10 @@ function itemEditor(list, it, setOpen, draw) {
       it.catering = $$('input[name=catering]:checked', ed).map((n) => n.value);
       it.weather = $$('input[name=weather]:checked', ed).map((n) => n.value);
       // Care & storage
-      it.storage = ($('input[name=storage]', ed).value || '').trim();
+      const storageSel = $('select[name=storage-sel]', ed).value;
+      it.storage = storageSel === '__new__'
+        ? ($('input[name=storage-new]', ed).value || '').trim()
+        : storageSel;
       it.photo = photo;
       const isel = $('select[name=interval]', ed).value;
       const intervalDays = isel === 'custom' ? Math.max(0, parseInt($('input[name=customDays]', ed).value, 10) || 0) : (parseInt(isel, 10) || 0);
@@ -1950,6 +1963,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v35', '2026-07-30 · 16:30 UTC', false, 'Storage is now a dropdown',
+      'In an item’s <b>🧰 Storage, photo &amp; maintenance</b> panel, <b>Where it’s stored</b> is now a proper <b>dropdown</b> that lists every place you’ve used before — tap and pick, instead of retyping “Garage shelf 3” each time (and no more accidental duplicates like “Garage” vs “garage”). Need somewhere new? Choose <b>＋ Add a new place…</b> and a box appears to type it; it then joins the dropdown for every other item. This also replaces the old type-to-suggest box that barely showed up on iPhone. <b>Also fixed:</b> a couple of editor fields that should only appear when relevant — <b>Charge type</b> (only with ⚡ Charging ticked) and <b>Custom interval (days)</b> (only when the interval is “Custom”) — had been showing all the time; they now hide until you need them.',
+      'Pick a storage place from a tidy list in one tap — consistent names, no retyping, and still free to add new spots.'),
     v('v34', '2026-07-30 · 15:30 UTC', false, 'Care page: browse & add any item',
       'The <b>Care</b> tab gains a second section below the reminders: <b>All items</b>. It lists <b>every item across every list</b> with a <b>search box</b>, so you can type “wetsuit”, “drone”, “tent”… and jump <b>straight into that item’s editor</b> with its <b>🧰 Storage, photo &amp; maintenance</b> panel already open — no more hunting through Lists to add care info. Each row shows where it lives (📍) and a maintenance dot if it has a schedule. There’s also a <b>＋ New item</b> button: pick a list, give it a name, and you’re dropped straight into editing it. This makes the Care tab the one place to set up and look after all your gear.',
       'Add or update storage, photos and maintenance for any item in seconds — search, tap, done — without digging through your lists.'),

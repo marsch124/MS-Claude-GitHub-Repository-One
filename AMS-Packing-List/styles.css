@@ -155,6 +155,9 @@ em { font-style: normal; color: var(--muted); font-weight: 400; }
 /* forms */
 .form { display: grid; gap: 14px; }
 .field { display: grid; gap: 5px; }
+/* utility: toggled-off fields (charge type, custom interval, new-place box,
+   trip-only rows in quick mode) carry this class — keep it hiding them. */
+.hidden { display: none !important; }
 .field > span { font-size: .82rem; color: var(--muted); font-weight: 600; }
 input, select, textarea {
   font: inherit; color: var(--ink); background: var(--card);
