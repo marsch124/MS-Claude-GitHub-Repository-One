@@ -501,25 +501,27 @@ details.care[open] .care-h::before { content: '▾'; }
 .care-lastdone input { width: 100%; }
 
 /* photo picker in the editor */
+/* Item header: photo gallery sits beside the name field. */
+.item-head { display: flex; gap: 12px; align-items: flex-start; }
+.item-head .item-name { flex: 1 1 auto; min-width: 0; }
 /* Photo gallery — thumbnails with a remove ✕, plus an "add" tile up to the cap. */
-.care-photos { display: flex; flex-wrap: wrap; gap: 10px; }
-.care-photo-tile { position: relative; width: 84px; height: 84px; }
-.care-photo-tile img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); cursor: zoom-in; }
+.item-photos { flex: 0 0 auto; width: 140px; display: flex; flex-wrap: wrap; gap: 8px; align-content: flex-start; }
+.care-photo-tile { position: relative; width: 62px; height: 62px; }
+.care-photo-tile img { width: 100%; height: 100%; object-fit: cover; border-radius: 11px; border: 1px solid var(--line); cursor: zoom-in; }
 .care-photo-rm {
-  position: absolute; top: -7px; right: -7px; width: 24px; height: 24px; padding: 0;
+  position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; padding: 0;
   display: flex; align-items: center; justify-content: center;
   border: 1.5px solid var(--card); border-radius: 999px; background: var(--danger); color: #fff;
   cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.25);
 }
-.care-photo-rm .ic { width: 14px; height: 14px; }
+.care-photo-rm .ic { width: 13px; height: 13px; }
 .care-photo-add {
-  width: 84px; height: 84px; border-radius: 12px; border: 1.5px dashed var(--line);
+  width: 62px; height: 62px; border-radius: 11px; border: 1.5px dashed var(--line);
   background: var(--line-2); color: var(--muted); cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: .72rem; font-weight: 600;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: .64rem; font-weight: 600;
 }
 .care-photo-add:hover { border-color: var(--brand); color: var(--brand); }
-.care-photo-add .ic { width: 22px; height: 22px; }
-.care-photos-hint { color: var(--muted); font-size: .78rem; margin: 2px 0 0; }
+.care-photo-add .ic { width: 20px; height: 20px; }
 /* Full-screen photo viewer. */
 .photo-lightbox { background: rgba(8,14,16,.82); cursor: zoom-out; z-index: 50; }
 .photo-lightbox img { max-width: 100%; max-height: 100%; border-radius: 12px; box-shadow: 0 8px 40px rgba(0,0,0,.5); }
@@ -530,10 +532,11 @@ details.care[open] .care-h::before { content: '▾'; }
   font-size: .62rem; font-weight: 800; line-height: 1; color: #fff;
   background: rgba(16,24,28,.82); border-radius: 999px;
 }
-/* Cadence · Last done · Log-done, all on one aligned row (wraps if tight). */
-.care-maint { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
-.care-maint .field { flex: 1 1 128px; }
-.care-logbtn { flex: 1 1 140px; padding: 10px 14px; border-color: var(--brand); color: var(--brand); font-size: .85rem; }
+/* Cadence · Last done · Log-done: one row, bottom-aligned, matching heights. */
+.care-maint { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; }
+.care-maint .field { flex: 1 1 130px; gap: 4px; }
+.care-maint select, .care-maint input[type="date"], .care-logbtn { height: 44px; box-sizing: border-box; }
+.care-logbtn { flex: 1 1 150px; padding: 0 14px; border-color: var(--brand); color: var(--brand); font-size: .85rem; }
 .care-logbtn:hover { background: color-mix(in srgb, var(--brand) 10%, transparent); }
 .care-history { display: grid; gap: 2px; }
 .care-hhead, .cal-daylist .care-sech { color: var(--muted); font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }

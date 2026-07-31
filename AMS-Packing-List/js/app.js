@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v41';
+const APP_VERSION = 'v42';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -474,11 +474,19 @@ async function renderEvent(eventId) {
     : [ev.transport, ev.season, cateringShort(ev.catering), ...(ev.contexts || [])]).filter(Boolean);
 
   const wrap = h('<section class="screen"></section>');
-  wrap.appendChild(h(`<div class="topbar">
+  const topbar = h(`<div class="topbar">
     <a class="iconbtn" href="#/" aria-label="Back">${IC.back}</a>
     <h1 class="grow">${esc(ev.name)}</h1>
+    <button class="iconbtn" type="button" data-rename aria-label="Rename event">${IC.edit}</button>
     <a class="iconbtn" href="#/event/${ev.id}/edit" aria-label="Event settings">${IC.gear}</a>
-  </div>`));
+  </div>`);
+  topbar.querySelector('[data-rename]').addEventListener('click', async () => {
+    const name = (prompt('Rename event:', ev.name) || '').trim();
+    if (!name || name === ev.name) return;
+    ev.name = name;
+    if (await saveGuard(db.saveEvent(ev))) render();
+  });
+  wrap.appendChild(topbar);
 
   const dToGo = daysUntil(ev.startDate);
   const countChip = dToGo != null ? `<span class="chip count">🗓 ${esc(countdownLabel(dToGo))}</span>` : '';
@@ -1375,7 +1383,11 @@ function itemEditor(list, it, setOpen, draw) {
   })();
 
   ed.innerHTML = `
-    <label class="field item-name"><span>Item name</span><input name="name" value="${esc(it.name)}"></label>
+    <div class="item-head">
+      <div class="item-photos" data-photos></div>
+      <label class="field item-name"><span>Item name</span><input name="name" value="${esc(it.name)}"></label>
+    </div>
+    <input type="file" accept="image/*" hidden data-care-file multiple>
     <div class="row2">
       <label class="field"><span>Qty</span><input name="qty" value="${esc(it.qty)}" placeholder="optional"></label>
       <label class="field"><span>Container</span>${selectHtml('container', ['', ...CONTAINERS].map((c) => ({ value: c, label: c || '— none (task) —' })), it.container)}</label>
@@ -1409,7 +1421,7 @@ function itemEditor(list, it, setOpen, draw) {
     </div>
 
     <details class="care"${careOpen ? ' open' : ''}>
-      <summary><span class="care-h">🧰 Storage &amp; maintenance</span><span class="care-sum">Where it lives, a picture, and how &amp; when to look after it</span></summary>
+      <summary><span class="care-h">Storage &amp; maintenance</span><span class="care-sum">Where it lives, and how &amp; when to look after it</span></summary>
       <div class="care-body">
         <label class="field"><span>Where it's stored</span>
           <select name="storage-sel">
@@ -1419,10 +1431,6 @@ function itemEditor(list, it, setOpen, draw) {
           </select></label>
         <label class="field care-newstorage hidden"><span>New place</span>
           <input name="storage-new" value="" placeholder="e.g. Garage shelf 3 · RV box · Hall closet" autocomplete="off"></label>
-
-        <div class="care-photos" data-photos></div>
-        <p class="care-photos-hint">Up to ${MAX_PHOTOS} photos — tap one to enlarge.</p>
-        <input type="file" accept="image/*" hidden data-care-file multiple>
 
         <div class="care-maint">
           <label class="field"><span>Maintenance cadence</span>${selectHtml('interval', intervalOpts, intervalSel)}</label>
@@ -1457,10 +1465,9 @@ function itemEditor(list, it, setOpen, draw) {
         <button type="button" class="care-photo-rm" data-photo-rm="${i}" title="Remove photo" aria-label="Remove photo ${i + 1}">${IC.close}</button>
       </div>`).join('');
     const addTile = photos.length < MAX_PHOTOS
-      ? `<button type="button" class="care-photo-add" data-care="pick" title="Add photo" aria-label="Add photo">${IC.camera}<span>${photos.length ? 'Add' : 'Add photo'}</span></button>`
+      ? `<button type="button" class="care-photo-add" data-care="pick" title="Add photo" aria-label="Add photo">${IC.camera}<span>Photo</span></button>`
       : '';
     box.innerHTML = tiles + addTile;
-    $('.care-photos-hint', ed).hidden = photos.length === 0;
   };
   drawPhotos();
   const drawHistory = () => {
@@ -1623,7 +1630,7 @@ async function renderMaintenance() {
     });
   } else {
     wrap.appendChild(h(`<div class="care-none">
-      <p class="empty-s">Nothing is scheduled for upkeep yet. Find an item below, open it, and fill in its <b>🧰 Storage &amp; maintenance</b> panel — a service interval or care notes will bring it here with reminders.</p>
+      <p class="empty-s">Nothing is scheduled for upkeep yet. Find an item below, open it, and fill in its <b>Storage &amp; maintenance</b> panel — a service interval or care notes will bring it here with reminders.</p>
     </div>`));
   }
 
@@ -1955,10 +1962,10 @@ function howtoCard() {
         <p>The <b>Bags &amp; weight</b> panel totals each container's weight against typical airline limits (carry-on 8 kg, checked 23 kg…), warns when a bag is over, and counts 💧 liquids and ⚠️ restricted items. Totals only cover items you've given a weight.</p>
 
         <h3>Care, storage &amp; maintenance</h3>
-        <p>Every item can carry three extra things about the <em>physical object</em>, set in its editor under <b>🧰 Storage &amp; maintenance</b> (in the <b>Templates</b> tab):</p>
+        <p>Every item can carry a few extra things about the <em>physical object</em>, set in its editor (in the <b>Templates</b> tab) — its <b>photos sit right beside the item name</b>, while where it's stored and how to look after it live in the <b>Storage &amp; maintenance</b> panel below:</p>
         <ul>
           <li><b>Where it's stored</b> — a free-text home for the thing (“Garage shelf 3”, “RV box”, “Hall closet”). It shows on the item, travels onto any trip it lands in, and appears in <b>Packing Mode</b> with a 📍 pin so you know exactly where to grab it. Previous locations autocomplete so the wording stays consistent.</li>
-          <li><b>Photos</b> — snap or pick <b>up to ${MAX_PHOTOS} pictures</b> of the item; each is shrunk and stored <b>on your device</b> (never uploaded). Tap a thumbnail to enlarge it, or the ✕ to remove it. Handy to recognise the right gear — the first one shows as a thumbnail in the Care list, with a small count when there's more than one.</li>
+          <li><b>Photos</b> (beside the name) — snap or pick <b>up to ${MAX_PHOTOS} pictures</b> of the item; each is shrunk and stored <b>on your device</b> (never uploaded). Tap a thumbnail to enlarge it, or the ✕ to remove it. Handy to recognise the right gear — the first one shows as a thumbnail in the Care list, with a small count when there's more than one.</li>
           <li><b>Maintenance</b> — how and how often to look after it: a <b>maintenance cadence</b> (monthly … every 2 years, or a custom number of days), when it was <b>last done</b>, free-text <b>how-to notes</b> (steps, products, settings), and a <b>how-to link</b>. Tap <b>Log done today</b> to record a service — it resets the schedule and adds a dated entry to the item's maintenance history.</li>
         </ul>
         <p>The <b>Care</b> tab then gathers everything with care info across all your lists, two ways:</p>
@@ -1967,7 +1974,7 @@ function howtoCard() {
           <li><b>Calendar</b> — a month view with each scheduled service on its due date, colour-coded by urgency and dotted with a count; tap a day to see (and tick off) what's due. Overdue items are flagged above the grid.</li>
         </ul>
         <p>Only items you give care info to appear in those two views — your everyday clothes and toiletries stay out of it. When something's overdue or due soon, a <b>🧰 reminder</b> also shows on the <b>Home</b> screen.</p>
-        <p>Below that sits <b>All items</b> — a searchable index of <b>every item in every template</b>. Type a name (or a storage place) to filter, then tap a result to jump <b>straight into that item's editor</b> with its <b>🧰 Storage &amp; maintenance</b> panel already open — the quickest way to add or update care info without hunting through the Templates tab. The <b>＋ New item</b> button creates an item in any template you pick and drops you into editing it right away.</p>
+        <p>Below that sits <b>All items</b> — a searchable index of <b>every item in every template</b>. Type a name (or a storage place) to filter, then tap a result to jump <b>straight into that item's editor</b> with its <b>Storage &amp; maintenance</b> panel already open — the quickest way to add or update care info without hunting through the Templates tab. The <b>＋ New item</b> button creates an item in any template you pick and drops you into editing it right away.</p>
 
         <h3>Countdown &amp; “pack now” nudges</h3>
         <p>With a start date set, each event shows a countdown, and a ⏰ banner surfaces the earliest phase that's due (based on how many days each phase is normally packed before departure). These are on-open reminders — the app can't push background notifications.</p>
@@ -2012,6 +2019,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v42', '2026-07-31 · 13:00 UTC', false, 'Photos beside the name + a cleaner care panel',
+      'A layout tidy-up in the item editor. An item’s <b>photos now sit right beside its name</b> at the top — where you’d expect a picture of the thing — instead of being tucked inside the care panel. The <b>Storage &amp; maintenance</b> panel below is decluttered: the little suitcase icon is gone from its heading, and the <b>Maintenance cadence · Last done · Log done today</b> controls now line up neatly as one row with matching heights. Separately, you can now <b>rename an event</b> straight from its screen — tap the <b>✏️ pencil</b> next to the ⚙️ gear in the top bar, type a new name, done (the gear still opens full Event settings).',
+      'The editor reads top-to-bottom the way you’d expect — picture with the name, care details below — and renaming a trip is now one obvious tap.'),
     v('v41', '2026-07-31 · 12:00 UTC', false, 'Several photos per item',
       'An item can now hold <b>up to 5 photos</b> instead of just one — useful for showing a thing from different angles, or its serial number and accessories alongside it. The care panel shows them as a row of thumbnails, each with a small <b>✕</b> to remove it and a dashed <b>Add</b> tile to pick more (you can select several at once). <b>Tap any photo to view it full-screen.</b> In the <b>Care</b> list and <b>All items</b>, the first photo is the thumbnail with a little <b>count badge</b> when there’s more than one. Any single photo you’d already saved is carried over automatically as the first in its set.',
       'Capture gear from every angle — angles, labels, accessories — not just one picture per item.'),
