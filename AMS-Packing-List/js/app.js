@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v49';
+const APP_VERSION = 'v50';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -142,6 +142,36 @@ function isUnfiled(name, lists = ALL_LISTS) {
   const key = (name || '').trim().toLowerCase();
   if (!key) return false;
   return !lists.some((l) => l.role !== 'loose' && (l.items || []).some((z) => (z.name || '').trim().toLowerCase() === key));
+}
+
+// Category quick-filters shared by the Care tab's "All items" index and each
+// template's own item list: tap a chip to isolate a kind of thing (liquids to
+// pack, chargeables, items with care info…). Chips are OR'd together.
+const ITEM_FILTER_CATS = [
+  { key: 'loose',      label: '⚠️ No template', test: (it) => isUnfiled(it.name) },
+  { key: 'liquid',     label: '💧 Liquids',     test: (it) => !!it.liquid },
+  { key: 'charge',     label: '⚡ Charging',     test: (it) => !!it.charging },
+  { key: 'restricted', label: '⚠️ Restricted',  test: (it) => !!it.restricted },
+  { key: 'care',       label: '🧰 Has care',    test: (it) => hasCare(it) },
+  { key: 'photo',      label: '📷 Photo',        test: (it) => (it.photos || []).length > 0 },
+];
+
+// Chip-bar HTML for the given items and active filter Set. Only categories that
+// actually occur are shown, each with a live count; a dashed "Show all" clears.
+// `excludeLoose` drops the "No template" chip where it's meaningless (the Loose
+// bin itself, where every item is unfiled).
+function itemFilterChipsHTML(items, filter, excludeLoose) {
+  const cats = ITEM_FILTER_CATS.filter((c) => !(excludeLoose && c.key === 'loose'));
+  const chips = cats.map((c) => ({ c, n: items.filter(c.test).length })).filter((x) => x.n)
+    .map(({ c, n }) => `<button class="fchip${filter.has(c.key) ? ' on' : ''}" type="button" data-cat="${c.key}">${c.label} <em>${n}</em></button>`)
+    .join('');
+  return chips ? `${chips}<button class="fchip clear" type="button" data-cat="__clear"${filter.size ? '' : ' hidden'}>Show all</button>` : '';
+}
+
+// Does an item pass the active category filter? (OR across the chosen chips.)
+function itemMatchesFilter(it, filter) {
+  if (!filter.size) return true;
+  return [...filter].some((k) => { const c = ITEM_FILTER_CATS.find((x) => x.key === k); return c ? c.test(it) : false; });
 }
 
 // A fresh copy of an item for another template — carries the packing-relevant
@@ -1490,6 +1520,17 @@ async function renderList(listId, openItemId) {
     <button class="btn ghost" data-add>${IC.plus}<span>Add item</span></button>
   </div>`));
 
+  const itemFilter = new Set();               // active category chips for this template's list
+  const filterBar = h('<div class="item-filterbar"></div>');
+  wrap.appendChild(filterBar);
+  filterBar.addEventListener('click', (e) => {
+    const key = e.target.closest('[data-cat]')?.dataset.cat;
+    if (!key) return;
+    if (key === '__clear') itemFilter.clear();
+    else if (itemFilter.has(key)) itemFilter.delete(key); else itemFilter.add(key);
+    draw();
+  });
+
   const body = h('<div class="items"></div>');
   wrap.appendChild(body);
 
@@ -1505,9 +1546,14 @@ async function renderList(listId, openItemId) {
     ? 'Nothing loose right now. Use <b>Add several</b> to dump in a batch of new things, or <b>Add item</b> for one — you can sort out where they belong later.'
     : 'No items yet — add the things this template should contribute.';
   const draw = () => {
+    // Chips reflect the current items (add/batch/delete keep the counts live);
+    // the "No template" chip is dropped in the Loose bin where every item is loose.
+    filterBar.innerHTML = itemFilterChipsHTML(list.items, itemFilter, isLoose);
     body.innerHTML = '';
     if (!list.items.length) { body.appendChild(h(`<div class="empty"><p class="empty-s">${emptyMsg}</p></div>`)); return; }
-    for (const it of list.items) body.appendChild(listItemRow(list, it, () => openItem, (v) => { openItem = v; }, draw));
+    const shown = list.items.filter((it) => itemMatchesFilter(it, itemFilter));
+    if (!shown.length) { body.appendChild(h('<div class="empty"><p class="empty-s">No items match these filters.</p></div>')); return; }
+    for (const it of shown) body.appendChild(listItemRow(list, it, () => openItem, (v) => { openItem = v; }, draw));
   };
   draw();
   if (openItem) requestAnimationFrame(() => $('.item-editor', body)?.scrollIntoView({ block: 'center' }));
@@ -1987,33 +2033,16 @@ function allItemsSection(lists) {
   const filterEl = $('.ai-filterbar', sec);
   const form = $('[data-ai-form]', sec);
 
-  // Category quick-filters for the whole item index. Each item can carry several
-  // of these flags; picking chips shows items matching ANY chosen category (OR),
-  // then narrowed by the text box. Only categories that actually occur are shown.
-  const CATS = [
-    { key: 'loose',      label: '⚠️ No template', test: ({ it }) => isUnfiled(it.name) },
-    { key: 'liquid',     label: '💧 Liquids',     test: ({ it }) => !!it.liquid },
-    { key: 'charge',     label: '⚡ Charging',     test: ({ it }) => !!it.charging },
-    { key: 'restricted', label: '⚠️ Restricted',  test: ({ it }) => !!it.restricted },
-    { key: 'care',       label: '🧰 Has care',    test: ({ it }) => hasCare(it) },
-    { key: 'photo',      label: '📷 Photo',        test: ({ it }) => (it.photos || []).length > 0 },
-  ];
-  const catCounts = Object.fromEntries(CATS.map((c) => [c.key, flat.filter(c.test).length]));
-  const testFor = Object.fromEntries(CATS.map((c) => [c.key, c.test]));
-
-  const drawChips = () => {
-    const chips = CATS.filter((c) => catCounts[c.key]).map((c) =>
-      `<button class="fchip${careItemFilter.has(c.key) ? ' on' : ''}" type="button" data-cat="${c.key}">${c.label} <em>${catCounts[c.key]}</em></button>`).join('');
-    filterEl.innerHTML = chips
-      ? `${chips}<button class="fchip clear" type="button" data-cat="__clear"${careItemFilter.size ? '' : ' hidden'}>Show all</button>`
-      : '';
-  };
+  // Category quick-filters for the whole item index (shared with each template's
+  // own list). Picking chips shows items matching ANY chosen category (OR), then
+  // narrowed by the text box.
+  const drawChips = () => { filterEl.innerHTML = itemFilterChipsHTML(flat.map((r) => r.it), careItemFilter, false); };
 
   const drawItems = () => {
     const q = careItemSearch.trim().toLowerCase();
     const shown = flat.filter((row) => {
       const { it, list } = row;
-      if (careItemFilter.size && ![...careItemFilter].some((k) => testFor[k](row))) return false;
+      if (!itemMatchesFilter(it, careItemFilter)) return false;
       if (!q) return true;
       return (it.name || '').toLowerCase().includes(q)
         || (it.storage || '').toLowerCase().includes(q)
@@ -2236,7 +2265,7 @@ function howtoCard() {
           <li><b>WET — Workout, Exercise &amp; Training:</b> Swim, Bike, Run, Strength, Yoga/Mobility, Breath work.</li>
           <li><b>OE — Other Events:</b> small nice things (a coffee, a winter bath, a walk).</li>
         </ul>
-        <p>Open a template to add or edit its items. Each item carries a Swedish alias shown as a subtitle, so your original wording is never lost.</p>
+        <p>Open a template to add or edit its items. Each item carries a Swedish alias shown as a subtitle, so your original wording is never lost. At the top of a template’s item list sit <b>quick-filter chips</b> — <b>💧 Liquids</b>, <b>⚡ Charging</b>, <b>⚠️ Restricted</b>, <b>🧰 Has care</b>, <b>📷 Photo</b> — so you can isolate one kind of thing within that list (tap several to combine; <b>Show all</b> clears). Only the categories present in that template appear, each with a count. The same chips are on the Care tab’s <b>All items</b> index for filtering across every template at once.</p>
 
         <h3>Anatomy of an item</h3>
         <p>Every item has three organising dimensions and a set of flags &amp; conditions:</p>
@@ -2372,6 +2401,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v50', '2026-07-31 · 21:00 UTC', false, 'Category filter chips inside each template too',
+      'The same <b>quick-filter chips</b> added to the Care tab now sit at the top of <b>every template’s own item list</b> (and the <b>Loose items</b> bin). Open a template and tap <b>💧 Liquids</b>, <b>⚡ Charging</b>, <b>⚠️ Restricted</b>, <b>🧰 Has care</b> or <b>📷 Photo</b> to see just those items within that list; tap several to combine them (it shows items matching <b>any</b> chosen category). Only categories that actually occur in that template show up, each with a count, and <b>Show all</b> clears them. The counts stay live as you add, batch-add or remove items. (The <b>⚠️ No template</b> chip is left off inside the Loose bin, where every item is loose anyway.)',
+      'Zero in on one kind of thing inside a single template — every liquid in your wash-bag list, every chargeable in the tech list — without scrolling the whole thing.'),
     v('v49', '2026-07-31 · 20:00 UTC', false, 'Filter the Care tab’s item index by category',
       'The <b>All items</b> search on the <b>Care</b> tab gains a row of <b>quick-filter chips</b> under the search box. Tap one to see just that kind of thing across every template at once: <b>⚠️ No template</b> (loose items not yet filed), <b>💧 Liquids</b>, <b>⚡ Charging</b>, <b>⚠️ Restricted</b>, <b>🧰 Has care</b> (anything with storage, a photo, notes or a maintenance schedule) and <b>📷 Photo</b>. Tap several to combine them (it shows items matching <b>any</b> of the picked categories), and keep typing in the search box to narrow further. Only categories that actually occur show up, each with a count, and <b>Show all</b> clears them. It’s the fast way to round up, say, every loose item still needing a home, or every liquid before a flight.',
       'Round up a whole category of gear in one tap — all your loose items, liquids or chargeables — without scrolling the full list or knowing each name.'),
