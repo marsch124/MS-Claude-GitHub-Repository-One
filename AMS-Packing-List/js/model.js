@@ -198,8 +198,10 @@ export function coerceList(l) {
   // role decides how the list feeds a trip:
   //  'base'      → always included on every trip (the common core),
   //  'transport' → included only when the trip's transport matches l.transport,
+  //  'loose'     → the "Loose items" bin: items not in any template yet; never fed
+  //                to a trip and never shown as a tickable activity,
   //  ''          → a normal activity list the user ticks (GA / WET).
-  l.role = ['base', 'transport'].includes(l.role) ? l.role : '';
+  l.role = ['base', 'transport', 'loose'].includes(l.role) ? l.role : '';
   l.transport = TRANSPORTS.includes(l.transport) ? l.transport : '';  // only meaningful when role === 'transport'
   return l;
 }

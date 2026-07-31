@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v47';
+const APP_VERSION = 'v48';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -125,6 +125,23 @@ function listsWithItemNamed(name) {
   return ALL_LISTS
     .filter((l) => (l.items || []).some((it) => (it.name || '').trim().toLowerCase() === key))
     .map((l) => ({ id: l.id, name: l.name }));
+}
+
+// The "Loose items" bin — where items live before they belong to any template.
+// It's a real list under the hood (so the editor, care, matrix all work) but
+// carries role 'loose', which keeps it out of every trip and the activity picker.
+const LOOSE_NAME = 'Loose items';
+async function getLooseList() {
+  const lists = await db.getLists();
+  let loose = lists.find((l) => l.role === 'loose');
+  if (!loose) { loose = newList({ name: LOOSE_NAME, role: 'loose', builtin: true }); await db.saveList(loose); }
+  return loose;
+}
+// An item's name is "unfiled" when it appears in no real (non-loose) template.
+function isUnfiled(name, lists = ALL_LISTS) {
+  const key = (name || '').trim().toLowerCase();
+  if (!key) return false;
+  return !lists.some((l) => l.role !== 'loose' && (l.items || []).some((z) => (z.name || '').trim().toLowerCase() === key));
 }
 
 // A fresh copy of an item for another template — carries the packing-relevant
@@ -257,7 +274,7 @@ function activitiesPicker(lists, selected) {
   // Base and transport lists are auto-included (common core + the transport radio),
   // so they're not shown here as tickable activities.
   for (const l of lists) {
-    if (l.role === 'base' || l.role === 'transport') continue;
+    if (l.role === 'base' || l.role === 'transport' || l.role === 'loose') continue;
     (byGroup.has(l.group) ? byGroup.get(l.group) : ungrouped).push(l);
   }
   const box = (l) => `<label class="check${set.has(l.id) ? ' on' : ''}"><input type="checkbox" name="activities" value="${esc(l.id)}"${set.has(l.id) ? ' checked' : ''}>${esc(l.name)}${l.items.length ? '' : ' <em>(empty)</em>'}</label>`;
@@ -965,13 +982,17 @@ function sourceItemForEntry(entry, lists = ALL_LISTS) {
 // and resolve with { listId, itemId } — or null if they cancel.
 function promoteEntryToTemplate(entry, lists) {
   return new Promise((resolve) => {
-    const opts = lists.map((l) => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
+    // Loose items first (for "I don't know its template yet"), then real templates.
+    const loose = lists.filter((l) => l.role === 'loose');
+    const templates = lists.filter((l) => l.role !== 'loose');
+    const opts = [...loose.map((l) => `<option value="${esc(l.id)}">${esc(l.name)} — no template yet</option>`),
+      ...templates.map((l) => `<option value="${esc(l.id)}">${esc(l.name)}</option>`)].join('');
     const body = h(`<div class="modal">
-      <h2>Add “${esc(entry.name || 'this item')}” to a template</h2>
-      <p class="modal-sub">This item is only in this trip. Add it to a template to edit its full settings — conditions, storage &amp; care — and reuse it in future trips.</p>
-      <label class="field"><span>Template</span><select name="promote-list">${opts}</select></label>
+      <h2>Save “${esc(entry.name || 'this item')}” to edit it fully</h2>
+      <p class="modal-sub">This item is only in this trip. Save it to a template — or to <b>Loose items</b> if you’re not sure where it belongs yet — to edit its full settings (conditions, storage &amp; care) and reuse it later.</p>
+      <label class="field"><span>Save to</span><select name="promote-list">${opts}</select></label>
       <div class="modal-actions">
-        <button class="btn primary lg" data-p="add">${IC.wrench}<span>Add &amp; edit</span></button>
+        <button class="btn primary lg" data-p="add">${IC.wrench}<span>Save &amp; edit</span></button>
         <button class="btn ghost lg" data-p="cancel">Cancel</button>
       </div>
     </div>`);
@@ -1025,7 +1046,7 @@ function entryEditor(ev, entry, body) {
     <label class="field charge-type-field${entry.charging ? '' : ' hidden'}"><span>Charge type</span>${selectHtml('chargeType', CHARGE_TYPES.map((c) => ({ value: c.id, label: c.label })), entry.chargeType)}</label>
     <label class="field"><span>Stored at <em>(where to grab it)</em></span><input name="storage" value="${esc(entry.storage)}" placeholder="e.g. Garage shelf 3" autocomplete="off"></label>
     <label class="field"><span>Note</span><input name="note" value="${esc(entry.note)}"></label>
-    <button type="button" class="btn ghost jump-full" data-x="full">${IC.wrench}<span>${src ? 'Edit the full item — conditions, templates &amp; care' : 'Add to a template &amp; edit its full settings'}</span>${IC.fwd}</button>
+    <button type="button" class="btn ghost jump-full" data-x="full">${IC.wrench}<span>${src ? 'Edit the full item — conditions, templates &amp; care' : 'Save this item to edit it fully'}</span>${IC.fwd}</button>
     <div class="editor-actions">
       <button type="button" class="btn danger ghost" data-x="del">${IC.trash}<span>Remove</span></button>
       <div class="spacer"></div>
@@ -1404,9 +1425,23 @@ async function renderLists() {
       <span class="lst-name">${esc(l.name)}${l.items.length ? '' : ' <em>(empty)</em>'}</span>
       <span class="lst-count">${l.items.length} item${l.items.length === 1 ? '' : 's'}</span>
     </a>`);
+
+  // "Loose items" — the home for things not in any template yet. Always shown,
+  // as its own card, kept out of the normal template groups.
+  const loose = await getLooseList();
+  const looseCount = loose.items.length;
+  const looseCard = h(`<a class="card lst loose-card" href="#/list/${loose.id}">
+      <span class="lst-name">${IC.wrench}<span>${esc(LOOSE_NAME)}</span></span>
+      <span class="lst-count">${looseCount === 0 ? 'empty — add anything, file it later' : `${looseCount} item${looseCount === 1 ? '' : 's'} with no template yet`}</span>
+    </a>`);
+  wrap.appendChild(looseCard);
+
   const byGroup = new Map(GROUP_IDS.map((g) => [g, []]));
   const ungrouped = [];
-  for (const l of lists) (byGroup.has(l.group) ? byGroup.get(l.group) : ungrouped).push(l);
+  for (const l of lists) {
+    if (l.role === 'loose') continue; // shown above as its own card
+    (byGroup.has(l.group) ? byGroup.get(l.group) : ungrouped).push(l);
+  }
   for (const g of GROUPS) {
     const arr = byGroup.get(g.id);
     if (!arr.length) continue;
@@ -1436,24 +1471,29 @@ async function renderList(listId, openItemId) {
   if (!list) { location.assign('#/lists'); return h('<section></section>'); }
   ALL_LISTS = await db.getLists();
   STORAGES = collectStorages(ALL_LISTS); // for the storage-location dropdown
+  const isLoose = list.role === 'loose';
   const wrap = h('<section class="screen"></section>');
   wrap.appendChild(h(`<div class="topbar">
     <a class="iconbtn" href="#/lists" aria-label="Back">${IC.back}</a>
     <h1 class="grow">${esc(list.name)}</h1>
-    <button class="iconbtn" data-rename aria-label="Rename">${IC.edit}</button>
-    <button class="iconbtn" data-del aria-label="Delete template">${IC.trash}</button>
+    ${isLoose ? '' : `<button class="iconbtn" data-rename aria-label="Rename">${IC.edit}</button>
+    <button class="iconbtn" data-del aria-label="Delete template">${IC.trash}</button>`}
   </div>`));
+  if (isLoose) {
+    wrap.appendChild(h(`<p class="muted pad">A holding place for things not in any template yet — add anything here, even if you don’t know where or when you’ll pack it. Open an item and tick a template under <b>In these templates</b> to file it; once it’s in a template it leaves this list.</p>`));
+  }
   const groupOpts = [{ value: '', label: '— no group —' }, ...GROUPS.map((g) => ({ value: g.id, label: `${g.id} · ${g.label}` }))];
   wrap.appendChild(h(`<div class="toolbar">
-    <label class="inline-field"><span>Group</span>${selectHtml('group', groupOpts, list.group)}</label>
+    ${isLoose ? '' : `<label class="inline-field"><span>Group</span>${selectHtml('group', groupOpts, list.group)}</label>`}
     <div class="spacer"></div>
+    ${isLoose ? `<button class="btn ghost" data-batch>${IC.list}<span>Add several</span></button>` : ''}
     <button class="btn ghost" data-add>${IC.plus}<span>Add item</span></button>
   </div>`));
 
   const body = h('<div class="items"></div>');
   wrap.appendChild(body);
 
-  wrap.querySelector('select[name=group]').addEventListener('change', async (e) => {
+  if (!isLoose) wrap.querySelector('select[name=group]').addEventListener('change', async (e) => {
     list.group = e.target.value;
     await saveGuard(db.saveList(list));
   });
@@ -1461,9 +1501,12 @@ async function renderList(listId, openItemId) {
   // editor straight away (and expand its 🧰 care panel).
   let openItem = (openItemId && list.items.some((x) => x.id === openItemId)) ? openItemId : null;
   if (openItem) careForceOpenItemId = openItem;
+  const emptyMsg = isLoose
+    ? 'Nothing loose right now. Use <b>Add several</b> to dump in a batch of new things, or <b>Add item</b> for one — you can sort out where they belong later.'
+    : 'No items yet — add the things this template should contribute.';
   const draw = () => {
     body.innerHTML = '';
-    if (!list.items.length) { body.appendChild(h('<div class="empty"><p class="empty-s">No items yet — add the things this template should contribute.</p></div>')); return; }
+    if (!list.items.length) { body.appendChild(h(`<div class="empty"><p class="empty-s">${emptyMsg}</p></div>`)); return; }
     for (const it of list.items) body.appendChild(listItemRow(list, it, () => openItem, (v) => { openItem = v; }, draw));
   };
   draw();
@@ -1474,23 +1517,65 @@ async function renderList(listId, openItemId) {
     list.items.unshift(it); openItem = it.id; draw();
     const inp = $('.item-editor input[name=name]', body); if (inp) inp.focus();
   });
-  wrap.querySelector('[data-rename]').addEventListener('click', async () => {
+  wrap.querySelector('[data-batch]')?.addEventListener('click', () => {
+    const added = batchAddItems(list);
+    added.then((n) => { if (n > 0) { openItem = null; draw(); } });
+  });
+  wrap.querySelector('[data-rename]')?.addEventListener('click', async () => {
     const name = (prompt('Rename template:', list.name) || '').trim();
     if (!name) return; list.name = name;
     if (await saveGuard(db.saveList(list))) render();
   });
-  wrap.querySelector('[data-del]').addEventListener('click', async () => {
+  wrap.querySelector('[data-del]')?.addEventListener('click', async () => {
     if (!confirm(`Delete the “${list.name}” template? This does not change events already generated.`)) return;
     if (await saveGuard(db.deleteList(list.id))) location.assign('#/lists');
   });
   return wrap;
 }
 
+// One-per-line batch add for the Loose items bin: paste or type a list, each
+// non-blank line becomes a new item. Resolves with how many were added.
+function batchAddItems(list) {
+  return new Promise((resolve) => {
+    const body = h(`<div class="modal">
+      <h2>Add several items</h2>
+      <p class="modal-sub">One item per line. Each becomes a new loose item — you can set where and when to pack it later, or file it into a template.</p>
+      <textarea class="batch-ta" rows="8" placeholder="Sun hat&#10;Travel adapter&#10;Spare charging cable&#10;Ear plugs" autofocus></textarea>
+      <div class="modal-actions">
+        <button class="btn primary lg" data-b="add">${IC.plus}<span>Add items</span></button>
+        <button class="btn ghost lg" data-b="cancel">Cancel</button>
+      </div>
+    </div>`);
+    const overlay = h('<div class="overlay"></div>');
+    overlay.appendChild(body);
+    document.body.appendChild(overlay);
+    let settled = false;
+    const finish = (n) => { if (settled) return; settled = true; overlay.remove(); document.removeEventListener('keydown', onKey); resolve(n); };
+    const onKey = (e) => { if (e.key === 'Escape') finish(0); };
+    document.addEventListener('keydown', onKey);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) finish(0); });
+    setTimeout(() => $('.batch-ta', body)?.focus(), 30);
+    body.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-b]')?.dataset.b;
+      if (!b) return;
+      if (b === 'cancel') { finish(0); return; }
+      if (b === 'add') {
+        const names = ($('.batch-ta', body).value || '').split('\n').map((s) => s.trim()).filter(Boolean);
+        if (!names.length) { finish(0); return; }
+        for (const name of names.reverse()) list.items.unshift(newItem({ name }));
+        if (!await saveGuard(db.saveList(list))) { finish(0); return; }
+        finish(names.length);
+      }
+    });
+  });
+}
+
 function listItemRow(list, it, getOpen, setOpen, draw) {
   const tags = [it.storage ? `📍 ${it.storage}` : '', it.container, ...(it.seasons || []), ...(it.contexts || []), ...(it.transports || [])].filter(Boolean);
   const chShort = it.charging ? chargeTypeShort(it.chargeType) : '';
   const care = maintenanceStatus(it);
-  const badges = `${it.charging ? `<span class="badge charge" title="${esc('Needs charging' + (chShort ? ` — ${chargeTypeLabel(it.chargeType)}` : ''))}">⚡${chShort ? ` ${esc(chShort)}` : ''}</span>` : ''}`
+  const badges = `${isUnfiled(it.name) ? '<span class="badge unfiled" title="Not in any template yet — still a loose item">⚠️ No template</span>' : ''}`
+    + `${it.charging ? `<span class="badge charge" title="${esc('Needs charging' + (chShort ? ` — ${chargeTypeLabel(it.chargeType)}` : ''))}">⚡${chShort ? ` ${esc(chShort)}` : ''}</span>` : ''}`
     + `${it.liquid ? '<span class="badge liquid" title="Liquid / 100 ml rule">💧</span>' : ''}`
     + `${it.restricted ? '<span class="badge restricted" title="Restricted — think before packing (battery / carry-on rules)">⚠️</span>' : ''}`
     + `${(it.photos || []).length ? `<span class="badge photo" title="${esc((it.photos.length === 1 ? 'Has a photo' : `${it.photos.length} photos`))}">📷${it.photos.length > 1 ? ` ${it.photos.length}` : ''}</span>` : ''}`
@@ -1540,7 +1625,9 @@ function itemEditor(list, it, setOpen, draw) {
   // templates are added.
   const memberIds = new Set(listsWithItemNamed(it.name).map((r) => r.id));
   const inListsHTML = (() => {
-    const rows = ALL_LISTS.map((l) => {
+    // Real templates only — the Loose items bin is where things start, not a
+    // place you "file into", so it never appears as a tickable row.
+    const rows = ALL_LISTS.filter((l) => l.role !== 'loose').map((l) => {
       const here = l.id === list.id;
       const on = here || memberIds.has(l.id);
       return `<label class="check tmpl-check${on ? ' on' : ''}${here ? ' cur' : ''}">
@@ -1767,6 +1854,18 @@ function itemEditor(list, it, setOpen, draw) {
           }
           if (changed) await db.saveList(l);
         }
+        // Auto-file: once an item is in at least one real template, it shouldn't
+        // linger in the Loose items bin — pull it out.
+        const fresh = await db.getLists();
+        const filed = fresh.some((l) => l.role !== 'loose' && l.items.some((z) => (z.name || '').trim().toLowerCase() === nameKey));
+        if (filed) {
+          const loose = fresh.find((l) => l.role === 'loose');
+          if (loose && loose.items.some((z) => (z.name || '').trim().toLowerCase() === nameKey)) {
+            loose.items = loose.items.filter((z) => (z.name || '').trim().toLowerCase() !== nameKey);
+            await db.saveList(loose);
+            if (list.role === 'loose') list.items = list.items.filter((z) => (z.name || '').trim().toLowerCase() !== nameKey);
+          }
+        }
       })());
       if (ok) { ALL_LISTS = await db.getLists(); draw(); }
     }
@@ -1790,6 +1889,7 @@ async function renderMaintenance() {
   wrap.appendChild(h('<div class="topbar"><h1>Care &amp; maintenance</h1></div>'));
 
   const lists = await db.getLists();
+  ALL_LISTS = lists; // so isUnfiled() in the All-items rows reflects the current data
   const listById = new Map(lists.map((l) => [l.id, l]));
   const rows = maintenanceList(lists);
   const summary = maintenanceSummary(lists);
@@ -1929,6 +2029,7 @@ function aiRow(it, list) {
     : `<span class="ai-thumb ph">${IC.wrench}</span>`;
   const bits = [esc(list.name)];
   if (it.storage) bits.push(`📍 ${esc(it.storage)}`);
+  const unfiledBadge = isUnfiled(it.name) ? '<span class="ai-badge unfiled" title="Not in any template yet — still a loose item">⚠️</span>' : '';
   const badge = care
     ? `<span class="ai-badge ${care.state}" title="${esc('Maintenance: ' + dueLabel(care))}">${CARE_EMOJI[care.state]}</span>`
     : (nPhotos ? `<span class="ai-badge" title="${esc(nPhotos === 1 ? 'Has a photo' : `${nPhotos} photos`)}">📷${nPhotos > 1 ? ` ${nPhotos}` : ''}</span>` : '');
@@ -1938,7 +2039,7 @@ function aiRow(it, list) {
       <span class="ai-name">${esc(it.name || '(unnamed)')}</span>
       <span class="ai-sub">${bits.join(' · ')}</span>
     </span>
-    ${badge}${IC.fwd}
+    ${unfiledBadge}${badge}${IC.fwd}
   </a>`);
 }
 
@@ -2107,8 +2208,11 @@ function howtoCard() {
           <li><b>Flags:</b> ⚡ needs charging (with an optional <b>charge type</b> — USB-C, USB-A, Lightning, special charger… shown on the badge, e.g. ⚡ USB-C, so you know which cables to bring), short-home-list, 💧 liquid/gel (100 ml rule), ⚠️ restricted — think before packing (battery / carry-on rules), <b>per-night</b> (quantity scales with trip length), and a <b>weight</b> in grams.</li>
           <li><b>Conditions</b> — “only include when…”: Season, Context (Indoor/Outdoor/Race/Training), Transport (Car/Plane/RV), Catering, and <b>Weather</b> (see below). A blank condition means “always applies”.</li>
           <li><b>Sub-items:</b> optional nested things bundled under one line.</li>
-          <li><b>In these templates</b> — a tick-box list of <b>every template</b>. Ticking one <b>adds this item to it</b> and unticking <b>removes it</b> (applied when you Save), so a new hat can join Travel, Golf and Hiking in a few taps. The template you’re editing in stays ticked and locked. The added copies carry the packing details but not the photos or maintenance schedule, so the thing still appears just once in <b>Care</b>. Because linked copies share a <b>name</b>, <b>renaming</b> an item updates it in every template it belongs to.</li>
+          <li><b>In these templates</b> — a tick-box list of <b>every template</b>. Ticking one <b>adds this item to it</b> and unticking <b>removes it</b> (applied when you Save), so a new hat can join Travel, Golf and Hiking in a few taps. The template you’re editing in stays ticked and locked. The added copies carry the packing details but not the photos or maintenance schedule, so the thing still appears just once in <b>Care</b>. Because linked copies share a <b>name</b>, <b>renaming</b> an item updates it in every template it belongs to. Items that are in <b>no</b> template show a <b>⚠️ No template</b> flag.</li>
         </ul>
+
+        <h3>Loose items — things not in a template yet</h3>
+        <p>You don’t have to file an item into a template just to keep it. At the top of the <b>Templates</b> tab there’s a <b>Loose items</b> card — a holding place for anything you want to jot down before you’ve decided where or when to pack it. Open it and use <b>Add several</b> to type or paste a whole batch (<b>one item per line</b>), or <b>Add item</b> for a single one. Loose items are <b>never</b> added to a trip and never appear in the activity picker; they simply wait. When you’re ready, open a loose item and tick a template under <b>In these templates</b> — it’s filed there and <b>automatically drops out</b> of the Loose items list. Anything still loose (here or in the Care tab’s <b>All items</b>) carries a <b>⚠️ No template</b> flag so it’s never quietly forgotten.</p>
 
         <h3>The timeline (phases)</h3>
         <p>Items are packed in stages, in this order: <b>Preparations</b> (book/cancel/charge, done ahead) → <b>≥1 week ahead</b> (things you don't use at home) → <b>Day before</b> (stage / move to the RV) → <b>Morning of</b> → <b>At the front door</b> (last check as you leave) → <b>Wear / carry</b> on the day → <b>After / recovery</b> (shower, change, recovery).</p>
@@ -2230,6 +2334,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v48', '2026-07-31 · 19:00 UTC', false, 'Items can live without a template — “Loose items”',
+      'You no longer have to put an item into a template just to keep it. A new <b>Loose items</b> card sits at the top of the <b>Templates</b> tab — a holding place for anything not filed into a template yet. Add things freely, even if you don’t yet know where or when you’ll pack them; use <b>Add several</b> to type or paste a whole batch, <b>one per line</b>. Any item with no template shows a <b>⚠️ No template</b> flag (in the list and in the Care tab’s <b>All items</b>), so nothing gets quietly forgotten. When you’re ready, open an item and tick a template under <b>In these templates</b> to file it — and once it’s in a real template it <b>automatically leaves</b> the Loose items list. Loose items are never added to a trip and never appear in the activity picker; they just wait until you file them. You can also <b>Save</b> a one-off trip item to Loose items from the “Save this item to edit it fully” button.',
+      'Capture anything the moment you think of it — a whole batch at once if you like — and sort out which template it belongs to (or whether it needs one) whenever you get to it.'),
     v('v47', '2026-07-31 · 18:00 UTC', false, 'Edit any trip item fully — even a one-off',
       'A follow-up to the previous change. The <b>“Edit the full item”</b> button on a trip item now appears for <b>every</b> item — including a one-off you added just for this trip. If the item isn’t in any template yet, the button first asks <b>which template to add it to</b>, saves it there (so it’s reusable next time), and then opens its full editor — conditions, template membership, storage &amp; care and all. Reasoning: you should always be able to adjust an item, and a trip-only thing you’re fussing over is often exactly the one you’ll want again later. Anything you’d already typed in the quick view carries across; the item keeps its packing details (photos and any care schedule are set up fresh in the full editor).',
       'Nothing is a dead end — any item on a trip can be opened, adjusted in full, and promoted into a template for reuse in one flow.'),

@@ -279,6 +279,19 @@ legend { font-size: .82rem; color: var(--muted); font-weight: 700; padding: 0 4p
 .badge.charge { color: #b8860b; background: color-mix(in srgb, #e0a800 22%, transparent); }
 .badge.rem { color: var(--muted); background: var(--line); text-transform: uppercase; letter-spacing: .03em; }
 .badge.liquid, .badge.restricted { background: transparent; padding: 0 2px; }
+.badge.unfiled { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
+.ai-badge.unfiled { color: var(--warn); }
+
+/* "Loose items" bin — its own card at the top of the Templates tab */
+.card.lst.loose-card { border-style: dashed; border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); }
+.card.lst.loose-card .lst-name { display: inline-flex; align-items: center; gap: 7px; color: var(--warn); }
+.card.lst.loose-card .lst-name .ic { width: 17px; height: 17px; }
+
+/* Batch "add several" textarea */
+.batch-ta { width: 100%; box-sizing: border-box; resize: vertical; min-height: 120px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: inherit;
+  font: inherit; line-height: 1.5; }
+.batch-ta:focus { outline: none; border-color: var(--brand); }
 
 /* logistics: bags & weight panel */
 .logi { background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); margin: 0 0 6px; padding: 2px 4px; }
