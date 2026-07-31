@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v48';
+const APP_VERSION = 'v49';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -1882,6 +1882,7 @@ let careExpanded = null;          // item id whose detail panel is open (list mo
 let careMonth = null;             // 'YYYY-MM' shown in the calendar (defaults to this month)
 let careForceOpenItemId = null;   // when set, the item's editor opens with its 🧰 care panel expanded
 let careItemSearch = '';          // current text in the "All items" search box on the Care page
+const careItemFilter = new Set();  // active category chips on the Care page ('loose','liquid','charge','restricted','care','photo') — OR'd together
 const monthOf = (ymd) => ymd.slice(0, 7);
 
 async function renderMaintenance() {
@@ -1976,29 +1977,66 @@ function allItemsSection(lists) {
       </div>
     </form>
     <label class="ai-searchbox">${IC.search}<input type="search" class="ai-search" placeholder="Search all items…" value="${esc(careItemSearch)}" autocomplete="off"></label>
+    <div class="ai-filterbar"></div>
     <div class="ai-count"></div>
     <div class="ai-list"></div>`;
 
   const listEl = $('.ai-list', sec);
   const countEl = $('.ai-count', sec);
   const searchEl = $('.ai-search', sec);
+  const filterEl = $('.ai-filterbar', sec);
   const form = $('[data-ai-form]', sec);
+
+  // Category quick-filters for the whole item index. Each item can carry several
+  // of these flags; picking chips shows items matching ANY chosen category (OR),
+  // then narrowed by the text box. Only categories that actually occur are shown.
+  const CATS = [
+    { key: 'loose',      label: '⚠️ No template', test: ({ it }) => isUnfiled(it.name) },
+    { key: 'liquid',     label: '💧 Liquids',     test: ({ it }) => !!it.liquid },
+    { key: 'charge',     label: '⚡ Charging',     test: ({ it }) => !!it.charging },
+    { key: 'restricted', label: '⚠️ Restricted',  test: ({ it }) => !!it.restricted },
+    { key: 'care',       label: '🧰 Has care',    test: ({ it }) => hasCare(it) },
+    { key: 'photo',      label: '📷 Photo',        test: ({ it }) => (it.photos || []).length > 0 },
+  ];
+  const catCounts = Object.fromEntries(CATS.map((c) => [c.key, flat.filter(c.test).length]));
+  const testFor = Object.fromEntries(CATS.map((c) => [c.key, c.test]));
+
+  const drawChips = () => {
+    const chips = CATS.filter((c) => catCounts[c.key]).map((c) =>
+      `<button class="fchip${careItemFilter.has(c.key) ? ' on' : ''}" type="button" data-cat="${c.key}">${c.label} <em>${catCounts[c.key]}</em></button>`).join('');
+    filterEl.innerHTML = chips
+      ? `${chips}<button class="fchip clear" type="button" data-cat="__clear"${careItemFilter.size ? '' : ' hidden'}>Show all</button>`
+      : '';
+  };
 
   const drawItems = () => {
     const q = careItemSearch.trim().toLowerCase();
-    const shown = q
-      ? flat.filter(({ it, list }) => (it.name || '').toLowerCase().includes(q)
+    const shown = flat.filter((row) => {
+      const { it, list } = row;
+      if (careItemFilter.size && ![...careItemFilter].some((k) => testFor[k](row))) return false;
+      if (!q) return true;
+      return (it.name || '').toLowerCase().includes(q)
         || (it.storage || '').toLowerCase().includes(q)
-        || (list.name || '').toLowerCase().includes(q))
-      : flat;
-    countEl.textContent = q ? `${shown.length} of ${flat.length} items` : `${flat.length} items`;
+        || (list.name || '').toLowerCase().includes(q);
+    });
+    const filtered = q || careItemFilter.size;
+    countEl.textContent = filtered ? `${shown.length} of ${flat.length} items` : `${flat.length} items`;
     listEl.innerHTML = '';
     if (!shown.length) { listEl.appendChild(h('<div class="empty"><p class="empty-s">No items match your search.</p></div>')); return; }
     for (const { it, list } of shown) listEl.appendChild(aiRow(it, list));
   };
+  drawChips();
   drawItems();
 
   searchEl.addEventListener('input', () => { careItemSearch = searchEl.value; drawItems(); });
+  filterEl.addEventListener('click', (e) => {
+    const key = e.target.closest('[data-cat]')?.dataset.cat;
+    if (!key) return;
+    if (key === '__clear') careItemFilter.clear();
+    else if (careItemFilter.has(key)) careItemFilter.delete(key); else careItemFilter.add(key);
+    drawChips();
+    drawItems();
+  });
 
   $('[data-ai-add]', sec).addEventListener('click', () => {
     form.classList.toggle('hidden');
@@ -2289,7 +2327,7 @@ function howtoCard() {
           <li><b>Calendar</b> — a month view with each scheduled service on its due date, colour-coded by urgency and dotted with a count; tap a day to see (and tick off) what's due. Overdue items are flagged above the grid.</li>
         </ul>
         <p>Only items you give care info to appear in those two views — your everyday clothes and toiletries stay out of it. When something's overdue or due soon, a <b>🧰 reminder</b> also shows on the <b>Home</b> screen.</p>
-        <p>Below that sits <b>All items</b> — a searchable index of <b>every item in every template</b>. Type a name (or a storage place) to filter, then tap a result to jump <b>straight into that item's editor</b> with its <b>Storage &amp; maintenance</b> panel already open — the quickest way to add or update care info without hunting through the Templates tab. The <b>＋ New item</b> button creates an item in any template you pick and drops you into editing it right away.</p>
+        <p>Below that sits <b>All items</b> — a searchable index of <b>every item in every template</b>. Type a name (or a storage place) to filter, then tap a result to jump <b>straight into that item's editor</b> with its <b>Storage &amp; maintenance</b> panel already open — the quickest way to add or update care info without hunting through the Templates tab. Under the search box, <b>quick-filter chips</b> let you isolate a whole category at once — <b>⚠️ No template</b> (loose items), <b>💧 Liquids</b>, <b>⚡ Charging</b>, <b>⚠️ Restricted</b>, <b>🧰 Has care</b> and <b>📷 Photo</b>; tap several to combine them, and keep typing to narrow further. The <b>＋ New item</b> button creates an item in any template you pick and drops you into editing it right away.</p>
 
         <h3>Countdown &amp; “pack now” nudges</h3>
         <p>With a start date set, each event shows a countdown, and a ⏰ banner surfaces the earliest phase that's due (based on how many days each phase is normally packed before departure). These are on-open reminders — the app can't push background notifications.</p>
@@ -2334,6 +2372,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v49', '2026-07-31 · 20:00 UTC', false, 'Filter the Care tab’s item index by category',
+      'The <b>All items</b> search on the <b>Care</b> tab gains a row of <b>quick-filter chips</b> under the search box. Tap one to see just that kind of thing across every template at once: <b>⚠️ No template</b> (loose items not yet filed), <b>💧 Liquids</b>, <b>⚡ Charging</b>, <b>⚠️ Restricted</b>, <b>🧰 Has care</b> (anything with storage, a photo, notes or a maintenance schedule) and <b>📷 Photo</b>. Tap several to combine them (it shows items matching <b>any</b> of the picked categories), and keep typing in the search box to narrow further. Only categories that actually occur show up, each with a count, and <b>Show all</b> clears them. It’s the fast way to round up, say, every loose item still needing a home, or every liquid before a flight.',
+      'Round up a whole category of gear in one tap — all your loose items, liquids or chargeables — without scrolling the full list or knowing each name.'),
     v('v48', '2026-07-31 · 19:00 UTC', false, 'Items can live without a template — “Loose items”',
       'You no longer have to put an item into a template just to keep it. A new <b>Loose items</b> card sits at the top of the <b>Templates</b> tab — a holding place for anything not filed into a template yet. Add things freely, even if you don’t yet know where or when you’ll pack them; use <b>Add several</b> to type or paste a whole batch, <b>one per line</b>. Any item with no template shows a <b>⚠️ No template</b> flag (in the list and in the Care tab’s <b>All items</b>), so nothing gets quietly forgotten. When you’re ready, open an item and tick a template under <b>In these templates</b> to file it — and once it’s in a real template it <b>automatically leaves</b> the Loose items list. Loose items are never added to a trip and never appear in the activity picker; they just wait until you file them. You can also <b>Save</b> a one-off trip item to Loose items from the “Save this item to edit it fully” button.',
       'Capture anything the moment you think of it — a whole batch at once if you like — and sort out which template it belongs to (or whether it needs one) whenever you get to it.'),
