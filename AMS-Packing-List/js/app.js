@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v43';
+const APP_VERSION = 'v44';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -125,6 +125,35 @@ function listsWithItemNamed(name) {
   return ALL_LISTS
     .filter((l) => (l.items || []).some((it) => (it.name || '').trim().toLowerCase() === key))
     .map((l) => ({ id: l.id, name: l.name }));
+}
+
+// A fresh copy of an item for another template — carries the packing-relevant
+// attributes (so a new hat lands with its container, weight, flags, conditions
+// and storage intact) but NOT the per-object care record: photos and the
+// maintenance schedule stay on the item's home copy so the Care tab doesn't list
+// the same thing several times over.
+function copyItemForTemplate(src, name) {
+  return newItem({
+    name,
+    swedish: src.swedish || '',
+    qty: src.qty || '',
+    category: src.category,
+    container: src.container,
+    phase: src.phase,
+    itemType: src.itemType,
+    charging: src.charging, chargeType: src.chargeType,
+    shortList: src.shortList,
+    seasons: (src.seasons || []).slice(),
+    contexts: (src.contexts || []).slice(),
+    transports: (src.transports || []).slice(),
+    catering: (src.catering || []).slice(),
+    weather: (src.weather || []).slice(),
+    sub: (src.sub || []).slice(),
+    note: src.note || '',
+    weight: src.weight || 0,
+    liquid: src.liquid, restricted: src.restricted, perNight: src.perNight,
+    storage: src.storage || '',
+  });
 }
 
 // A human phrase for where an item's maintenance stands ("Overdue by 5 days", "in 12
@@ -1424,12 +1453,21 @@ function itemEditor(list, it, setOpen, draw) {
   const careOpen = hasCare(it) || !!it.storage || photos.length > 0 || careForceOpenItemId === it.id;
   if (careForceOpenItemId === it.id) careForceOpenItemId = null;
 
-  // Which building-block lists this item (matched by name) currently appears in.
+  // A tick-box matrix of every template: ticked = this item (matched by name) is
+  // in that template. Tick to add it there, untick to remove — applied on Save.
+  // The item's own template is always ticked and locked (remove it with the
+  // Remove button). The list is built from ALL_LISTS, so it grows on its own as
+  // templates are added.
+  const memberIds = new Set(listsWithItemNamed(it.name).map((r) => r.id));
   const inListsHTML = (() => {
-    if (!it.name || !it.name.trim()) return '<p class="inlists-empty">Name the item and save — the templates it belongs to will show here.</p>';
-    const rows = listsWithItemNamed(it.name);
-    if (!rows.length) return '<p class="inlists-empty">Not in any template yet.</p>';
-    return rows.map((r) => `<a class="inlists-chip${r.id === list.id ? ' cur' : ''}" href="#/list/${esc(r.id)}">${esc(r.name)}</a>`).join('');
+    const rows = ALL_LISTS.map((l) => {
+      const here = l.id === list.id;
+      const on = here || memberIds.has(l.id);
+      return `<label class="check tmpl-check${on ? ' on' : ''}${here ? ' cur' : ''}">
+        <input type="checkbox" name="tmpl" value="${esc(l.id)}"${on ? ' checked' : ''}${here ? ' disabled' : ''}>
+        <span>${esc(l.name)}${here ? ' <em>· here</em>' : ''}</span></label>`;
+    }).join('');
+    return rows || '<p class="inlists-empty">No templates yet.</p>';
   })();
 
   ed.innerHTML = `
@@ -1467,7 +1505,8 @@ function itemEditor(list, it, setOpen, draw) {
 
     <div class="inlists">
       <div class="inlists-h">${IC.list}<span>In these templates</span></div>
-      <div class="inlists-body">${inListsHTML}</div>
+      <p class="inlists-hint">Tick a template to add this item to it, untick to remove it. Changes apply when you <b>Save</b>.</p>
+      <div class="inlists-matrix">${inListsHTML}</div>
     </div>
 
     <details class="care"${careOpen ? ' open' : ''}>
@@ -1609,8 +1648,24 @@ function itemEditor(list, it, setOpen, draw) {
         lastDone: $('input[name=lastDone]', ed).value || '',
         log: careLog,
       });
+      // Read the "In these templates" matrix now, before the editor is torn down.
+      const nameKey = it.name.trim().toLowerCase();
+      const wanted = nameKey ? $$('input[name=tmpl]:not([disabled])', ed).map((b) => ({ id: b.value, checked: b.checked })) : [];
       setOpen(null);
-      if (await saveGuard(db.saveList(list))) draw();
+      const ok = await saveGuard((async () => {
+        await db.saveList(list); // this template, with the edited item
+        if (!nameKey) return;
+        const all = await db.getLists();
+        for (const l of all) {
+          if (l.id === list.id) continue;
+          const w = wanted.find((x) => x.id === l.id);
+          if (!w) continue;
+          const has = l.items.some((z) => (z.name || '').trim().toLowerCase() === nameKey);
+          if (w.checked && !has) { l.items.unshift(copyItemForTemplate(it, it.name)); await db.saveList(l); }
+          else if (!w.checked && has) { l.items = l.items.filter((z) => (z.name || '').trim().toLowerCase() !== nameKey); await db.saveList(l); }
+        }
+      })());
+      if (ok) { ALL_LISTS = await db.getLists(); draw(); }
     }
   });
   return ed;
@@ -1949,6 +2004,7 @@ function howtoCard() {
           <li><b>Flags:</b> ⚡ needs charging (with an optional <b>charge type</b> — USB-C, USB-A, Lightning, special charger… shown on the badge, e.g. ⚡ USB-C, so you know which cables to bring), short-home-list, 💧 liquid/gel (100 ml rule), ⚠️ restricted — think before packing (battery / carry-on rules), <b>per-night</b> (quantity scales with trip length), and a <b>weight</b> in grams.</li>
           <li><b>Conditions</b> — “only include when…”: Season, Context (Indoor/Outdoor/Race/Training), Transport (Car/Plane/RV), Catering, and <b>Weather</b> (see below). A blank condition means “always applies”.</li>
           <li><b>Sub-items:</b> optional nested things bundled under one line.</li>
+          <li><b>In these templates</b> — a tick-box list of <b>every template</b>. Ticking one <b>adds this item to it</b> and unticking <b>removes it</b> (applied when you Save), so a new hat can join Travel, Golf and Hiking in a few taps. The template you’re editing in stays ticked and locked. The added copies carry the packing details but not the photos or maintenance schedule, so the thing still appears just once in <b>Care</b>.</li>
         </ul>
 
         <h3>The timeline (phases)</h3>
@@ -2070,6 +2126,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v44', '2026-07-31 · 15:00 UTC', false, 'Add an item to several templates at once',
+      'The <b>In these templates</b> panel in an item’s editor is now a <b>tick-box list of every template</b>, not just a read-out of where the item already is. Ticking a template <b>adds this item to it</b>; unticking <b>removes it</b> — the changes apply when you <b>Save</b>. So a new hat you want in Travel, Golf and Hiking is three taps and a Save, instead of re-creating it in each template by hand. The item’s own template stays ticked and locked (use <b>Remove</b> to take it out of that one). The copies carry the packing details — container, weight, ⚡/💧/⚠️ flags, conditions and storage place — but not the photos or maintenance schedule, so the <b>Care</b> tab still lists the thing once. The list grows on its own as you add more templates.',
+      'Fan one item out to every template it belongs to in seconds — tick, tick, Save — instead of rebuilding it in each list.'),
     v('v43', '2026-07-31 · 14:00 UTC', false, 'A ready-made list of storage places',
       'The <b>Where it’s stored</b> dropdown comes pre-filled again with a <b>standard set of places</b> — Bedroom wardrobe, Hall closet, Garage, Loft / attic, Storage box, RV / camper and more — so you can pick one in a tap on a fresh setup instead of starting from nothing. You’re still free to add your own from the same dropdown (<b>＋ Add a new place…</b>), and there’s a new <b>Storage places</b> section in <b>Settings</b> where you can <b>rename</b> or <b>remove</b> any place. Renaming a place carries the new wording onto every item already stored there, so nothing is left with the old name. Any places you’d already used are kept and merged in.',
       'Sensible storage places are there from the start, and you stay in full control — add, rename or tidy the list whenever you like.'),

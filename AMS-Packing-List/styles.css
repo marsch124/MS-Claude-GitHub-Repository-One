@@ -680,3 +680,9 @@ details.care[open] .care-h::before { content: '▾'; }
 }
 .inlists-chip.cur { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
 .inlists-empty { color: var(--muted); font-size: .86rem; margin: 0; }
+.inlists-hint { color: var(--muted); font-size: .84rem; line-height: 1.4; margin: -3px 0 9px; }
+.inlists-matrix { display: flex; flex-wrap: wrap; gap: 6px; }
+.inlists-matrix .tmpl-check { font-size: .86rem; padding: 7px 12px; }
+.tmpl-check.cur { color: var(--brand-ink); background: var(--brand); border-color: var(--brand); cursor: default; }
+.tmpl-check.cur::before { background: var(--brand-ink); border-color: var(--brand-ink); box-shadow: inset 0 0 0 2px var(--brand); }
+.tmpl-check.cur em { font-style: normal; font-weight: 600; opacity: .85; }
