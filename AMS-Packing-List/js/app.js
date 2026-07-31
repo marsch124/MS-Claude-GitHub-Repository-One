@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v45';
+const APP_VERSION = 'v46';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -545,6 +545,7 @@ let weightSort = false;     // "Heaviest first" ordering toggle on the Total Lis
 async function renderEvent(eventId) {
   const ev = await db.getEvent(eventId);
   if (!ev) { location.assign('#/'); return h('<section></section>'); }
+  ALL_LISTS = await db.getLists(); // so an entry can be traced back to its template item
   if (flagFilterFor !== eventId) { flagFilter = new Set(); weightSort = false; flagFilterFor = eventId; } // fresh per trip
   const p = progress(ev.entries);
   const meta = (ev.mode === 'quick'
@@ -940,8 +941,28 @@ function entryRow(ev, entry, body, showWeight = false) {
   return row;
 }
 
+// From a trip entry, find the template item it was built from — or, failing that,
+// one linked by name (the app links items across templates by name). Lets the
+// event's limited editor hand off to the full item editor for the deeper settings
+// (conditions, template membership, storage & maintenance) it can't show itself.
+function sourceItemForEntry(entry, lists = ALL_LISTS) {
+  if (entry.sourceListId && entry.sourceItemId) {
+    const l = lists.find((x) => x.id === entry.sourceListId);
+    if (l && l.items.some((z) => z.id === entry.sourceItemId)) return { listId: l.id, itemId: entry.sourceItemId };
+  }
+  const key = (entry.name || '').trim().toLowerCase();
+  if (key) {
+    for (const l of lists) {
+      const it = l.items.find((z) => (z.name || '').trim().toLowerCase() === key);
+      if (it) return { listId: l.id, itemId: it.id };
+    }
+  }
+  return null;
+}
+
 function entryEditor(ev, entry, body) {
   const ed = h('<div class="editor"></div>');
+  const src = sourceItemForEntry(entry); // the template item behind this entry, if any
   ed.innerHTML = `
     <label class="field"><span>Item</span><input name="name" value="${esc(entry.name)}"></label>
     <div class="row2">
@@ -964,6 +985,7 @@ function entryEditor(ev, entry, body) {
     <label class="field charge-type-field${entry.charging ? '' : ' hidden'}"><span>Charge type</span>${selectHtml('chargeType', CHARGE_TYPES.map((c) => ({ value: c.id, label: c.label })), entry.chargeType)}</label>
     <label class="field"><span>Stored at <em>(where to grab it)</em></span><input name="storage" value="${esc(entry.storage)}" placeholder="e.g. Garage shelf 3" autocomplete="off"></label>
     <label class="field"><span>Note</span><input name="note" value="${esc(entry.note)}"></label>
+    ${src ? `<button type="button" class="btn ghost jump-full" data-x="full">${IC.wrench}<span>Edit the full item — conditions, templates &amp; care</span>${IC.fwd}</button>` : ''}
     <div class="editor-actions">
       <button type="button" class="btn danger ghost" data-x="del">${IC.trash}<span>Remove</span></button>
       <div class="spacer"></div>
@@ -974,6 +996,24 @@ function entryEditor(ev, entry, body) {
     if (e.target.type === 'checkbox') e.target.closest('label')?.classList.toggle('on', e.target.checked);
     if (e.target.name === 'charging') $('.charge-type-field', ed)?.classList.toggle('hidden', !e.target.checked);
   });
+  // Read the form into the entry — shared by Save and the "Edit the full item" jump,
+  // so edits made here aren't lost on the way over.
+  const applyForm = () => {
+    entry.name = ($('input[name=name]', ed).value || '').trim() || entry.name;
+    entry.qty = ($('input[name=qty]', ed).value || '').trim();
+    entry.category = $('select[name=category]', ed).value;
+    entry.container = $('select[name=container]', ed).value;
+    entry.phase = $('select[name=phase]', ed).value;
+    entry.weight = Math.max(0, parseInt($('input[name=weight]', ed).value, 10) || 0);
+    entry.perNight = $('input[name=perNight]', ed).checked;
+    entry.liquid = $('input[name=liquid]', ed).checked;
+    entry.charging = $('input[name=charging]', ed).checked;
+    entry.chargeType = $('select[name=chargeType]', ed).value;
+    entry.restricted = $('input[name=restricted]', ed).checked;
+    entry.storage = ($('input[name=storage]', ed).value || '').trim();
+    entry.note = ($('input[name=note]', ed).value || '').trim();
+    entry._edited = true;
+  };
   ed.addEventListener('click', async (e) => {
     const x = e.target.closest('[data-x]')?.dataset.x;
     if (!x) return;
@@ -985,21 +1025,17 @@ function entryEditor(ev, entry, body) {
       if (await saveGuard(db.saveEvent(ev))) render();
       return;
     }
+    if (x === 'full') {
+      // Resolve fresh (ALL_LISTS may be stale) in case the source item moved or was renamed.
+      const target = sourceItemForEntry(entry, await db.getLists());
+      if (!target) { alert('This item isn’t in any template, so there are no template settings to edit. Add it to a template first.'); return; }
+      applyForm(); // keep any edits made in this quick view
+      expandedEntry = null;
+      if (await saveGuard(db.saveEvent(ev))) location.assign(`#/list/${target.listId}/item/${target.itemId}`);
+      return;
+    }
     if (x === 'save') {
-      entry.name = ($('input[name=name]', ed).value || '').trim() || entry.name;
-      entry.qty = ($('input[name=qty]', ed).value || '').trim();
-      entry.category = $('select[name=category]', ed).value;
-      entry.container = $('select[name=container]', ed).value;
-      entry.phase = $('select[name=phase]', ed).value;
-      entry.weight = Math.max(0, parseInt($('input[name=weight]', ed).value, 10) || 0);
-      entry.perNight = $('input[name=perNight]', ed).checked;
-      entry.liquid = $('input[name=liquid]', ed).checked;
-      entry.charging = $('input[name=charging]', ed).checked;
-      entry.chargeType = $('select[name=chargeType]', ed).value;
-      entry.restricted = $('input[name=restricted]', ed).checked;
-      entry.storage = ($('input[name=storage]', ed).value || '').trim();
-      entry.note = ($('input[name=note]', ed).value || '').trim();
-      entry._edited = true;
+      applyForm();
       expandedEntry = null;
       if (await saveGuard(db.saveEvent(ev))) render();
     }
@@ -2084,6 +2120,7 @@ function howtoCard() {
           <li><b>Group by</b> When / Where / Category — same list, three lenses.</li>
           <li><b>Sort out</b> — quick filters above the list isolate all <b>💧 Liquids</b> (for the wash bag / 100 ml rule) or all <b>⚡ Charge</b> items (to round up cables and chargers). Tap a chip to show only those; tap <b>Show all</b> to bring the full list back. Ticking and editing work the same in the filtered view. Mark an item as a liquid or charge item with the 💧 / ⚡ toggles in its editor.</li>
           <li><b>🪨 Heaviest</b> — reorders the list heaviest-first with each item’s weight shown, so when a bag is over its limit you can see at a glance what to leave behind. It uses the real load (weight × quantity, including per-night scaling); items without a weight sit at the bottom. Combine it with a Liquids/Charge filter to rank just those. Add a weight to an item in its editor to make it count.</li>
+          <li><b>Tap an item</b> to open a quick editor for this trip’s bits (Qty, Category, Container, When, weight, flags, note). For the item’s deeper settings — conditions, which templates it’s in, storage &amp; maintenance — tap <b>Edit the full item</b> to jump straight into the full item editor, then use Back to return to your trip.</li>
           <li>Badges show flags at a glance; quantities marked per-night show the scaled count (e.g. Socks ×6 for a 6-night trip).</li>
           <li><b>Regenerate</b> refreshes the Packing List from your templates while keeping your ticks, edits and manually-added items.</li>
         </ul>
@@ -2149,6 +2186,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v46', '2026-07-31 · 17:00 UTC', false, 'Jump from a trip item to its full settings',
+      'Opening an item from an <b>Event</b> gives you a quick editor for the trip-specific bits — Qty, Category, Container, When, weight, flags, note. It doesn’t show the deeper item settings (<b>“Only include when…”</b> conditions, <b>In these templates</b>, <b>Storage &amp; maintenance</b>) because those belong to the item itself, not to this one trip. Now that quick editor has an <b>“Edit the full item — conditions, templates &amp; care”</b> button that jumps you <b>straight into the full item editor</b>, with its care panel already open, so you can change all of that in one hop and come back. Any edits you’d already made in the quick view are saved before the jump. (The button appears only for items that live in a template; a one-off item you added just for this trip has no template settings to edit.)',
+      'Reach every setting of an item without hunting for it in the Templates tab — one tap from the trip takes you to the full editor.'),
     v('v45', '2026-07-31 · 16:00 UTC', false, 'Rename an item once, and it renames everywhere',
       'When an item lives in several templates, <b>renaming it in one now renames it in all of them</b>. Change your “Hat” to “Sun hat” in the Travel template and every linked copy — in Golf, Hiking, wherever it sits — follows to the new name automatically when you <b>Save</b>. It builds on the tick-box matrix: the same items are linked <b>by name</b> across templates, so the app keeps that link intact through a rename instead of leaving stale copies behind under the old name. (This tidies templates; items already materialised into a specific trip keep the name they had when you built that trip’s list.)',
       'One rename updates the item across every template it belongs to — no hunting through each list to fix the old name by hand.'),
