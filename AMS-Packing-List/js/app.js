@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v46';
+const APP_VERSION = 'v47';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -960,6 +960,46 @@ function sourceItemForEntry(entry, lists = ALL_LISTS) {
   return null;
 }
 
+// A trip-only item has no template record to edit. Let the user pick a template
+// to add it to (so it becomes reusable), create it there, link the entry to it,
+// and resolve with { listId, itemId } — or null if they cancel.
+function promoteEntryToTemplate(entry, lists) {
+  return new Promise((resolve) => {
+    const opts = lists.map((l) => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
+    const body = h(`<div class="modal">
+      <h2>Add “${esc(entry.name || 'this item')}” to a template</h2>
+      <p class="modal-sub">This item is only in this trip. Add it to a template to edit its full settings — conditions, storage &amp; care — and reuse it in future trips.</p>
+      <label class="field"><span>Template</span><select name="promote-list">${opts}</select></label>
+      <div class="modal-actions">
+        <button class="btn primary lg" data-p="add">${IC.wrench}<span>Add &amp; edit</span></button>
+        <button class="btn ghost lg" data-p="cancel">Cancel</button>
+      </div>
+    </div>`);
+    const overlay = h('<div class="overlay"></div>');
+    overlay.appendChild(body);
+    document.body.appendChild(overlay);
+    let settled = false;
+    const finish = (val) => { if (settled) return; settled = true; overlay.remove(); document.removeEventListener('keydown', onKey); resolve(val); };
+    const onKey = (e) => { if (e.key === 'Escape') finish(null); };
+    document.addEventListener('keydown', onKey);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) finish(null); });
+    body.addEventListener('click', async (e) => {
+      const p = e.target.closest('[data-p]')?.dataset.p;
+      if (!p) return;
+      if (p === 'cancel') { finish(null); return; }
+      if (p === 'add') {
+        const list = lists.find((l) => l.id === $('select[name=promote-list]', body).value);
+        if (!list) { finish(null); return; }
+        const it = copyItemForTemplate(entry, entry.name || ''); // reuse the field-copier (no photos/care)
+        list.items.unshift(it);
+        if (!await saveGuard(db.saveList(list))) { finish(null); return; }
+        entry.sourceListId = list.id; entry.sourceItemId = it.id; // link so it now resolves directly
+        finish({ listId: list.id, itemId: it.id });
+      }
+    });
+  });
+}
+
 function entryEditor(ev, entry, body) {
   const ed = h('<div class="editor"></div>');
   const src = sourceItemForEntry(entry); // the template item behind this entry, if any
@@ -985,7 +1025,7 @@ function entryEditor(ev, entry, body) {
     <label class="field charge-type-field${entry.charging ? '' : ' hidden'}"><span>Charge type</span>${selectHtml('chargeType', CHARGE_TYPES.map((c) => ({ value: c.id, label: c.label })), entry.chargeType)}</label>
     <label class="field"><span>Stored at <em>(where to grab it)</em></span><input name="storage" value="${esc(entry.storage)}" placeholder="e.g. Garage shelf 3" autocomplete="off"></label>
     <label class="field"><span>Note</span><input name="note" value="${esc(entry.note)}"></label>
-    ${src ? `<button type="button" class="btn ghost jump-full" data-x="full">${IC.wrench}<span>Edit the full item — conditions, templates &amp; care</span>${IC.fwd}</button>` : ''}
+    <button type="button" class="btn ghost jump-full" data-x="full">${IC.wrench}<span>${src ? 'Edit the full item — conditions, templates &amp; care' : 'Add to a template &amp; edit its full settings'}</span>${IC.fwd}</button>
     <div class="editor-actions">
       <button type="button" class="btn danger ghost" data-x="del">${IC.trash}<span>Remove</span></button>
       <div class="spacer"></div>
@@ -1026,10 +1066,14 @@ function entryEditor(ev, entry, body) {
       return;
     }
     if (x === 'full') {
-      // Resolve fresh (ALL_LISTS may be stale) in case the source item moved or was renamed.
-      const target = sourceItemForEntry(entry, await db.getLists());
-      if (!target) { alert('This item isn’t in any template, so there are no template settings to edit. Add it to a template first.'); return; }
       applyForm(); // keep any edits made in this quick view
+      const lists = await db.getLists(); // fresh, in case a source item moved or was renamed
+      let target = sourceItemForEntry(entry, lists);
+      if (!target) {
+        // A trip-only item — add it to a template the user picks, then edit it there.
+        target = await promoteEntryToTemplate(entry, lists);
+        if (!target) return; // cancelled — leave the quick editor open
+      }
       expandedEntry = null;
       if (await saveGuard(db.saveEvent(ev))) location.assign(`#/list/${target.listId}/item/${target.itemId}`);
       return;
@@ -2120,7 +2164,7 @@ function howtoCard() {
           <li><b>Group by</b> When / Where / Category — same list, three lenses.</li>
           <li><b>Sort out</b> — quick filters above the list isolate all <b>💧 Liquids</b> (for the wash bag / 100 ml rule) or all <b>⚡ Charge</b> items (to round up cables and chargers). Tap a chip to show only those; tap <b>Show all</b> to bring the full list back. Ticking and editing work the same in the filtered view. Mark an item as a liquid or charge item with the 💧 / ⚡ toggles in its editor.</li>
           <li><b>🪨 Heaviest</b> — reorders the list heaviest-first with each item’s weight shown, so when a bag is over its limit you can see at a glance what to leave behind. It uses the real load (weight × quantity, including per-night scaling); items without a weight sit at the bottom. Combine it with a Liquids/Charge filter to rank just those. Add a weight to an item in its editor to make it count.</li>
-          <li><b>Tap an item</b> to open a quick editor for this trip’s bits (Qty, Category, Container, When, weight, flags, note). For the item’s deeper settings — conditions, which templates it’s in, storage &amp; maintenance — tap <b>Edit the full item</b> to jump straight into the full item editor, then use Back to return to your trip.</li>
+          <li><b>Tap an item</b> to open a quick editor for this trip’s bits (Qty, Category, Container, When, weight, flags, note). For the item’s deeper settings — conditions, which templates it’s in, storage &amp; maintenance — tap <b>Edit the full item</b> to jump straight into the full item editor, then use Back to return to your trip. If the item was only added to this one trip, the same button offers to <b>add it to a template first</b> (you pick which) so it’s saved for reuse — then opens its full editor.</li>
           <li>Badges show flags at a glance; quantities marked per-night show the scaled count (e.g. Socks ×6 for a 6-night trip).</li>
           <li><b>Regenerate</b> refreshes the Packing List from your templates while keeping your ticks, edits and manually-added items.</li>
         </ul>
@@ -2186,6 +2230,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v47', '2026-07-31 · 18:00 UTC', false, 'Edit any trip item fully — even a one-off',
+      'A follow-up to the previous change. The <b>“Edit the full item”</b> button on a trip item now appears for <b>every</b> item — including a one-off you added just for this trip. If the item isn’t in any template yet, the button first asks <b>which template to add it to</b>, saves it there (so it’s reusable next time), and then opens its full editor — conditions, template membership, storage &amp; care and all. Reasoning: you should always be able to adjust an item, and a trip-only thing you’re fussing over is often exactly the one you’ll want again later. Anything you’d already typed in the quick view carries across; the item keeps its packing details (photos and any care schedule are set up fresh in the full editor).',
+      'Nothing is a dead end — any item on a trip can be opened, adjusted in full, and promoted into a template for reuse in one flow.'),
     v('v46', '2026-07-31 · 17:00 UTC', false, 'Jump from a trip item to its full settings',
       'Opening an item from an <b>Event</b> gives you a quick editor for the trip-specific bits — Qty, Category, Container, When, weight, flags, note. It doesn’t show the deeper item settings (<b>“Only include when…”</b> conditions, <b>In these templates</b>, <b>Storage &amp; maintenance</b>) because those belong to the item itself, not to this one trip. Now that quick editor has an <b>“Edit the full item — conditions, templates &amp; care”</b> button that jumps you <b>straight into the full item editor</b>, with its care panel already open, so you can change all of that in one hop and come back. Any edits you’d already made in the quick view are saved before the jump. (The button appears only for items that live in a template; a one-off item you added just for this trip has no template settings to edit.)',
       'Reach every setting of an item without hunting for it in the Templates tab — one tap from the trip takes you to the full editor.'),
