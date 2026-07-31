@@ -1,6 +1,6 @@
 // app.js — screens, navigation and wiring for AMS Packing List.
 import {
-  CATEGORIES, CONTAINERS, PHASES, PHASE_IDS, phase, phaseLabel, SEASONS, TRANSPORTS, CONTEXTS,
+  CATEGORIES, CONTAINERS, PHASES, PHASE_IDS, phase, phaseLabel, SEASONS, TRANSPORTS, CONTEXTS, DEFAULT_STORAGE_LOCATIONS,
   CATERING, cateringLabel, CHARGE_TYPES, chargeTypeShort, chargeTypeLabel, GROUPS, GROUP_IDS, groupLabel, id, newItem, newList, newEvent,
   buildTotalEntries, regenerateEntries, entriesByPhase, groupByContainer, groupByCategory, groupBy,
   progress, packSteps, totalListRows, applyReview, pruneSuggestions,
@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v42';
+const APP_VERSION = 'v43';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -58,13 +58,62 @@ function openPhotoLightbox(src) {
   document.body.appendChild(ov);
 }
 
-// Known storage locations across all lists — powers the <datalist> autocomplete so
-// "Garage shelf 3" stays consistent instead of being retyped slightly differently.
+// Storage locations powering every item's "Where it's stored" dropdown. The list
+// is the user's saved set of places (seeded with DEFAULT_STORAGE_LOCATIONS) plus
+// any place already in use on an item, so the wording stays consistent instead of
+// being retyped slightly differently. The saved set is add/rename/remove-able in
+// Settings and persisted in localStorage.
 let STORAGES = [];
+const STORAGE_LOC_KEY = 'ams-storage-locations';
+function loadStorageLocs() {
+  try {
+    const raw = localStorage.getItem(STORAGE_LOC_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr.filter((s) => typeof s === 'string' && s.trim()).map((s) => s.trim());
+    }
+  } catch { /* ignore */ }
+  return DEFAULT_STORAGE_LOCATIONS.slice();
+}
+function saveStorageLocs(arr) {
+  // De-duplicate case-insensitively, keeping first spelling, then sort.
+  const seen = new Map();
+  for (const s of arr) { const t = (s || '').trim(); const k = t.toLowerCase(); if (t && !seen.has(k)) seen.set(k, t); }
+  const clean = [...seen.values()].sort((a, b) => a.localeCompare(b));
+  try { localStorage.setItem(STORAGE_LOC_KEY, JSON.stringify(clean)); } catch { /* ignore */ }
+  return clean;
+}
+// Add a place to the saved set if it isn't already there (case-insensitive).
+function rememberStorageLoc(name) {
+  const t = (name || '').trim();
+  if (!t) return;
+  const locs = loadStorageLocs();
+  if (!locs.some((s) => s.toLowerCase() === t.toLowerCase())) saveStorageLocs([...locs, t]);
+}
+// Rename a saved place and carry the new spelling onto every item using the old
+// one, so nothing is orphaned. Returns how many items were updated.
+async function renameStorageLoc(oldName, newName) {
+  const from = (oldName || '').trim();
+  const to = (newName || '').trim();
+  if (!from || !to || from.toLowerCase() === to.toLowerCase()) return 0;
+  saveStorageLocs(loadStorageLocs().map((s) => (s.toLowerCase() === from.toLowerCase() ? to : s)).concat(to));
+  const lists = await db.getLists();
+  let count = 0;
+  for (const l of lists) {
+    let changed = false;
+    for (const it of l.items) if (it.storage && it.storage.trim().toLowerCase() === from.toLowerCase()) { it.storage = to; changed = true; count += 1; }
+    if (changed) await db.saveList(l);
+  }
+  return count;
+}
+function removeStorageLoc(name) {
+  saveStorageLocs(loadStorageLocs().filter((s) => s.toLowerCase() !== (name || '').trim().toLowerCase()));
+}
 function collectStorages(lists) {
-  const set = new Set();
-  for (const l of lists) for (const it of l.items) if (it.storage) set.add(it.storage.trim());
-  return [...set].sort((a, b) => a.localeCompare(b));
+  const seen = new Map(); // lowercase key -> display spelling
+  for (const s of loadStorageLocs()) { const t = s.trim(); if (t) seen.set(t.toLowerCase(), t); }
+  for (const l of lists) for (const it of l.items) if (it.storage) { const t = it.storage.trim(); if (t) seen.set(t.toLowerCase(), t); }
+  return [...seen.values()].sort((a, b) => a.localeCompare(b));
 }
 
 // All building-block lists, kept so the item editor can show which lists an
@@ -1361,6 +1410,7 @@ function listItemRow(list, it, getOpen, setOpen, draw) {
 
 function itemEditor(list, it, setOpen, draw) {
   const ed = h('<div class="editor item-editor"></div>');
+  STORAGES = collectStorages(ALL_LISTS); // freshest saved + in-use places for the dropdown
   // Care state that can't be read straight back from the DOM on save:
   //  - the photos are held here and only committed to the item on Save (so Cancel discards them),
   //  - the maintenance history log is edited via "Log done" and committed on Save.
@@ -1548,6 +1598,7 @@ function itemEditor(list, it, setOpen, draw) {
       it.storage = storageSel === '__new__'
         ? ($('input[name=storage-new]', ed).value || '').trim()
         : storageSel;
+      if (it.storage) rememberStorageLoc(it.storage); // a new place joins the saved set
       it.photos = photos.slice();
       const isel = $('select[name=interval]', ed).value;
       const intervalDays = isel === 'custom' ? Math.max(0, parseInt($('input[name=customDays]', ed).value, 10) || 0) : (parseInt(isel, 10) || 0);
@@ -1964,7 +2015,7 @@ function howtoCard() {
         <h3>Care, storage &amp; maintenance</h3>
         <p>Every item can carry a few extra things about the <em>physical object</em>, set in its editor (in the <b>Templates</b> tab) — its <b>photos sit right beside the item name</b>, while where it's stored and how to look after it live in the <b>Storage &amp; maintenance</b> panel below:</p>
         <ul>
-          <li><b>Where it's stored</b> — a free-text home for the thing (“Garage shelf 3”, “RV box”, “Hall closet”). It shows on the item, travels onto any trip it lands in, and appears in <b>Packing Mode</b> with a 📍 pin so you know exactly where to grab it. Previous locations autocomplete so the wording stays consistent.</li>
+          <li><b>Where it's stored</b> — pick the item's home from a <b>dropdown</b> of places (Bedroom wardrobe, Garage, Loft / attic, Storage box, RV / camper…), or choose <b>＋ Add a new place…</b> to type your own. It shows on the item, travels onto any trip it lands in, and appears in <b>Packing Mode</b> with a 📍 pin so you know exactly where to grab it. Manage the whole list — add, <b>rename</b> or remove places — under <b>Storage places</b> in <b>Settings</b>.</li>
           <li><b>Photos</b> (beside the name) — snap or pick <b>up to ${MAX_PHOTOS} pictures</b> of the item; each is shrunk and stored <b>on your device</b> (never uploaded). Tap a thumbnail to enlarge it, or the ✕ to remove it. Handy to recognise the right gear — the first one shows as a thumbnail in the Care list, with a small count when there's more than one.</li>
           <li><b>Maintenance</b> — how and how often to look after it: a <b>maintenance cadence</b> (monthly … every 2 years, or a custom number of days), when it was <b>last done</b>, free-text <b>how-to notes</b> (steps, products, settings), and a <b>how-to link</b>. Tap <b>Log done today</b> to record a service — it resets the schedule and adds a dated entry to the item's maintenance history.</li>
         </ul>
@@ -2019,6 +2070,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v43', '2026-07-31 · 14:00 UTC', false, 'A ready-made list of storage places',
+      'The <b>Where it’s stored</b> dropdown comes pre-filled again with a <b>standard set of places</b> — Bedroom wardrobe, Hall closet, Garage, Loft / attic, Storage box, RV / camper and more — so you can pick one in a tap on a fresh setup instead of starting from nothing. You’re still free to add your own from the same dropdown (<b>＋ Add a new place…</b>), and there’s a new <b>Storage places</b> section in <b>Settings</b> where you can <b>rename</b> or <b>remove</b> any place. Renaming a place carries the new wording onto every item already stored there, so nothing is left with the old name. Any places you’d already used are kept and merged in.',
+      'Sensible storage places are there from the start, and you stay in full control — add, rename or tidy the list whenever you like.'),
     v('v42', '2026-07-31 · 13:00 UTC', false, 'Photos beside the name + a cleaner care panel',
       'A layout tidy-up in the item editor. An item’s <b>photos now sit right beside its name</b> at the top — where you’d expect a picture of the thing — instead of being tucked inside the care panel. The <b>Storage &amp; maintenance</b> panel below is decluttered: the little suitcase icon is gone from its heading, and the <b>Maintenance cadence · Last done · Log done today</b> controls now line up neatly as one row with matching heights. Separately, you can now <b>rename an event</b> straight from its screen — tap the <b>✏️ pencil</b> next to the ⚙️ gear in the top bar, type a new name, done (the gear still opens full Event settings).',
       'The editor reads top-to-bottom the way you’d expect — picture with the name, care details below — and renaming a trip is now one obvious tap.'),
@@ -2182,6 +2236,52 @@ async function renderSettings() {
     <input type="file" accept="application/json,.json" hidden>
   </div>`);
   wrap.appendChild(trips);
+
+  const places = h(`<div class="card block">
+    <h2>Storage places</h2>
+    <p class="muted">The set of places offered in every item’s <b>Where it’s stored</b> dropdown. Add your own, rename them, or remove ones you don’t use. Renaming carries over to every item already kept there.</p>
+    <div class="places-list" data-places></div>
+    <div class="btnrow"><button class="btn" data-place="add">${IC.plus}<span>Add a place</span></button></div>
+  </div>`);
+  wrap.appendChild(places);
+  const drawPlaces = () => {
+    const box = places.querySelector('[data-places]');
+    const locs = loadStorageLocs().sort((a, b) => a.localeCompare(b));
+    box.innerHTML = locs.length
+      ? locs.map((s) => `<div class="place-row">
+          <span class="place-name">${esc(s)}</span>
+          <span class="place-acts">
+            <button type="button" class="iconbtn sm" data-place-edit="${esc(s)}" aria-label="Rename ${esc(s)}" title="Rename">${IC.edit}</button>
+            <button type="button" class="iconbtn sm" data-place-del="${esc(s)}" aria-label="Remove ${esc(s)}" title="Remove">${IC.trash}</button>
+          </span></div>`).join('')
+      : '<p class="muted">No places yet — add one below.</p>';
+  };
+  drawPlaces();
+  places.addEventListener('click', async (e) => {
+    const add = e.target.closest('[data-place="add"]');
+    const edit = e.target.closest('[data-place-edit]');
+    const del = e.target.closest('[data-place-del]');
+    if (add) {
+      const name = (prompt('Name of the new storage place:', '') || '').trim();
+      if (!name) return;
+      if (loadStorageLocs().some((s) => s.toLowerCase() === name.toLowerCase())) { alert(`“${name}” is already in the list.`); return; }
+      rememberStorageLoc(name);
+      drawPlaces();
+    } else if (edit) {
+      const old = edit.dataset.placeEdit;
+      const name = (prompt('Rename this storage place:', old) || '').trim();
+      if (!name || name === old) return;
+      if (loadStorageLocs().some((s) => s.toLowerCase() === name.toLowerCase() && s.toLowerCase() !== old.toLowerCase())) { alert(`“${name}” is already in the list.`); return; }
+      const n = await renameStorageLoc(old, name);
+      drawPlaces();
+      if (n) render(); // refresh any open item rows showing the old place
+    } else if (del) {
+      const name = del.dataset.placeDel;
+      if (!confirm(`Remove “${name}” from the list of places?\n\nItems already stored there keep their label; this just takes it off the standard list.`)) return;
+      removeStorageLoc(name);
+      drawPlaces();
+    }
+  });
 
   const theme = h(`<div class="card block">
     <h2>Appearance</h2>

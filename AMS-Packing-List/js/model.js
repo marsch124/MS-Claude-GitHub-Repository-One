@@ -69,6 +69,24 @@ export function groupLabel(id) { const g = group(id); return g ? g.label : ''; }
 
 export const SEASONS = ['Summer', 'Winter'];
 export const TRANSPORTS = ['Car', 'Plane', 'RV'];
+
+// Standard set of "where it's stored" places, offered in every item's storage
+// dropdown out of the box. The user can add, rename and remove them (their edited
+// list is persisted); this is only the starting point / fallback.
+export const DEFAULT_STORAGE_LOCATIONS = [
+  'Bedroom wardrobe',
+  'Chest of drawers',
+  'Hall closet',
+  'Bathroom cabinet',
+  'Kitchen cupboard',
+  'Garage',
+  'Loft / attic',
+  'Basement / cellar',
+  'Utility room',
+  'Storage box',
+  'Car boot',
+  'RV / camper',
+];
 // Weather conditions an item can be tagged for. A tagged item is "conditional
 // gear": kept out of the base list and offered as a suggestion only when the
 // trip's forecast calls for it. (Fuller weather logic lives further down.)

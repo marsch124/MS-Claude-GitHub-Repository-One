@@ -115,6 +115,16 @@ em { font-style: normal; color: var(--muted); font-weight: 400; }
 .iconbtn.sm { width: 34px; height: 34px; }
 .ic { width: 22px; height: 22px; display: block; }
 
+/* Storage-places manager (Settings) */
+.places-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 12px; }
+.place-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 4px 4px 12px; border: 1px solid var(--line); border-radius: 10px;
+}
+.place-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.place-acts { flex: none; display: flex; gap: 2px; }
+.place-row [data-place-del]:hover { color: var(--danger); }
+
 /* cards */
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; }
 .card.block { margin-bottom: 14px; }
