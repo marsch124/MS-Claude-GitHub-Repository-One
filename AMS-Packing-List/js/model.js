@@ -117,6 +117,10 @@ const todayYMD = (todayISO) => (todayISO || new Date().toISOString()).slice(0, 1
 
 // --- Shape guards (applied when reading from storage) ---
 
+// How many photos a single item may hold — keeps the editor tidy and bounds
+// how large an exported/shared trip bundle can grow.
+export const MAX_PHOTOS = 5;
+
 export function coerceItem(it) {
   if (!it || typeof it !== 'object') return it;
   it.seasons = asArray(it.seasons);
@@ -138,7 +142,12 @@ export function coerceItem(it) {
   it.restricted = !!it.restricted; // battery / restricted — carry-on rules
   it.perNight = !!it.perNight;    // quantity scales with trip length (nights)
   it.storage = typeof it.storage === 'string' ? it.storage : '';   // where it lives at home (free text)
-  it.photo = typeof it.photo === 'string' ? it.photo : '';         // a picture of the item (resized data URL)
+  // Pictures of the item, as resized data URLs. Canonical field is `photos`;
+  // a legacy single `photo` string is folded in and then dropped.
+  it.photos = asArray(it.photos).filter((p) => typeof p === 'string' && p);
+  if (!it.photos.length && typeof it.photo === 'string' && it.photo) it.photos = [it.photo];
+  if (it.photos.length > MAX_PHOTOS) it.photos = it.photos.slice(0, MAX_PHOTOS);
+  delete it.photo;
   it.maintenance = normalizeMaintenance(it.maintenance);           // care record, or null when unused
   return it;
 }
@@ -218,7 +227,7 @@ export function newItem(partial = {}) {
     restricted: false, // battery / restricted (carry-on)
     perNight: false, // quantity scales with trip nights
     storage: '',     // where the physical item is kept at home (free text)
-    photo: '',       // a picture of the item, as a resized data URL
+    photos: [],      // pictures of the item, as resized data URLs (max MAX_PHOTOS)
     maintenance: null, // care record (notes/link/schedule/log) — see normalizeMaintenance
     ...partial,
   });

@@ -7,7 +7,7 @@ import {
   effectiveQty, bagLoads, packingFlags, daysUntil, countdownLabel, tripNudge, nightsBetween, endFromNights,
   buildTripBundle, encodeTripLink, fromBase64Url,
   deriveWeather, weatherSuggestions, weatherGear, WEATHER_CONDITIONS,
-  MAINTENANCE_INTERVALS, MAINTENANCE_SOON_DAYS, hasCare, maintenanceStatus, normalizeMaintenance,
+  MAINTENANCE_INTERVALS, MAINTENANCE_SOON_DAYS, hasCare, maintenanceStatus, normalizeMaintenance, MAX_PHOTOS,
   maintenanceList, maintenanceSummary, maintenanceByDate, logMaintenance, addDays, daysBetween,
 } from './model.js';
 import * as db from './db.js';
@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v40';
+const APP_VERSION = 'v41';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -45,6 +45,17 @@ function readImageResized(file, maxEdge = 900, quality = 0.72) {
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read that image.')); };
     img.src = url;
   });
+}
+
+// Full-screen photo viewer: tap a thumbnail to enlarge, tap anywhere (or Esc) to close.
+function openPhotoLightbox(src) {
+  if (!src) return;
+  const ov = h(`<div class="overlay photo-lightbox"><img src="${esc(src)}" alt=""></div>`);
+  const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
+  const onKey = (ev) => { if (ev.key === 'Escape') close(); };
+  ov.addEventListener('click', close);
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(ov);
 }
 
 // Known storage locations across all lists — powers the <datalist> autocomplete so
@@ -1316,9 +1327,9 @@ function listItemRow(list, it, getOpen, setOpen, draw) {
   const badges = `${it.charging ? `<span class="badge charge" title="${esc('Needs charging' + (chShort ? ` — ${chargeTypeLabel(it.chargeType)}` : ''))}">⚡${chShort ? ` ${esc(chShort)}` : ''}</span>` : ''}`
     + `${it.liquid ? '<span class="badge liquid" title="Liquid / 100 ml rule">💧</span>' : ''}`
     + `${it.restricted ? '<span class="badge restricted" title="Restricted — think before packing (battery / carry-on rules)">⚠️</span>' : ''}`
-    + `${it.photo ? '<span class="badge photo" title="Has a photo">📷</span>' : ''}`
+    + `${(it.photos || []).length ? `<span class="badge photo" title="${esc((it.photos.length === 1 ? 'Has a photo' : `${it.photos.length} photos`))}">📷${it.photos.length > 1 ? ` ${it.photos.length}` : ''}</span>` : ''}`
     + `${care ? `<span class="badge maint ${care.state}" title="${esc(`Maintenance: ${dueLabel(care)}`)}">${CARE_EMOJI[care.state]}</span>` : ''}`;
-  const thumb = it.photo ? `<img class="row-thumb" src="${esc(it.photo)}" alt="">` : '';
+  const thumb = (it.photos || []).length ? `<img class="row-thumb" src="${esc(it.photos[0])}" alt="">` : '';
   const row = h(`<div class="entry">
     ${thumb}
     <button class="entry-main" type="button">
@@ -1343,16 +1354,16 @@ function listItemRow(list, it, getOpen, setOpen, draw) {
 function itemEditor(list, it, setOpen, draw) {
   const ed = h('<div class="editor item-editor"></div>');
   // Care state that can't be read straight back from the DOM on save:
-  //  - the photo is held here and only committed to the item on Save (so Cancel discards it),
+  //  - the photos are held here and only committed to the item on Save (so Cancel discards them),
   //  - the maintenance history log is edited via "Log done" and committed on Save.
-  let photo = it.photo || '';
+  let photos = (it.photos || []).slice();
   const m = it.maintenance || { notes: '', link: '', intervalDays: 0, lastDone: '', log: [] };
   let careLog = (m.log || []).slice();
   const curInterval = m.intervalDays || 0;
   const intervalIsPreset = MAINTENANCE_INTERVALS.some((p) => p.days === curInterval);
   const intervalSel = intervalIsPreset ? String(curInterval) : (curInterval ? 'custom' : '0');
   const intervalOpts = [...MAINTENANCE_INTERVALS.map((p) => ({ value: String(p.days), label: p.label })), { value: 'custom', label: 'Custom…' }];
-  const careOpen = hasCare(it) || !!it.storage || !!it.photo || careForceOpenItemId === it.id;
+  const careOpen = hasCare(it) || !!it.storage || photos.length > 0 || careForceOpenItemId === it.id;
   if (careForceOpenItemId === it.id) careForceOpenItemId = null;
 
   // Which building-block lists this item (matched by name) currently appears in.
@@ -1409,14 +1420,9 @@ function itemEditor(list, it, setOpen, draw) {
         <label class="field care-newstorage hidden"><span>New place</span>
           <input name="storage-new" value="" placeholder="e.g. Garage shelf 3 · RV box · Hall closet" autocomplete="off"></label>
 
-        <div class="care-photo" data-photo>
-          <div class="care-photo-preview">${photo ? `<img src="${esc(photo)}" alt="${esc(it.name)}">` : `<span class="care-photo-empty">${IC.camera}<span>No photo</span></span>`}</div>
-          <div class="care-photo-actions">
-            <button type="button" class="btn ghost icon" data-care="pick" title="${photo ? 'Replace photo' : 'Add photo'}" aria-label="${photo ? 'Replace photo' : 'Add photo'}">${IC.camera}</button>
-            <button type="button" class="btn danger ghost icon" data-care="rmphoto" title="Remove photo" aria-label="Remove photo"${photo ? '' : ' hidden'}>${IC.trash}</button>
-          </div>
-          <input type="file" accept="image/*" hidden data-care-file>
-        </div>
+        <div class="care-photos" data-photos></div>
+        <p class="care-photos-hint">Up to ${MAX_PHOTOS} photos — tap one to enlarge.</p>
+        <input type="file" accept="image/*" hidden data-care-file multiple>
 
         <div class="care-maint">
           <label class="field"><span>Maintenance cadence</span>${selectHtml('interval', intervalOpts, intervalSel)}</label>
@@ -1443,6 +1449,20 @@ function itemEditor(list, it, setOpen, draw) {
     </div>`;
 
   const fileInput = $('[data-care-file]', ed);
+  const drawPhotos = () => {
+    const box = $('[data-photos]', ed);
+    const tiles = photos.map((p, i) => `
+      <div class="care-photo-tile">
+        <img src="${esc(p)}" alt="Photo ${i + 1}" data-photo-view="${i}">
+        <button type="button" class="care-photo-rm" data-photo-rm="${i}" title="Remove photo" aria-label="Remove photo ${i + 1}">${IC.close}</button>
+      </div>`).join('');
+    const addTile = photos.length < MAX_PHOTOS
+      ? `<button type="button" class="care-photo-add" data-care="pick" title="Add photo" aria-label="Add photo">${IC.camera}<span>${photos.length ? 'Add' : 'Add photo'}</span></button>`
+      : '';
+    box.innerHTML = tiles + addTile;
+    $('.care-photos-hint', ed).hidden = photos.length === 0;
+  };
+  drawPhotos();
   const drawHistory = () => {
     const box = $('[data-history]', ed);
     if (!careLog.length) { box.innerHTML = ''; return; }
@@ -1461,28 +1481,27 @@ function itemEditor(list, it, setOpen, draw) {
       if (isNew) $('input[name=storage-new]', ed)?.focus();
     }
     if (e.target === fileInput) {
-      const f = fileInput.files[0]; if (!f) return;
-      try {
-        photo = await readImageResized(f);
-        const prev = $('.care-photo-preview', ed);
-        prev.innerHTML = `<img src="${esc(photo)}" alt="${esc(it.name)}">`;
-        $('[data-care="rmphoto"]', ed).hidden = false;
-        const pick = $('[data-care="pick"]', ed); pick.title = 'Replace photo'; pick.setAttribute('aria-label', 'Replace photo');
-      } catch { alert('Sorry — that image could not be read.'); }
+      const files = Array.from(fileInput.files || []);
       fileInput.value = '';
+      if (!files.length) return;
+      let hitCap = false;
+      for (const f of files) {
+        if (photos.length >= MAX_PHOTOS) { hitCap = true; break; }
+        try { photos.push(await readImageResized(f)); }
+        catch { alert('Sorry — that image could not be read.'); }
+      }
+      drawPhotos();
+      if (hitCap) alert(`You can add up to ${MAX_PHOTOS} photos per item.`);
     }
   });
 
   ed.addEventListener('click', async (e) => {
+    const viewIdx = e.target.closest('[data-photo-view]')?.dataset.photoView;
+    if (viewIdx != null) { openPhotoLightbox(photos[+viewIdx]); return; }
+    const rmIdx = e.target.closest('[data-photo-rm]')?.dataset.photoRm;
+    if (rmIdx != null) { photos.splice(+rmIdx, 1); drawPhotos(); return; }
     const care = e.target.closest('[data-care]')?.dataset.care;
     if (care === 'pick') { fileInput.click(); return; }
-    if (care === 'rmphoto') {
-      photo = '';
-      $('.care-photo-preview', ed).innerHTML = `<span class="care-photo-empty">${IC.camera}<span>No photo</span></span>`;
-      e.target.closest('[data-care="rmphoto"]').hidden = true;
-      const pick = $('[data-care="pick"]', ed); pick.title = 'Add photo'; pick.setAttribute('aria-label', 'Add photo');
-      return;
-    }
     if (care === 'donetoday') {
       const today = todayISO();
       careLog = [...careLog, { date: today, note: '' }];
@@ -1522,7 +1541,7 @@ function itemEditor(list, it, setOpen, draw) {
       it.storage = storageSel === '__new__'
         ? ($('input[name=storage-new]', ed).value || '').trim()
         : storageSel;
-      it.photo = photo;
+      it.photos = photos.slice();
       const isel = $('select[name=interval]', ed).value;
       const intervalDays = isel === 'custom' ? Math.max(0, parseInt($('input[name=customDays]', ed).value, 10) || 0) : (parseInt(isel, 10) || 0);
       it.maintenance = normalizeMaintenance({
@@ -1688,14 +1707,15 @@ function allItemsSection(lists) {
 
 function aiRow(it, list) {
   const care = maintenanceStatus(it);
-  const thumb = it.photo
-    ? `<img class="ai-thumb" src="${esc(it.photo)}" alt="">`
+  const nPhotos = (it.photos || []).length;
+  const thumb = nPhotos
+    ? `<span class="ai-thumb"><img src="${esc(it.photos[0])}" alt="">${nPhotos > 1 ? `<span class="thumb-count">${nPhotos}</span>` : ''}</span>`
     : `<span class="ai-thumb ph">${IC.wrench}</span>`;
   const bits = [esc(list.name)];
   if (it.storage) bits.push(`📍 ${esc(it.storage)}`);
   const badge = care
     ? `<span class="ai-badge ${care.state}" title="${esc('Maintenance: ' + dueLabel(care))}">${CARE_EMOJI[care.state]}</span>`
-    : (it.photo ? '<span class="ai-badge" title="Has a photo">📷</span>' : '');
+    : (nPhotos ? `<span class="ai-badge" title="${esc(nPhotos === 1 ? 'Has a photo' : `${nPhotos} photos`)}">📷${nPhotos > 1 ? ` ${nPhotos}` : ''}</span>` : '');
   return h(`<a class="ai-item" href="#/list/${esc(list.id)}/item/${esc(it.id)}">
     ${thumb}
     <span class="ai-main">
@@ -1725,8 +1745,9 @@ function drawCareList(body, rows, markDone) {
 function careRow(row, markDone) {
   const { item, listId, listName, status } = row;
   const m = item.maintenance || {};
-  const thumb = item.photo
-    ? `<img class="care-thumb" src="${esc(item.photo)}" alt="">`
+  const nPhotos = (item.photos || []).length;
+  const thumb = nPhotos
+    ? `<span class="care-thumb"><img src="${esc(item.photos[0])}" alt="">${nPhotos > 1 ? `<span class="thumb-count">${nPhotos}</span>` : ''}</span>`
     : `<span class="care-thumb ph ${status.state}">${CARE_EMOJI[status.state]}</span>`;
   const bits = [esc(listName)];
   if (item.storage) bits.push(`📍 ${esc(item.storage)}`);
@@ -1937,7 +1958,7 @@ function howtoCard() {
         <p>Every item can carry three extra things about the <em>physical object</em>, set in its editor under <b>🧰 Storage &amp; maintenance</b> (in the <b>Templates</b> tab):</p>
         <ul>
           <li><b>Where it's stored</b> — a free-text home for the thing (“Garage shelf 3”, “RV box”, “Hall closet”). It shows on the item, travels onto any trip it lands in, and appears in <b>Packing Mode</b> with a 📍 pin so you know exactly where to grab it. Previous locations autocomplete so the wording stays consistent.</li>
-          <li><b>A photo</b> — snap or pick a picture of the item; it's shrunk and stored <b>on your device</b> (never uploaded). Handy to recognise the right gear, and shown as a thumbnail in the Care list.</li>
+          <li><b>Photos</b> — snap or pick <b>up to ${MAX_PHOTOS} pictures</b> of the item; each is shrunk and stored <b>on your device</b> (never uploaded). Tap a thumbnail to enlarge it, or the ✕ to remove it. Handy to recognise the right gear — the first one shows as a thumbnail in the Care list, with a small count when there's more than one.</li>
           <li><b>Maintenance</b> — how and how often to look after it: a <b>maintenance cadence</b> (monthly … every 2 years, or a custom number of days), when it was <b>last done</b>, free-text <b>how-to notes</b> (steps, products, settings), and a <b>how-to link</b>. Tap <b>Log done today</b> to record a service — it resets the schedule and adds a dated entry to the item's maintenance history.</li>
         </ul>
         <p>The <b>Care</b> tab then gathers everything with care info across all your lists, two ways:</p>
@@ -1991,6 +2012,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v41', '2026-07-31 · 12:00 UTC', false, 'Several photos per item',
+      'An item can now hold <b>up to 5 photos</b> instead of just one — useful for showing a thing from different angles, or its serial number and accessories alongside it. The care panel shows them as a row of thumbnails, each with a small <b>✕</b> to remove it and a dashed <b>Add</b> tile to pick more (you can select several at once). <b>Tap any photo to view it full-screen.</b> In the <b>Care</b> list and <b>All items</b>, the first photo is the thumbnail with a little <b>count badge</b> when there’s more than one. Any single photo you’d already saved is carried over automatically as the first in its set.',
+      'Capture gear from every angle — angles, labels, accessories — not just one picture per item.'),
     v('v40', '2026-07-31 · 11:00 UTC', false, 'Tidier Storage &amp; maintenance panel',
       'A cleaner layout for an item’s care panel. The heading is now just <b>🧰 Storage &amp; maintenance</b>. <b>Maintain</b> is renamed to the clearer <b>Maintenance cadence</b>, and the <b>Log done today</b> button now sits right beside the cadence and last-done fields — one tidy, aligned block instead of being stranded lower down. The photo’s <b>Add</b> and <b>Remove</b> controls are now compact icons (and the Remove icon only appears once there’s actually a photo). The <b>How-to link</b> field lost its wordy “Manufacturer /” prefix, and the service log is now clearly headed <b>MAINTENANCE HISTORY</b>.',
       'Less clutter and clearer labels — the care panel is quicker to scan and the “log it done” action is right where you need it.'),
