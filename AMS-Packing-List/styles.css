@@ -37,14 +37,17 @@
   }
 }
 
-/* Workflow modes — each stage of the packing flow tints the whole UI.
-   Only --brand/--brand-2 change per mode; chips, links, buttons, tabs and
-   progress bars all reference them, so the retint is automatic in light & dark.
-   view = the default teal brand (looking at a trip's list). */
-:root[data-mode="define"] { --brand: #4f68d0; --brand-2: #3f54b0; } /* planning / building the list */
-:root[data-mode="pack"]   { --brand: #2f9e63; --brand-2: #25824f; } /* doing the actual packing */
-:root[data-mode="add"]    { --brand: #c07d1e; --brand-2: #a4661a; } /* adding / editing an item */
-/* Ease the recolour when the mode changes rather than snapping. */
+/* Section themes — each of the five sections tints its whole page.
+   Only --brand/--brand-2 change per section; chips, links, buttons, headings,
+   tabs, pills and progress bars all reference them, so every page recolours
+   automatically in light & dark. Home = blue, Events = green, Templates =
+   violet, Care = teal, Settings = slate. */
+:root[data-section="home"]      { --brand: #2f6fe0; --brand-2: #2356b8; } /* Home — build a trip */
+:root[data-section="events"]    { --brand: #2f9e63; --brand-2: #25824f; } /* Events */
+:root[data-section="templates"] { --brand: #7c5cd6; --brand-2: #6446b8; } /* Templates */
+:root[data-section="care"]      { --brand: #0e9aa6; --brand-2: #0b7a84; } /* Care & maintenance */
+:root[data-section="settings"]  { --brand: #64748b; --brand-2: #475569; } /* Settings */
+/* Ease the recolour when moving between sections rather than snapping. */
 .btn, .tabbar a, .topbar h1, a, .chip, .bar span, .pill, .ev-name, .card.ev .ev-name {
   transition: background-color .28s ease, border-color .28s ease, color .28s ease;
 }

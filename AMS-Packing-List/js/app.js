@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v38';
+const APP_VERSION = 'v39';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -1993,6 +1993,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v39', '2026-07-31 · 10:00 UTC', false, 'Each section now has its own colour',
+      'Every one of the five sections is now colour-coded, and that colour flows through the <b>whole page</b> — buttons, headings, the “＋ New” button, selection pills, links, icons and the lit tab all take on the section’s colour. <b>Home is blue</b>, <b>Events is green</b>, <b>Templates is violet</b>, <b>Care is teal</b>, and <b>Settings is slate grey</b>. The colour changes with a gentle fade as you move between sections, and it always matches the highlighted tab at the bottom, so a single glance tells you where you are. (Status colours that carry meaning — red for overdue, green for upcoming — are left alone.)',
+      'Instant orientation: the colour of everything on screen tells you which section you’re in, with no need to read the header.'),
     v('v38', '2026-07-31 · 09:00 UTC', false, 'The active tab really stands out now',
       'A small visual polish to the bottom navigation. Whichever screen you’re on — <b>Home, Events, Templates, Care or Settings</b> — now shows a filled, brand-coloured <b>pill behind its icon</b> with a soft glow, and its label goes bold and fully saturated. The other tabs stay quiet and grey. Before, the current tab was only tinted a slightly different colour, which was easy to miss at a glance.',
       'You can tell instantly which section you’re in — the current tab genuinely pops instead of being a faint tint.'),
@@ -2305,18 +2308,19 @@ function setActiveTab() {
   $$('.tabbar a').forEach((a) => a.classList.toggle('active', a.getAttribute('href') === base));
 }
 
-// Which stage of the packing flow we're in — drives the UI accent colour.
-// An open item editor (add/edit) wins over the underlying screen's mode.
-function currentMode() {
-  if (app.querySelector('.editor')) return 'add';                 // adding / editing an item
+// Which section we're in — drives the UI accent colour for the whole page.
+// Matches the active-tab mapping so the colour and the lit tab always agree.
+function currentSection() {
   const hash = location.hash || '#/';
-  if (/^#\/event\/[^/]+\/pack$/.test(hash)) return 'pack';         // performing the packing
-  if (hash === '#/' || hash === '#/new' || /^#\/event\/[^/]+\/edit$/.test(hash)) return 'define'; // defining the list
-  return 'view';                                                  // looking at the list (default)
+  if (hash.startsWith('#/events') || hash.startsWith('#/event/')) return 'events';
+  if (hash.startsWith('#/list') || hash === '#/refine') return 'templates';
+  if (hash.startsWith('#/maintenance')) return 'care';
+  if (hash.startsWith('#/settings')) return 'settings';
+  return 'home';
 }
 function applyMode() {
-  const m = currentMode();
-  if (document.documentElement.dataset.mode !== m) document.documentElement.dataset.mode = m;
+  const s = currentSection();
+  if (document.documentElement.dataset.section !== s) document.documentElement.dataset.section = s;
 }
 
 window.addEventListener('hashchange', render);
