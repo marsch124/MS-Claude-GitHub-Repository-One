@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v37';
+const APP_VERSION = 'v38';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -1993,6 +1993,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v38', '2026-07-31 · 09:00 UTC', false, 'The active tab really stands out now',
+      'A small visual polish to the bottom navigation. Whichever screen you’re on — <b>Home, Events, Templates, Care or Settings</b> — now shows a filled, brand-coloured <b>pill behind its icon</b> with a soft glow, and its label goes bold and fully saturated. The other tabs stay quiet and grey. Before, the current tab was only tinted a slightly different colour, which was easy to miss at a glance.',
+      'You can tell instantly which section you’re in — the current tab genuinely pops instead of being a faint tint.'),
     v('v37', '2026-07-30 · 18:30 UTC', false, 'Clearer names: Templates, Events, Packing List',
       'A vocabulary tidy-up so the app names each thing for what it really is. The reusable building blocks (Swim, Run, Travel, Golf…) are now called <b>Templates</b> — the bottom tab and its screen are renamed to match. A specific trip that combines templates is an <b>Event</b> (unchanged). And the single merged list an Event produces — the one you actually pack from — is now called the <b>Packing List</b> (it used to be the “Total List”). So the flow reads plainly: <em>pick Templates → an Event combines them → you get a Packing List</em>. The Home button is now <b>Create Event</b>, and the “How it works” guide has been rewritten throughout to use the new words. Nothing about your data or how anything works changed — only the labels.',
       'The words now match the mental model: reusable Templates, a per-trip Event, and the Packing List you pack from.'),
