@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v44';
+const APP_VERSION = 'v45';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -1616,6 +1616,7 @@ function itemEditor(list, it, setOpen, draw) {
       return;
     }
     if (x === 'save') {
+      const prevName = it.name || ''; // the name before this edit — used to find linked copies to rename
       it.name = ($('input[name=name]', ed).value || '').trim();
       it.qty = ($('input[name=qty]', ed).value || '').trim();
       it.container = $('select[name=container]', ed).value;
@@ -1650,6 +1651,8 @@ function itemEditor(list, it, setOpen, draw) {
       });
       // Read the "In these templates" matrix now, before the editor is torn down.
       const nameKey = it.name.trim().toLowerCase();
+      const prevKey = prevName.trim().toLowerCase();
+      const renamed = !!prevKey && prevKey !== nameKey; // the name actually changed
       const wanted = nameKey ? $$('input[name=tmpl]:not([disabled])', ed).map((b) => ({ id: b.value, checked: b.checked })) : [];
       setOpen(null);
       const ok = await saveGuard((async () => {
@@ -1660,9 +1663,29 @@ function itemEditor(list, it, setOpen, draw) {
           if (l.id === list.id) continue;
           const w = wanted.find((x) => x.id === l.id);
           if (!w) continue;
-          const has = l.items.some((z) => (z.name || '').trim().toLowerCase() === nameKey);
-          if (w.checked && !has) { l.items.unshift(copyItemForTemplate(it, it.name)); await db.saveList(l); }
-          else if (!w.checked && has) { l.items = l.items.filter((z) => (z.name || '').trim().toLowerCase() !== nameKey); await db.saveList(l); }
+          // A linked copy may live here under the new name or, after a rename, the old one.
+          const idxNew = l.items.findIndex((z) => (z.name || '').trim().toLowerCase() === nameKey);
+          const idxOld = renamed ? l.items.findIndex((z) => (z.name || '').trim().toLowerCase() === prevKey) : -1;
+          let changed = false;
+          if (w.checked) {
+            if (idxNew >= 0) {
+              // Already here under the new name — drop any leftover old-name copy so it isn't duplicated.
+              if (idxOld >= 0 && idxOld !== idxNew) { l.items.splice(idxOld, 1); changed = true; }
+            } else if (idxOld >= 0) {
+              l.items[idxOld].name = it.name; changed = true; // rename the linked copy in place
+            } else {
+              l.items.unshift(copyItemForTemplate(it, it.name)); changed = true; // add a fresh copy
+            }
+          } else {
+            // Not wanted — remove the linked copy under whichever name it holds.
+            const before = l.items.length;
+            l.items = l.items.filter((z) => {
+              const k = (z.name || '').trim().toLowerCase();
+              return k !== nameKey && (!renamed || k !== prevKey);
+            });
+            changed = l.items.length !== before;
+          }
+          if (changed) await db.saveList(l);
         }
       })());
       if (ok) { ALL_LISTS = await db.getLists(); draw(); }
@@ -2004,7 +2027,7 @@ function howtoCard() {
           <li><b>Flags:</b> ⚡ needs charging (with an optional <b>charge type</b> — USB-C, USB-A, Lightning, special charger… shown on the badge, e.g. ⚡ USB-C, so you know which cables to bring), short-home-list, 💧 liquid/gel (100 ml rule), ⚠️ restricted — think before packing (battery / carry-on rules), <b>per-night</b> (quantity scales with trip length), and a <b>weight</b> in grams.</li>
           <li><b>Conditions</b> — “only include when…”: Season, Context (Indoor/Outdoor/Race/Training), Transport (Car/Plane/RV), Catering, and <b>Weather</b> (see below). A blank condition means “always applies”.</li>
           <li><b>Sub-items:</b> optional nested things bundled under one line.</li>
-          <li><b>In these templates</b> — a tick-box list of <b>every template</b>. Ticking one <b>adds this item to it</b> and unticking <b>removes it</b> (applied when you Save), so a new hat can join Travel, Golf and Hiking in a few taps. The template you’re editing in stays ticked and locked. The added copies carry the packing details but not the photos or maintenance schedule, so the thing still appears just once in <b>Care</b>.</li>
+          <li><b>In these templates</b> — a tick-box list of <b>every template</b>. Ticking one <b>adds this item to it</b> and unticking <b>removes it</b> (applied when you Save), so a new hat can join Travel, Golf and Hiking in a few taps. The template you’re editing in stays ticked and locked. The added copies carry the packing details but not the photos or maintenance schedule, so the thing still appears just once in <b>Care</b>. Because linked copies share a <b>name</b>, <b>renaming</b> an item updates it in every template it belongs to.</li>
         </ul>
 
         <h3>The timeline (phases)</h3>
@@ -2126,6 +2149,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v45', '2026-07-31 · 16:00 UTC', false, 'Rename an item once, and it renames everywhere',
+      'When an item lives in several templates, <b>renaming it in one now renames it in all of them</b>. Change your “Hat” to “Sun hat” in the Travel template and every linked copy — in Golf, Hiking, wherever it sits — follows to the new name automatically when you <b>Save</b>. It builds on the tick-box matrix: the same items are linked <b>by name</b> across templates, so the app keeps that link intact through a rename instead of leaving stale copies behind under the old name. (This tidies templates; items already materialised into a specific trip keep the name they had when you built that trip’s list.)',
+      'One rename updates the item across every template it belongs to — no hunting through each list to fix the old name by hand.'),
     v('v44', '2026-07-31 · 15:00 UTC', false, 'Add an item to several templates at once',
       'The <b>In these templates</b> panel in an item’s editor is now a <b>tick-box list of every template</b>, not just a read-out of where the item already is. Ticking a template <b>adds this item to it</b>; unticking <b>removes it</b> — the changes apply when you <b>Save</b>. So a new hat you want in Travel, Golf and Hiking is three taps and a Save, instead of re-creating it in each template by hand. The item’s own template stays ticked and locked (use <b>Remove</b> to take it out of that one). The copies carry the packing details — container, weight, ⚡/💧/⚠️ flags, conditions and storage place — but not the photos or maintenance schedule, so the <b>Care</b> tab still lists the thing once. The list grows on its own as you add more templates.',
       'Fan one item out to every template it belongs to in seconds — tick, tick, Save — instead of rebuilding it in each list.'),
