@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v39';
+const APP_VERSION = 'v40';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -1398,7 +1398,7 @@ function itemEditor(list, it, setOpen, draw) {
     </div>
 
     <details class="care"${careOpen ? ' open' : ''}>
-      <summary><span class="care-h">🧰 Storage, photo &amp; maintenance</span><span class="care-sum">Where it lives, a picture, and how &amp; when to look after it</span></summary>
+      <summary><span class="care-h">🧰 Storage &amp; maintenance</span><span class="care-sum">Where it lives, a picture, and how &amp; when to look after it</span></summary>
       <div class="care-body">
         <label class="field"><span>Where it's stored</span>
           <select name="storage-sel">
@@ -1412,27 +1412,25 @@ function itemEditor(list, it, setOpen, draw) {
         <div class="care-photo" data-photo>
           <div class="care-photo-preview">${photo ? `<img src="${esc(photo)}" alt="${esc(it.name)}">` : `<span class="care-photo-empty">${IC.camera}<span>No photo</span></span>`}</div>
           <div class="care-photo-actions">
-            <button type="button" class="btn ghost sm" data-care="pick">${IC.camera}<span>${photo ? 'Replace' : 'Add photo'}</span></button>
-            <button type="button" class="btn danger ghost sm" data-care="rmphoto"${photo ? '' : ' hidden'}>${IC.trash}<span>Remove</span></button>
+            <button type="button" class="btn ghost icon" data-care="pick" title="${photo ? 'Replace photo' : 'Add photo'}" aria-label="${photo ? 'Replace photo' : 'Add photo'}">${IC.camera}</button>
+            <button type="button" class="btn danger ghost icon" data-care="rmphoto" title="Remove photo" aria-label="Remove photo"${photo ? '' : ' hidden'}>${IC.trash}</button>
           </div>
           <input type="file" accept="image/*" hidden data-care-file>
         </div>
 
-        <div class="row2">
-          <label class="field"><span>Maintain</span>${selectHtml('interval', intervalOpts, intervalSel)}</label>
+        <div class="care-maint">
+          <label class="field"><span>Maintenance cadence</span>${selectHtml('interval', intervalOpts, intervalSel)}</label>
           <label class="field care-lastdone"><span>Last done</span><input type="date" name="lastDone" value="${esc(m.lastDone)}" max="${todayISO()}"></label>
+          <button type="button" class="btn sm care-logbtn" data-care="donetoday" title="Log maintenance done today">${IC.check}<span>Log done today</span></button>
         </div>
         <label class="field care-custom${intervalSel === 'custom' ? '' : ' hidden'}"><span>Custom interval (days)</span>
           <input type="number" name="customDays" min="1" inputmode="numeric" value="${curInterval && !intervalIsPreset ? curInterval : ''}" placeholder="e.g. 120"></label>
 
         <label class="field"><span>How to maintain <em>(steps, products, settings)</em></span>
           <textarea name="mnotes" rows="3" placeholder="e.g. Rinse in fresh water, dry inside-out, re-wax zip yearly.">${esc(m.notes)}</textarea></label>
-        <label class="field"><span>Manufacturer / how-to link</span>
+        <label class="field"><span>How-to link</span>
           <input type="url" name="mlink" value="${esc(m.link)}" placeholder="https://…" autocomplete="off"></label>
 
-        <div class="care-donerow">
-          <button type="button" class="btn sm" data-care="donetoday">${IC.check}<span>Log maintenance done today</span></button>
-        </div>
         <div class="care-history" data-history></div>
       </div>
     </details>
@@ -1449,7 +1447,7 @@ function itemEditor(list, it, setOpen, draw) {
     const box = $('[data-history]', ed);
     if (!careLog.length) { box.innerHTML = ''; return; }
     const rows = careLog.slice().reverse().map((e) => `<div class="care-hrow"><span class="care-hdate">${esc(prettyDate(e.date))}</span>${e.note ? `<span class="care-hnote">${esc(e.note)}</span>` : ''}</div>`).join('');
-    box.innerHTML = `<div class="care-hhead">History</div>${rows}`;
+    box.innerHTML = `<div class="care-hhead">Maintenance history</div>${rows}`;
   };
   drawHistory();
 
@@ -1469,7 +1467,7 @@ function itemEditor(list, it, setOpen, draw) {
         const prev = $('.care-photo-preview', ed);
         prev.innerHTML = `<img src="${esc(photo)}" alt="${esc(it.name)}">`;
         $('[data-care="rmphoto"]', ed).hidden = false;
-        $('[data-care="pick"] span', ed).textContent = 'Replace';
+        const pick = $('[data-care="pick"]', ed); pick.title = 'Replace photo'; pick.setAttribute('aria-label', 'Replace photo');
       } catch { alert('Sorry — that image could not be read.'); }
       fileInput.value = '';
     }
@@ -1482,7 +1480,7 @@ function itemEditor(list, it, setOpen, draw) {
       photo = '';
       $('.care-photo-preview', ed).innerHTML = `<span class="care-photo-empty">${IC.camera}<span>No photo</span></span>`;
       e.target.closest('[data-care="rmphoto"]').hidden = true;
-      $('[data-care="pick"] span', ed).textContent = 'Add photo';
+      const pick = $('[data-care="pick"]', ed); pick.title = 'Add photo'; pick.setAttribute('aria-label', 'Add photo');
       return;
     }
     if (care === 'donetoday') {
@@ -1606,7 +1604,7 @@ async function renderMaintenance() {
     });
   } else {
     wrap.appendChild(h(`<div class="care-none">
-      <p class="empty-s">Nothing is scheduled for upkeep yet. Find an item below, open it, and fill in its <b>🧰 Storage, photo &amp; maintenance</b> panel — a service interval or care notes will bring it here with reminders.</p>
+      <p class="empty-s">Nothing is scheduled for upkeep yet. Find an item below, open it, and fill in its <b>🧰 Storage &amp; maintenance</b> panel — a service interval or care notes will bring it here with reminders.</p>
     </div>`));
   }
 
@@ -1746,7 +1744,7 @@ function careRow(row, markDone) {
   </div>`);
 
   if (careExpanded === item.id) {
-    const link = m.link ? `<a class="care-link" href="${esc(m.link)}" target="_blank" rel="noopener noreferrer">${IC.link}<span>Manufacturer / how-to</span></a>` : '';
+    const link = m.link ? `<a class="care-link" href="${esc(m.link)}" target="_blank" rel="noopener noreferrer">${IC.link}<span>How-to link</span></a>` : '';
     const notes = m.notes ? `<div class="care-notes">${esc(m.notes)}</div>` : '';
     const sched = status.scheduled
       ? `<div class="care-fact">Every ${status.intervalDays} days${status.lastDone ? ` · last done ${esc(prettyDate(status.lastDone))}` : ' · never logged'}</div>`
@@ -1936,19 +1934,19 @@ function howtoCard() {
         <p>The <b>Bags &amp; weight</b> panel totals each container's weight against typical airline limits (carry-on 8 kg, checked 23 kg…), warns when a bag is over, and counts 💧 liquids and ⚠️ restricted items. Totals only cover items you've given a weight.</p>
 
         <h3>Care, storage &amp; maintenance</h3>
-        <p>Every item can carry three extra things about the <em>physical object</em>, set in its editor under <b>🧰 Storage, photo &amp; maintenance</b> (in the <b>Templates</b> tab):</p>
+        <p>Every item can carry three extra things about the <em>physical object</em>, set in its editor under <b>🧰 Storage &amp; maintenance</b> (in the <b>Templates</b> tab):</p>
         <ul>
           <li><b>Where it's stored</b> — a free-text home for the thing (“Garage shelf 3”, “RV box”, “Hall closet”). It shows on the item, travels onto any trip it lands in, and appears in <b>Packing Mode</b> with a 📍 pin so you know exactly where to grab it. Previous locations autocomplete so the wording stays consistent.</li>
           <li><b>A photo</b> — snap or pick a picture of the item; it's shrunk and stored <b>on your device</b> (never uploaded). Handy to recognise the right gear, and shown as a thumbnail in the Care list.</li>
-          <li><b>Maintenance</b> — how and how often to look after it: a <b>service interval</b> (monthly … every 2 years, or a custom number of days), when it was <b>last done</b>, free-text <b>how-to notes</b> (steps, products, settings), and a <b>manufacturer / how-to link</b>. Tap <b>Log maintenance done today</b> to record a service — it resets the schedule and adds a dated entry to the item's history.</li>
+          <li><b>Maintenance</b> — how and how often to look after it: a <b>maintenance cadence</b> (monthly … every 2 years, or a custom number of days), when it was <b>last done</b>, free-text <b>how-to notes</b> (steps, products, settings), and a <b>how-to link</b>. Tap <b>Log done today</b> to record a service — it resets the schedule and adds a dated entry to the item's maintenance history.</li>
         </ul>
         <p>The <b>Care</b> tab then gathers everything with care info across all your lists, two ways:</p>
         <ul>
-          <li><b>List</b> — grouped by urgency: <b>🔴 Overdue</b>, <b>🟡 Due soon</b> (within three weeks), <b>🟢 Upcoming</b>, and <b>🧰 Reference only</b> (care notes but no schedule). Each row shows the photo, where it's stored and when it's next due; tap it to read the how-to notes, open the manufacturer link, and see its service history. Hit <b>✓ Done</b> to log a service in one tap.</li>
+          <li><b>List</b> — grouped by urgency: <b>🔴 Overdue</b>, <b>🟡 Due soon</b> (within three weeks), <b>🟢 Upcoming</b>, and <b>🧰 Reference only</b> (care notes but no schedule). Each row shows the photo, where it's stored and when it's next due; tap it to read the how-to notes, open the how-to link, and see its maintenance history. Hit <b>✓ Done</b> to log a service in one tap.</li>
           <li><b>Calendar</b> — a month view with each scheduled service on its due date, colour-coded by urgency and dotted with a count; tap a day to see (and tick off) what's due. Overdue items are flagged above the grid.</li>
         </ul>
         <p>Only items you give care info to appear in those two views — your everyday clothes and toiletries stay out of it. When something's overdue or due soon, a <b>🧰 reminder</b> also shows on the <b>Home</b> screen.</p>
-        <p>Below that sits <b>All items</b> — a searchable index of <b>every item in every template</b>. Type a name (or a storage place) to filter, then tap a result to jump <b>straight into that item's editor</b> with its <b>🧰 Storage, photo &amp; maintenance</b> panel already open — the quickest way to add or update care info without hunting through the Templates tab. The <b>＋ New item</b> button creates an item in any template you pick and drops you into editing it right away.</p>
+        <p>Below that sits <b>All items</b> — a searchable index of <b>every item in every template</b>. Type a name (or a storage place) to filter, then tap a result to jump <b>straight into that item's editor</b> with its <b>🧰 Storage &amp; maintenance</b> panel already open — the quickest way to add or update care info without hunting through the Templates tab. The <b>＋ New item</b> button creates an item in any template you pick and drops you into editing it right away.</p>
 
         <h3>Countdown &amp; “pack now” nudges</h3>
         <p>With a start date set, each event shows a countdown, and a ⏰ banner surfaces the earliest phase that's due (based on how many days each phase is normally packed before departure). These are on-open reminders — the app can't push background notifications.</p>
@@ -1993,6 +1991,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v40', '2026-07-31 · 11:00 UTC', false, 'Tidier Storage &amp; maintenance panel',
+      'A cleaner layout for an item’s care panel. The heading is now just <b>🧰 Storage &amp; maintenance</b>. <b>Maintain</b> is renamed to the clearer <b>Maintenance cadence</b>, and the <b>Log done today</b> button now sits right beside the cadence and last-done fields — one tidy, aligned block instead of being stranded lower down. The photo’s <b>Add</b> and <b>Remove</b> controls are now compact icons (and the Remove icon only appears once there’s actually a photo). The <b>How-to link</b> field lost its wordy “Manufacturer /” prefix, and the service log is now clearly headed <b>MAINTENANCE HISTORY</b>.',
+      'Less clutter and clearer labels — the care panel is quicker to scan and the “log it done” action is right where you need it.'),
     v('v39', '2026-07-31 · 10:00 UTC', false, 'Each section now has its own colour',
       'Every one of the five sections is now colour-coded, and that colour flows through the <b>whole page</b> — buttons, headings, the “＋ New” button, selection pills, links, icons and the lit tab all take on the section’s colour. <b>Home is blue</b>, <b>Events is green</b>, <b>Templates is violet</b>, <b>Care is teal</b>, and <b>Settings is slate grey</b>. The colour changes with a gentle fade as you move between sections, and it always matches the highlighted tab at the bottom, so a single glance tells you where you are. (Status colours that carry meaning — red for overdue, green for upcoming — are left alone.)',
       'Instant orientation: the colour of everything on screen tells you which section you’re in, with no need to read the header.'),

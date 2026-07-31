@@ -473,6 +473,10 @@ legend { font-size: .82rem; color: var(--muted); font-weight: 700; padding: 0 4p
 .wx-sugg-s { font-size: .82rem; color: var(--muted); line-height: 1.45; }
 .wx-sugg-actions { margin-top: 10px; }
 .btn.sm { padding: 5px 12px; font-size: .85rem; }
+.btn.icon { padding: 8px; border-radius: 10px; gap: 0; }
+.btn.icon .ic { width: 20px; height: 20px; }
+/* .btn sets display:inline-flex, which overrides the UA [hidden] rule — restore it. */
+.btn[hidden] { display: none !important; }
 .iconbtn.sm .ic { width: 18px; height: 18px; }
 [data-wx].busy { opacity: .55; }
 
@@ -503,7 +507,11 @@ details.care[open] .care-h::before { content: '▾'; }
 .care-photo-empty { display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--muted); font-size: .68rem; }
 .care-photo-empty .ic { width: 24px; height: 24px; }
 .care-photo-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.care-donerow { display: flex; }
+/* Cadence · Last done · Log-done, all on one aligned row (wraps if tight). */
+.care-maint { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.care-maint .field { flex: 1 1 128px; }
+.care-logbtn { flex: 1 1 140px; padding: 10px 14px; border-color: var(--brand); color: var(--brand); font-size: .85rem; }
+.care-logbtn:hover { background: color-mix(in srgb, var(--brand) 10%, transparent); }
 .care-history { display: grid; gap: 2px; }
 .care-hhead, .cal-daylist .care-sech { color: var(--muted); font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
 .care-hrow { display: flex; gap: 8px; font-size: .84rem; padding: 2px 0; }
