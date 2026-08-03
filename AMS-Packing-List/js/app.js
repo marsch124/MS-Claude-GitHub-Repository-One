@@ -17,7 +17,7 @@ import { buildWorkbook, XLSX_MIME } from './xlsx.js';
 const app = document.getElementById('app');
 // Single source of truth for the shown release. Bump alongside the service-worker
 // cache tag and the newest version-history entry.
-const APP_VERSION = 'v50';
+const APP_VERSION = 'v51';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -131,6 +131,7 @@ function listsWithItemNamed(name) {
 // It's a real list under the hood (so the editor, care, matrix all work) but
 // carries role 'loose', which keeps it out of every trip and the activity picker.
 const LOOSE_NAME = 'Loose items';
+const LOOSE_OPT = '__loose__'; // sentinel value for the "No template" choice in the Care "New item" picker
 async function getLooseList() {
   const lists = await db.getLists();
   let loose = lists.find((l) => l.role === 'loose');
@@ -2014,7 +2015,10 @@ function allItemsSection(lists) {
     <p class="ai-hint">Jump to any item to set where it’s stored, add a photo, or plan its maintenance.</p>
     <form class="ai-addform hidden" data-ai-form>
       <div class="row2">
-        <label class="field"><span>Add to template</span>${selectHtml('ai-list', lists.map((l) => ({ value: l.id, label: l.name })), lists[0] && lists[0].id)}</label>
+        <label class="field"><span>Add to</span>${selectHtml('ai-list', [
+          ...lists.filter((l) => l.role !== 'loose').map((l) => ({ value: l.id, label: l.name })),
+          { value: LOOSE_OPT, label: '— No template · keep as a loose item —' },
+        ], (lists.find((l) => l.role !== 'loose') || {}).id || LOOSE_OPT)}</label>
         <label class="field"><span>Item name</span><input name="ai-name" placeholder="e.g. Wetsuit" autocomplete="off"></label>
       </div>
       <div class="ai-addactions">
@@ -2075,7 +2079,8 @@ function allItemsSection(lists) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const listId = $('select[name=ai-list]', form).value;
-    const list = lists.find((l) => l.id === listId);
+    // "No template" → the item goes into the Loose items bin (created on demand).
+    const list = listId === LOOSE_OPT ? await getLooseList() : lists.find((l) => l.id === listId);
     if (!list) return;
     const name = ($('input[name=ai-name]', form).value || '').trim();
     const it = newItem({ name });
@@ -2356,7 +2361,7 @@ function howtoCard() {
           <li><b>Calendar</b> — a month view with each scheduled service on its due date, colour-coded by urgency and dotted with a count; tap a day to see (and tick off) what's due. Overdue items are flagged above the grid.</li>
         </ul>
         <p>Only items you give care info to appear in those two views — your everyday clothes and toiletries stay out of it. When something's overdue or due soon, a <b>🧰 reminder</b> also shows on the <b>Home</b> screen.</p>
-        <p>Below that sits <b>All items</b> — a searchable index of <b>every item in every template</b>. Type a name (or a storage place) to filter, then tap a result to jump <b>straight into that item's editor</b> with its <b>Storage &amp; maintenance</b> panel already open — the quickest way to add or update care info without hunting through the Templates tab. Under the search box, <b>quick-filter chips</b> let you isolate a whole category at once — <b>⚠️ No template</b> (loose items), <b>💧 Liquids</b>, <b>⚡ Charging</b>, <b>⚠️ Restricted</b>, <b>🧰 Has care</b> and <b>📷 Photo</b>; tap several to combine them, and keep typing to narrow further. The <b>＋ New item</b> button creates an item in any template you pick and drops you into editing it right away.</p>
+        <p>Below that sits <b>All items</b> — a searchable index of <b>every item in every template</b>. Type a name (or a storage place) to filter, then tap a result to jump <b>straight into that item's editor</b> with its <b>Storage &amp; maintenance</b> panel already open — the quickest way to add or update care info without hunting through the Templates tab. Under the search box, <b>quick-filter chips</b> let you isolate a whole category at once — <b>⚠️ No template</b> (loose items), <b>💧 Liquids</b>, <b>⚡ Charging</b>, <b>⚠️ Restricted</b>, <b>🧰 Has care</b> and <b>📷 Photo</b>; tap several to combine them, and keep typing to narrow further. The <b>＋ New item</b> button creates an item in any template you pick — or choose <b>“No template · keep as a loose item”</b> to drop it straight into the Loose items bin — and takes you into editing it right away.</p>
 
         <h3>Countdown &amp; “pack now” nudges</h3>
         <p>With a start date set, each event shows a countdown, and a ⏰ banner surfaces the earliest phase that's due (based on how many days each phase is normally packed before departure). These are on-open reminders — the app can't push background notifications.</p>
@@ -2401,6 +2406,9 @@ function versionHistoryCard() {
     <p class="vh-benefit"><b>Main benefit:</b> ${benefit}</p>
   </div>`;
   const items = [
+    v('v51', '2026-08-01 · 09:00 UTC', false, 'Add a loose item straight from the Care tab',
+      'Two fixes to the Care tab’s <b>All items</b> tool. First, <b>＋ New item</b> now lets you choose <b>“— No template · keep as a loose item —”</b> in the <b>Add to</b> picker, so you can jot something down from here without forcing it into a template — it lands in the <b>Loose items</b> bin and opens ready to edit. (Before, you had to pick a template.) Second, once you have loose items, the <b>⚠️ No template</b> filter chip appears alongside 💧/⚡/⚠️/🧰/📷, so you can round up everything not yet filed. The chip only shows when loose items actually exist — the same rule every category chip follows — which is why it was missing when nothing was loose yet.',
+      'Capture a thought as a loose item without leaving the Care tab, then filter the list down to everything still needing a home.'),
     v('v50', '2026-07-31 · 21:00 UTC', false, 'Category filter chips inside each template too',
       'The same <b>quick-filter chips</b> added to the Care tab now sit at the top of <b>every template’s own item list</b> (and the <b>Loose items</b> bin). Open a template and tap <b>💧 Liquids</b>, <b>⚡ Charging</b>, <b>⚠️ Restricted</b>, <b>🧰 Has care</b> or <b>📷 Photo</b> to see just those items within that list; tap several to combine them (it shows items matching <b>any</b> chosen category). Only categories that actually occur in that template show up, each with a count, and <b>Show all</b> clears them. The counts stay live as you add, batch-add or remove items. (The <b>⚠️ No template</b> chip is left off inside the Loose bin, where every item is loose anyway.)',
       'Zero in on one kind of thing inside a single template — every liquid in your wash-bag list, every chargeable in the tech list — without scrolling the whole thing.'),
